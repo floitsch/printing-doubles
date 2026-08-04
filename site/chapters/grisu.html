@@ -1,1 +1,141 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="grisu"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A detailed, executable presentation of Grisu, DiyFp arithmetic, cached powers, safe intervals, RoundWeed, and fallback.">
+  <title>Grisu: prove when approximation is enough · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/grisu.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
+      <h1>Grisu: prove when approximation is enough</h1>
+      <p class="chapter-deck">Dragon makes every interval computation exact. Grisu asks a different question: can a 64-bit approximation carry enough information to prove the same result? Usually it can. When it cannot, Grisu3 rejects the computation instead of guessing.</p>
+      <div class="chapter-meta"><span>Chapter 5</span><span>PLDI 2010</span><span>64-bit DiyFp</span><span>Shortest or fallback</span><span>Executable teaching port</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 5</strong><a href="#family">Three algorithms</a><a href="#idea">From exact to approximate</a><a href="#diyfp">DiyFp</a><a href="#cache">Cached powers</a><a href="#digits">Digit generation</a><a href="#weed">Safe interval</a><a href="#success">Successful execution</a><a href="#failure">Rejected execution</a><a href="#correctness">Correctness</a><a href="#status">Evidence status</a></aside>
+      <article class="chapter">
+        <section id="family">
+          <p class="eyebrow">5.1 · Output contracts</p>
+          <h2>Grisu is a family of three algorithms</h2>
+          <p class="lead">The important production member is Grisu3: return the shortest, closest recovering decimal when fixed-width arithmetic proves it, and report failure otherwise.</p>
+          <p>The names are easily blurred, but the guarantees differ. The original Grisu always returns a recovering decimal and may print more digits than necessary. Grisu2 spends the spare precision of a 64-bit integer to obtain shorter output and very often finds the optimum, but it does not certify shortestness for every input. Grisu3 adds a conservative final test. It either certifies the optimal result or returns no result at all.</p>
+          <table>
+            <thead><tr><th>Variant</th><th>What it returns</th><th>Can reject?</th><th>How a complete formatter uses it</th></tr></thead>
+            <tbody>
+              <tr><td>Grisu</td><td>A decimal that recovers the input; not necessarily shortest.</td><td>No</td><td>Useful when recovery matters more than minimal output.</td></tr>
+              <tr><td>Grisu2</td><td>A recovering decimal that is usually shortest.</td><td>No</td><td>Suitable only when a non-optimal representation is acceptable.</td></tr>
+              <tr><td>Grisu3</td><td>The shortest, closest recovering decimal, or no result.</td><td>Yes</td><td>Run the fast path first; invoke an exact algorithm after rejection.</td></tr>
+            </tbody>
+          </table>
+          <p>The paper reports that Grisu3 succeeds for about 99.5% of binary64 inputs under its experimental distribution. That number describes the 2010 implementation and workload; it is not a universal probability for every program. The contract does not depend on the percentage: success is certified, failure is explicit.</p>
+        </section>
+
+        <section id="idea">
+          <p class="eyebrow">5.2 · The change of representation</p>
+          <h2>Keep Dragon’s geometry; approximate its coordinates</h2>
+          <p>Dragon begins with the selected value and its two parsing boundaries. It scales all three exactly, then generates digits while carrying exact integer margins. Grisu begins with the same interval. The difference is that each coordinate is stored in a small floating-point type backed by one 64-bit integer.</p>
+          <p>This substitution removes unbounded integer arithmetic, but it also introduces uncertainty. A cached power of ten is rounded to 64 bits. Multiplying by it produces a 128-bit product whose low half is discarded after rounding. Consequently the scaled center and boundaries are not exact points; each denotes a narrow range of possible exact positions.</p>
+          <p>Grisu3 handles that uncertainty by distinguishing two intervals:</p>
+          <div class="implementation-ledger">
+            <p><strong>Outer interval</strong><span>Contains every point that might be admissible after accounting for approximation. A candidate in its fringe may or may not recover the input.</span></p>
+            <p><strong>Safe interval</strong><span>Obtained by moving inward far enough to cover all known errors. Every candidate inside it is certainly inside the true parsing interval.</span></p>
+          </div>
+          <p>If the best decimal candidate falls in the safe interval and its closest-choice comparison is unambiguous for every possible location of the true value, the approximation is enough. Otherwise Grisu3 stops and delegates the input.</p>
+        </section>
+
+        <section id="diyfp">
+          <p class="eyebrow">5.3 · The arithmetic type</p>
+          <h2>A floating point made from two integers</h2>
+          <p>A DiyFp value is a pair (<em>f</em>, <em>e</em>) denoting <em>f</em> × 2<sup><em>e</em></sup>. The significand <em>f</em> is an unsigned 64-bit integer. Normalization shifts it left until its highest bit is 1 and subtracts the same shift from the exponent. The represented real value does not change.</p>
+          <p>For a normal binary64 input, the original significand has 53 meaningful bits. Moving it into a 64-bit word leaves eleven low bits available during scaling. DiyFp is deliberately not a general replacement for IEEE arithmetic: Grisu needs only normalization, subtraction between values with equal exponents, and multiplication that keeps the rounded high 64 bits of a 128-bit product.</p>
+          <div class="equation">(f<sub>1</sub> × 2<sup>e₁</sup>) · (f<sub>2</sub> × 2<sup>e₂</sup>) ≈ high64(f<sub>1</sub>f<sub>2</sub>) × 2<sup>e₁+e₂+64</sup>.</div>
+          <p>The discarded low half decides whether the retained high half is incremented. This is fixed-width integer multiplication with an explicit binary exponent; no hardware floating-point rounding mode is involved.</p>
+        </section>
+
+        <section id="cache">
+          <p class="eyebrow">5.4 · Decimal scaling</p>
+          <h2>A sparse cache is enough</h2>
+          <p>Digit generation is simplest when the scaled DiyFp exponent lies in a small target range. Then its integer part fits in 32 bits, while its fractional denominator is a power of two that fits comfortably in 64 bits. Grisu chooses a cached approximation of 10<sup><em>k</em></sup> that places the product’s exponent between −60 and −32.</p>
+          <p>The cache does not need every decimal exponent. A sequence spaced eight decimal powers apart covers the complete binary64 range because the accepted binary-exponent window is wide enough to absorb the gap. Each entry contains a normalized 64-bit significand, a binary exponent, and the decimal exponent it represents.</p>
+          <p>For example, the cached DiyFp for 10<sup>4</sup> is exact: <code>0x9c40000000000000 × 2⁻⁵⁰</code>. Multiplying the normalized DiyFp for binary64(<code>0.3</code>) by that entry produces a scaled value near 3000. Digit generation may then recover the significant digit 3, while the saved decimal exponent moves it back to 0.3.</p>
+          <div class="aside"><p><strong>Why use a binary target range?</strong> The purpose of the decimal power is not merely to put the leading decimal digit before the point. It also selects a binary exponent for which shifts, masks, and multiplication by ten cannot overflow the fixed-width remainder arithmetic.</p></div>
+        </section>
+
+        <section id="digits">
+          <p class="eyebrow">5.5 · Digit generation</p>
+          <h2>Generate from the upper approximation, then move inward</h2>
+          <p>After scaling, the DiyFp exponent is negative. The significand can therefore be split with one shift and one mask. The high bits form an ordinary integer; the low bits form a fraction whose denominator is 2<sup>−<em>e</em></sup>.</p>
+          <p>Integral decimal digits are removed with division by 1000, 100, 10, and 1 as appropriate. Once the decimal point is crossed, the fractional integer is multiplied by ten; shifting right by −<em>e</em> yields the next digit, and masking retains the new remainder. This is the same long-division idea used by Dragon, but the denominator is now a power of two and every quantity has a fixed width.</p>
+          <p>Grisu deliberately generates digits from the upper boundary approximation. Stopping early therefore leaves a candidate near the upper side of the interval. The final procedure, traditionally named <code>RoundWeed</code>, may decrement the last digit to move the candidate toward the approximated center.</p>
+          <ol class="pseudo" id="grisu-code">
+            <li data-line="1">normalize the input into a 64-bit DiyFp</li>
+            <li data-line="2">construct and align the two midpoint boundaries</li>
+            <li data-line="3">select cached 10^k; multiply center and boundaries</li>
+            <li data-line="4">generate digits from the scaled upper boundary</li>
+            <li data-line="5">RoundWeed: adjust the last digit and accept only if the proof is decisive</li>
+          </ol>
+        </section>
+
+        <section id="weed">
+          <p class="eyebrow">5.6 · The proof gate</p>
+          <h2>Reject uncertainty instead of hiding it</h2>
+          <p>The scaled center and each scaled boundary are accurate to within one DiyFp unit. Moving the outer lower boundary upward and the outer upper boundary downward by the derived error allowance produces the safe interval. A candidate outside the outer interval is certainly wrong. A candidate inside the safe interval is certainly valid. A candidate between the two is unresolved.</p>
+          <p>Recovery alone is not sufficient. If two decimals of the same length are possible, Grisu3 must also prove which is closer to the exact input. Since the center itself is approximate, the comparison is decisive only when the same candidate wins for every point in the center’s uncertainty range. <code>RoundWeed</code> rejects the input if moving the last digit could change that winner.</p>
+          <p>The metaphor in the name is useful: digit generation admits candidates from a deliberately broad interval; the final procedure weeds out everything that cannot be proved safe and closest. A false return is a normal numerical outcome, not an exception and not evidence that the attempted characters should be used.</p>
+        </section>
+
+        <section id="success">
+          <p class="eyebrow">5.7 · Successful execution</p>
+          <h2>Follow Grisu3 for binary64(0.3)</h2>
+          <p>The trace is produced by the repository’s instrumented teaching implementation. Its cached powers are generated from exact integers and rounded to the same DiyFp representation used at runtime. The digit states and safe-interval decision are therefore execution data, not a hand-authored illustration.</p>
+          <trace-player class="trace-player" data-title="Grisu3 fast path · input binary64(0.3)" data-code="#grisu-code"><script id="grisu-success-data" type="application/json">[]</script></trace-player>
+          <p>The first significant digit is already sufficient. Although the stored value is slightly below the real number 0.3, the decimal candidate 0.3 lies comfortably inside the safe interval and is unambiguously the closest one-digit recovering decimal.</p>
+        </section>
+
+        <section id="failure">
+          <p class="eyebrow">5.8 · Rejected execution</p>
+          <h2>The attempted digits are not an answer</h2>
+          <p>For binary64(<code>1e23</code>), this Grisu3 path reaches the familiar candidate <code>1e+23</code>. Nevertheless, the fixed-width error bounds leave it in an uncertainty fringe. The fact that an exact algorithm later returns the same characters does not retroactively make the fast-path proof valid.</p>
+          <trace-player class="trace-player" data-title="Grisu3 rejection · input binary64(1e23)" data-code="#grisu-code"><script id="grisu-failure-data" type="application/json">[]</script></trace-player>
+          <p>A production formatter discards the buffer when Grisu3 returns false and invokes Dragon, Gay’s bignum path, or another exact implementation. This separation is the central engineering bargain: almost all inputs avoid bignums, while the output contract remains unconditional.</p>
+        </section>
+
+        <section id="correctness">
+          <p class="eyebrow">5.9 · Why acceptance is sufficient</p>
+          <h2>The safe interval restores an exact conclusion</h2>
+          <p>The arithmetic is approximate, but the accepted statement is exact. Three bounds make that possible:</p>
+          <ol>
+            <li>The exact scaled center and boundaries lie within their stated one-unit DiyFp neighborhoods.</li>
+            <li>The safe interval is obtained by moving inward far enough that every point in it lies inside the exact parsing interval, regardless of the actual approximation errors.</li>
+            <li>The closest-candidate test succeeds only if one decimal remains nearer throughout the center’s complete uncertainty neighborhood.</li>
+          </ol>
+          <p>Digit generation stops at the first decimal precision whose broad interval admits a candidate. If <code>RoundWeed</code> then proves that candidate safe, no shorter decimal can be valid and the selected candidate is the closest at that length. If either conclusion is uncertain, rejection preserves the theorem.</p>
+          <p>The chapter follows the 2010 paper and the maintained <a href="https://github.com/google/double-conversion/blob/master/double-conversion/fast-dtoa.cc">double-conversion fast path</a>. The <a href="https://doi.org/10.1145/1806596.1806623">paper’s archival record</a> fixes the algorithm and its original evaluation.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">5.10 · Evidence and implementation status</p>
+          <h2>The fast path and rejection path are executable</h2>
+          <p>The repository contains an independent JavaScript teaching port of the binary64 Grisu3 shortest path. It uses BigInt only to make JavaScript emulate unsigned 64×64→128 multiplication and to generate cached constants exactly; the represented algorithm retains only the rounded high 64 product bits and makes the same bounded-precision decisions as the fixed-width design.</p>
+          <div class="implementation-ledger">
+            <p><strong>Implemented</strong><span>Binary64 normalization; asymmetric normalized boundaries; dynamically verified cached powers from 10⁻³⁴⁸ through 10³⁴⁰ at spacing eight; rounded DiyFp multiplication; integral and fractional digit generation; RoundWeed adjustment, safety test, and explicit rejection.</span></p>
+            <p><strong>Oracle comparison</strong><span>Every successful fast result is compared with the independent exact grid-search oracle. Every rejected input is sent through the oracle fallback and checked against the same expected result.</span></p>
+            <p><strong>Current corpus</strong><span>Familiar values, smallest and largest finite values, normal/subnormal and power-of-two transitions, powers of ten, signed inputs, and 3,000 deterministic binary64 bit patterns. The corpus is required to exercise rejection.</span></p>
+            <p><strong>Still required</strong><span>A pinned native double-conversion wrapper in the automated suite; direct state-by-state comparison with the C++ fast path; larger published hard-case corpora; independent cache-size and microcontroller measurements outside the site.</span></p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./dragon.html"><span>Previous</span><strong>Dragon</strong></a><a href="./errol.html"><span>Next</span><strong>Errol →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · executable Grisu3 chapter</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>
