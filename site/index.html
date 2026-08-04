@@ -32,6 +32,7 @@
         <p class="eyebrow">Binary floating point → decimal text</p>
         <h1 id="hero-title">When doubles<br>become decimal</h1>
         <p class="standfirst">A visual and executable account of the algorithms that render IEEE 754 binary64 values as decimal strings: from exact expansion and rounding intervals to the shortest text that recovers the original bits.</p>
+        <p class="prerequisite-note">The main account assumes familiarity with IEEE 754 binary floating-point. If exponent fields, significands, subnormals, or ulps are unfamiliar—or merely rusty—begin with the <a href="./chapters/binary64-number-line.html">binary64 primer</a>.</p>
         <a class="button" href="#explorer">Put 0.3 under the microscope <span aria-hidden="true">↓</span></a>
       </div>
       <div class="hero-figure" aria-hidden="true">
@@ -113,7 +114,7 @@
       <div class="section-body problem-body">
         <p class="lede">The exact value stored for <code>0.3</code> is the finite decimal below. Printing it is correct, but it answers a question that most default formatters were not asked.</p>
         <output class="monster" aria-label="The exact decimal value stored for double 0.3">0.299999999999999988897769753748434595763683319091796875</output>
-        <p>Assume that a decimal parser rounds to the nearest binary64 value. The selected double then owns an interval of real numbers. Its lower boundary is halfway to the previous double; its upper boundary is halfway to the next double. Every decimal strictly inside that interval parses to the selected bits. A value exactly on a boundary needs an additional tie rule; the instrument simply marks whether that boundary belongs to the selected double.</p>
+        <p>Assume that a decimal parser rounds to the nearest binary64 value. The selected double then owns an interval of real numbers. Its lower boundary is halfway to the previous double; its upper boundary is halfway to the next double. Every decimal strictly inside that interval parses to the selected bits. At an exact midpoint, IEEE round-to-nearest, ties-to-even selects the neighbor whose integer significand is even. The stored significand of binary64(<code>0.3</code>) is odd, so both midpoint boundaries belong to its neighbors and are excluded from its interval.</p>
         <div class="interval-figure">
           <trace-player class="trace-player problem-player" data-title="Construct the output problem · input 0.3"><script id="problem-trace-data" type="application/json">[]</script></trace-player>
           <div class="interval-definitions">

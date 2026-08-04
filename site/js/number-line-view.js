@@ -109,6 +109,20 @@ export class NumberLineView {
       ? (value) => laneMargin + (value - lane.domain[0]) / (lane.domain[1] - lane.domain[0]) * (width - 2 * laneMargin)
       : mapX;
     const y = mapY(lane.y);
+    for (const band of lane.bands || []) {
+      const left = laneMapX(band.from);
+      const right = laneMapX(band.to);
+      const top = y - (band.above ?? 34);
+      const bottom = y + (band.below ?? 34);
+      ctx.fillStyle = band.color || "rgba(223,255,82,.13)";
+      ctx.fillRect(left, top, right - left, bottom - top);
+      if (band.border) {
+        ctx.strokeStyle = band.border;
+        ctx.lineWidth = band.width || 1;
+        ctx.strokeRect(left, top, right - left, bottom - top);
+      }
+      if (band.label && right - left > 100) this.label(ctx, band.label, (left + right) / 2, top - 8, band.textColor || band.border || lane.color, "center");
+    }
     ctx.strokeStyle = lane.color || "#8eb3ff";
     ctx.lineWidth = lane.width || 1;
     ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(width, y + .5); ctx.stroke();

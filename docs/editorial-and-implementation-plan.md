@@ -192,9 +192,12 @@ digit-count pathology → emit exponent.
 **Contract:** shortest, correctly rounded, round-tripping text; configurable
 fixed formats in practical implementations.
 
-**Implementation:** readable BigInt Dragon4 using the classic `R/S` remainder
-and `M−/M+` margins. Keep setup, scaling, digit generation, and termination
-separate. Compare with Steele–White examples and an independent oracle.
+**Implementation status:** the readable binary64/base-10 BigInt specialization
+now uses the classic `R/S` remainder and `M−/M+` margins, with setup, scaling,
+digit generation, and termination kept separate. It is compared with the
+independent grid-search oracle on named difficult cases and deterministic bit
+patterns. Remaining work includes exhaustive binary32, upstream hard cases, and
+a pinned native Dragon4/dtoa wrapper.
 
 **Visual:** three linked views: real interval, normalized fraction `R/S`, and a
 decimal digit drum. Multiplication by ten zooms the interval and exposes one

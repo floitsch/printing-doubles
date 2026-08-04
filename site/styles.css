@@ -42,6 +42,8 @@ code, output { font-family: var(--mono); }
 .eyebrow { margin: 0 0 18px; font: 500 11px/1.3 var(--mono); letter-spacing: 0.13em; text-transform: uppercase; }
 .hero h1 { margin: 0 0 28px; font: 600 clamp(70px, 9.1vw, 150px)/0.78 var(--serif); letter-spacing: -0.065em; }
 .standfirst { max-width: 670px; font-size: clamp(18px, 1.6vw, 24px); line-height: 1.5; }
+.prerequisite-note { max-width: 670px; margin: -8px 0 30px; padding-left: 18px; border-left: 2px solid var(--red); color: var(--muted); font-size: 14px; }
+.prerequisite-note a { color: var(--ink); }
 .button { display: inline-flex; gap: 20px; margin-top: 22px; padding: 14px 18px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); text-decoration: none; font: 500 12px/1 var(--mono); text-transform: uppercase; }
 .button:hover { background: var(--red); border-color: var(--red); }
 .hero-figure { position: relative; min-width: 0; }
@@ -262,6 +264,8 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .section-body, .explorer .section-body, .timeline .section-body, .frontier .section-body, .sources .section-body { grid-column: 2; }
   .era { grid-template-columns: 90px 1fr; }
   .era .algorithm-sketch { grid-column: 2; }
+  .chapter-layout { display: block; padding: 80px 6vw 130px; }
+  .chapter-toc { position: static; margin-bottom: 70px; }
 }
 
 @media (max-width: 680px) {

@@ -1,10 +1,13 @@
 import { binaryCoordinate, decodeDouble, decimalCoordinate, midpointCoordinate, nextDown, nextUp, parseDecimal, unitExponent } from "./float.js";
+import { exactDecimal, exactDecimalOfRational, intervalOf } from "./oracle.js";
 
 export function problemTrace(value) {
   const center = decodeDouble(value);
   const previous = decodeDouble(nextDown(value));
   const following = decodeDouble(nextUp(value));
   const unit = unitExponent(value);
+  const interval = intervalOf(value);
+  const exact = exactDecimal(value);
   const previousX = binaryCoordinate(previous, center, unit);
   const nextX = binaryCoordinate(following, center, unit);
   const lowerX = midpointCoordinate(previous, center, center, unit);
@@ -15,9 +18,10 @@ export function problemTrace(value) {
     { x: 0, color: "#1565ff", width: 3, height: 52, dot: 4, topLabel: "selected double" },
     { x: nextX, color: "#8eb3ff", height: 30, topLabel: "next double" },
   ];
+  const endpoint = interval.closed ? "included" : "excluded";
   const boundaries = [
-    { x: lowerX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint: "excluded", endpointLabel: "excluded", endpointLabelDx: -8, endpointAlign: "right", label: "lower midpoint", labelY: .94 },
-    { x: upperX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint: "excluded", endpointLabel: "excluded", endpointLabelDx: 8, endpointAlign: "left", label: "upper midpoint", labelY: .94 },
+    { x: lowerX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint, endpointLabel: endpoint, endpointLabelDx: -8, endpointAlign: "right", label: "lower midpoint", labelY: .94 },
+    { x: upperX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint, endpointLabel: endpoint, endpointLabelDx: 8, endpointAlign: "left", label: "upper midpoint", labelY: .94 },
   ];
   const band = { from: lowerX, to: upperX, top: .13, bottom: .88, color: "rgba(223,255,82,.14)", label: "ROUND-TRIP INTERVAL" };
   const decimalTick = (text, label, active = false) => {
@@ -54,15 +58,15 @@ export function problemTrace(value) {
     {
       label: "Parsing boundaries",
       title: "Insert the exact arithmetic midpoints",
-      why: "Round-to-nearest parsing changes result at the midpoint to each neighbor. These computed boundaries—not a symmetric decorative box—define the selected value's preimage.",
-      registers: { lower: "halfway to previous", upper: "halfway to next", boundary_markers: "excluded for this value" },
+      why: `At either midpoint, round-to-nearest has an exact tie. Ties-to-even chooses the adjacent value whose integer significand is even. The selected significand is ${center.significand}, which is ${interval.closed ? "even" : "odd"}, so both endpoints are ${endpoint} for binary64(${value}).`,
+      registers: { lower_midpoint: exactDecimalOfRational(interval.lower), upper_midpoint: exactDecimalOfRational(interval.upper), selected_significand: `${center.significand} (${interval.closed ? "even" : "odd"})`, endpoints: endpoint },
       visual: { scene: scene({ interval: true }) },
     },
     {
       label: "An exact decimal",
       title: "Equality is sufficient, but unnecessarily strict",
-      why: "The full decimal expansion denotes the selected double exactly and therefore lies at the selected point. Default output need only lie inside the interval.",
-      registers: { digits: 55, status: "exact and round-tripping" },
+      why: `The full expansion ${exact} denotes the selected double exactly and therefore lies at the selected point. Default output need only lie inside the interval.`,
+      registers: { exact_decimal: exact, status: "exact and round-tripping" },
       visual: { scene: scene({ interval: true, decimals: [decimalTick("0.299999999999999988897769753748434595763683319091796875", "exact stored value")] }) },
     },
     {
@@ -74,9 +78,9 @@ export function problemTrace(value) {
     },
     {
       label: "The output contract",
-      title: "Select the first admissible decimal grid",
-      why: "For shortest output, move from coarse decimal grids toward finer ones until a candidate enters the interval; then choose the nearest candidate on that first admissible grid.",
-      registers: { output: "0.3", significant_digits: 1, proof: "no coarser admissible grid" },
+      title: "The required answer is now precisely stated",
+      why: "The printer must find a round-tripping decimal with the fewest significant digits and choose the nearest among equally short results. The remaining problem is to devise an algorithm that finds exactly that decimal efficiently.",
+      registers: { required_output: "0.3", significant_digits: 1, remaining_task: "find and prove the shortest decimal" },
       visual: { scene: scene({ interval: true, decimalLabel: "FIRST ADMISSIBLE DECIMAL GRID", decimals: [decimalTick("0.2", "0.2"), decimalTick("0.3", "selected: 0.3", true), decimalTick("0.4", "0.4")], footer: "ROUND TRIP · FEWEST DIGITS · NEAREST AMONG EQUALLY SHORT CANDIDATES" }) },
     },
   ];

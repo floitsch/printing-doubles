@@ -1,5 +1,5 @@
 import { formatDecimal } from "./float.js";
-import { rationalOfDouble } from "./oracle.js";
+import { exactDecimalOfRational, rationalOfDouble } from "./oracle.js";
 
 const POW10 = [1n];
 function pow10(power) {
@@ -100,12 +100,15 @@ function scientificText(coefficient, digits, exponent) {
 export function coonenBTrace(value, digits) {
   const result = coonenBReference(value, digits);
   const scaledValue = Number(result.scaled.numerator) / Number(result.scaled.denominator);
+  const exactScaledText = exactDecimalOfRational(result.scaled);
+  const scaledDisplay = exactScaledText.length > 24 ? `${exactScaledText.slice(0, 24)}…` : exactScaledText;
   const chosen = Number(result.coefficient);
   const original = Math.abs(value);
   const decadeStart = 10 ** result.scientificExponent;
   const decadeEnd = decadeStart * 10;
   const sourceDomain = [original * .9, original * 1.1];
   const scaledDomain = sourceDomain.map((point) => point * 10 ** result.scale);
+  const schematicError = (scaledDomain[1] - scaledDomain[0]) * .035;
   const integerTicks = Array.from({ length: 5 }, (_, index) => {
     const x = chosen - 2 + index;
     return { x, color: x === chosen ? "#ef4b35" : "#ff9b8e", height: x === chosen ? 48 : 24, width: x === chosen ? 3 : 1, dot: x === chosen ? 4 : undefined, topLabel: x === chosen ? `rounded: ${x}` : String(x) };
@@ -115,7 +118,7 @@ export function coonenBTrace(value, digits) {
     background: "#192632",
     grid: true,
     lanes,
-    captions: [{ x: .02, y: .08, color: "#f4f0e8", text: caption }],
+    captions: caption ? [{ x: .02, y: .08, color: "#f4f0e8", text: caption }] : [],
     footer: options.footer,
   });
   return [
@@ -130,37 +133,37 @@ export function coonenBTrace(value, digits) {
     {
       line: 2,
       label: "B2 · Decimal decade",
-      title: "Estimate the base-ten exponent from below",
-      why: "Algorithm L supplies floor(log10(|x|)) or one less. An underestimate is permitted because B6 detects an oversized integer and retries once.",
-      registers: { LOGX: result.scientificExponent, decade: `[${decadeStart}, ${decadeEnd})`, estimate_error: "0 for this input" },
+      title: "Identify the decimal decade",
+      why: "LOGX identifies the position of the leading decimal digit. The estimate is allowed to be one decade too low because the later range check detects and corrects exactly that error.",
+      registers: { input: value.toPrecision(17), LOGX: result.scientificExponent, decade: `[${decadeStart}, ${decadeEnd})`, estimate_for_this_input: "correct" },
       visual: { scene: baseScene([{ y: .58, domain: [decadeStart, decadeEnd], margin: 55, color: "#8eb3ff", label: "SELECTED DECIMAL DECADE", ticks: [{ x: decadeStart, height: 35, topLabel: `10^${result.scientificExponent}` }, { x: original, color: "#dfff52", width: 3, height: 55, dot: 5, topLabel: "x" }, { x: decadeEnd, height: 35, topLabel: `10^${result.scientificExponent + 1}` }] }], "LOGX fixes the scientific exponent") },
     },
     {
       line: 3,
       label: "B3–B4 · Scale",
       title: `Move the desired ${digits} digits left of the point`,
-      why: "SCALE = N − LOGX − 1. Multiplication by the corresponding power of ten maps the source decade to the N-digit integer decade.",
-      registers: { N: digits, LOGX: result.scientificExponent, SCALE: result.scale, factor: `10^${result.scale}` },
+      why: "SCALE = N − LOGX − 1. Multiplication by the corresponding power of ten maps the source value to the N-digit integer range. In the historical finite-precision path, approximation of that power can begin the error budget at this step.",
+      registers: { input: value.toPrecision(17), factor: `10^${result.scale}`, exact_scaled_value: exactScaledText, exact_control_error: "0", historical_path: "bounded scale-factor error may already be present" },
       visual: { scene: baseScene([
         { y: .35, domain: sourceDomain, margin: 55, color: "#8eb3ff", label: "BEFORE SCALING", ticks: [{ x: original, width: 3, height: 42, dot: 4, topLabel: value.toPrecision(8) }] },
-        { y: .7, domain: scaledDomain, margin: 55, color: "#ff9b8e", label: `AFTER MULTIPLICATION BY 10^${result.scale}`, ticks: [{ x: scaledValue, width: 3, height: 42, dot: 4, topLabel: scaledValue.toFixed(6) }] },
-      ], "Lane-local domains show the change of scale", { footer: "THE TWO MARKERS HAVE THE SAME RELATIVE POSITION IN THEIR RESPECTIVE DECADES" }) },
+        { y: .7, domain: scaledDomain, margin: 55, color: "#ff9b8e", label: `AFTER MULTIPLICATION BY 10^${result.scale}`, bands: [{ from: scaledValue - schematicError, to: scaledValue + schematicError, color: "rgba(223,255,82,.17)", border: "#dfff52", label: "SCHEMATIC ERROR BUDGET" }], ticks: [{ x: scaledValue, width: 3, height: 42, dot: 4, topLabel: scaledValue.toFixed(6) }] },
+      ], `${value.toPrecision(17)} × 10^${result.scale} = ${scaledDisplay}`) },
     },
     {
       line: 4,
       label: "B5 · Round",
       title: "Round the scaled value once, to an integer",
-      why: "The integer is the complete significant-digit field. This exact-control implementation performs rational rounding; Coonen's implementation uses extended precision and a bounded scale-factor error.",
-      registers: { scaled_value: scaledValue.toPrecision(12), rounded_integer: result.coefficient.toString(), inexact: result.inexact },
+      why: "The integer is the complete significant-digit field. With only five requested digits, many nearby binary64 inputs can round to the same integer; fixed-precision output does not promise recovery. This exact control performs rational rounding, whereas Coonen's implementation rounds after bounded extended-precision scaling.",
+      registers: { scaled_value: scaledValue.toPrecision(17), rounded_integer: result.coefficient.toString(), discarded_fraction: result.inexact ? "nonzero" : "zero", round_trip_at_N_5: "not promised" },
       visual: { scene: baseScene([{ y: .58, domain: [chosen - 2.2, chosen + 2.2], margin: 55, color: "#ff9b8e", label: "INTEGER GRID", ticks: [...integerTicks, { x: scaledValue, color: "#dfff52", width: 2, height: 70, dot: 4, topLabel: "scaled x" }] }], "One rounding produces all requested digits") },
     },
     {
       line: 5,
       label: "B6–B8 · Emit",
       title: "Pair the integer digits with the saved exponent",
-      why: "The range check guarantees exactly N digits. The digit string and LOGX form the requested scientific result; Algorithm B does not search for a shorter representation.",
-      registers: { coefficient: result.coefficient.toString(), exponent: result.scientificExponent, output: result.text, passes: result.passes },
-      visual: { scene: baseScene([{ y: .58, domain: [chosen - 2.2, chosen + 2.2], margin: 55, color: "#ff9b8e", label: "SIGNIFICANT-DIGIT INTEGER", ticks: [{ x: chosen, color: "#ef4b35", width: 3, height: 65, dot: 5, topLabel: result.coefficient.toString() }] }], `${result.coefficient} together with exponent ${result.scientificExponent} gives ${result.text}`, { footer: "FIXED-PRECISION OUTPUT · NOT A SHORTEST-STRING SEARCH" }) },
+      why: `LOGX says that the first digit has weight 10^${result.scientificExponent}. Because the coefficient has ${digits} digits, its integer form must instead be multiplied by 10^(${result.scientificExponent} − ${digits - 1}) = 10^${result.decimalExponent}. Thus ${result.coefficient} × 10^${result.decimalExponent} = ${result.text}.`,
+      registers: { coefficient: result.coefficient.toString(), leading_digit_weight: `10^${result.scientificExponent}`, coefficient_weight: `10^${result.decimalExponent}`, identity: `${result.coefficient} × 10^${result.decimalExponent}`, output: result.text },
+      visual: { scene: baseScene([{ y: .58, domain: [chosen - 2.2, chosen + 2.2], margin: 55, color: "#ff9b8e", label: "SIGNIFICANT-DIGIT INTEGER", ticks: [{ x: chosen, color: "#ef4b35", width: 3, height: 65, dot: 5, topLabel: result.coefficient.toString() }] }], `${result.coefficient} × 10^${result.decimalExponent} = ${result.text}`, { footer: "FIXED-PRECISION OUTPUT · NOT A SHORTEST-STRING SEARCH" }) },
     },
   ];
 }

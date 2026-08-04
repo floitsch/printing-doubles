@@ -91,7 +91,7 @@
           </ol>
           <p>For a given grid exponent <em>k</em>, the coefficient bounds are obtained by exact division of the interval endpoints by <em>10ᵏ</em>, followed by ceiling at the lower endpoint and floor at the upper endpoint. An open endpoint is excluded if this division is exact. No candidate is rounded to binary floating point during the search.</p>
           <p>Seventeen significant digits suffice for binary64 round-trip output. The oracle nevertheless derives the first admissible digit count by search, rather than calling the host language’s formatter. The resulting decimal is parsed back only as an additional test, not as the argument for its correctness.</p>
-          <div class="aside"><p><strong>Independence.</strong> The oracle shares the binary64 decoder and exact midpoint definition with the visual explorer. It does not share cached-power tables, multiplication/shift approximations, trailing-zero tests, or candidate-selection branches with Ryū, Schubfach, or Dragonbox.</p></div>
+          <div class="aside"><p><strong>Independence.</strong> The oracle shares the binary64 decoder and exact midpoint definition with the visual explorer. It does not share Dragon’s digit recurrence and margin tests, nor the cached-power tables, multiplication/shift approximations, trailing-zero tests, or candidate-selection branches of the fixed-width algorithms.</p></div>
         </section>
 
         <section id="trace">

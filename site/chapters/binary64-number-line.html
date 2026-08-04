@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="A visual introduction to the binary64 number line, binades, exponent transitions, and subnormal values.">
-  <title>The shape of the binary64 number line · Printing doubles</title>
+  <meta name="description" content="A practical primer on IEEE 754 binary64 values, fields, spacing, rounding, special values, and subnormals.">
+  <title>A practical IEEE 754 binary64 primer · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
   <script type="module" src="../js/floating-grid.js"></script>
 </head>
@@ -13,70 +13,122 @@
   <main>
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part I · Floating-point foundations</p>
-      <h1>The shape of the binary64 number line</h1>
-      <p class="chapter-deck">Binary64 values form a regular grid only while the exponent remains fixed. This chapter develops the changing spacing, the exceptional midpoint geometry at powers of two, and the gradual transition to subnormal values.</p>
-      <div class="chapter-meta"><span>Chapter 1</span><span>Binades</span><span>Subnormal values</span></div>
+      <h1>A practical IEEE 754 binary64 primer</h1>
+      <p class="chapter-deck">The conversion chapters assume that a double can be decoded into a sign, an integer significand, and a power of two. This primer develops that model from the 64 stored bits and accounts for the places where the grid changes shape.</p>
+      <div class="chapter-meta"><span>Chapter 1</span><span>IEEE 754</span><span>Binary64</span><span>Refresher</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#fields">The three fields</a><a href="#binades">Binades and spacing</a><a href="#transition">Exponent transitions</a><a href="#subnormal">Gradual underflow</a><a href="#consequences">Consequences</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#model">Values and operations</a><a href="#fields">The three fields</a><a href="#normal">Normal values</a><a href="#binades">Precision and ulps</a><a href="#transition">Exponent transitions</a><a href="#subnormal">Subnormal values</a><a href="#rounding">Rounded operations</a><a href="#special">Zeros, infinities, NaNs</a><a href="#consequences">What follows</a></aside>
       <article class="chapter">
+        <section id="model">
+          <p class="eyebrow">1.1 · Scope and model</p>
+          <h2>A format for values, and rules for operations</h2>
+          <p class="lead">IEEE 754 defines floating-point formats and the behavior of operations on them. This book uses its 64-bit binary format, binary64—the format ordinarily meant by an IEEE <code>double</code>.</p>
+          <p>Binary64 does not store an arbitrary real number. Its 64 bits select one member of a finite set: finite numbers, two signed zeros, two infinities, and NaNs. A finite nonzero value can always be written in the form</p>
+          <div class="equation">v = (−1)<sup>s</sup> · c · 2<sup>q</sup>,</div>
+          <p>where <em>s</em> is the sign bit, <em>c</em> is an integer significand, and <em>q</em> is an integer exponent. This form is exact. Approximation arises when a source number is not in the binary64 set, or when the exact result of an operation is not representable and must be rounded to one of the available values.</p>
+          <div class="aside"><p><strong>Language qualification.</strong> IEEE 754 names the format <em>binary64</em>. C, C++, Java, JavaScript, and many other environments commonly expose it as <code>double</code> or <code>Number</code>, but language and ABI rules determine the precise type mapping.</p></div>
+        </section>
+
         <section id="fields">
-          <p class="eyebrow">1.1 · Representation</p>
-          <h2>Three fields select one exact value</h2>
-          <p class="lead">A finite binary64 datum consists of a sign, an eleven-bit exponent field, and a 52-bit fraction field. For normal values, those fields denote one integer significand multiplied by one power of two.</p>
+          <p class="eyebrow">1.2 · Storage</p>
+          <h2>Three fields classify and select a value</h2>
+          <p>A binary64 datum contains one sign bit, an eleven-bit exponent field, and a 52-bit fraction field. The exponent field first classifies the datum: values from 1 through 2046 denote normal finite numbers; zero denotes zeros and subnormals; 2047 denotes infinities and NaNs.</p>
           <binary64-fields data-value="0.3"></binary64-fields>
-          <p>The strip shows the bits of the binary64 value obtained by parsing <code>0.3</code>. The sign occupies one bit. The stored exponent occupies the next eleven and is biased by 1023, so the bit pattern 1021 denotes the exponent −2. The remaining 52 bits store the fractional part of the significand. A normal value has an additional leading 1 that is understood rather than stored.</p>
-          <div class="equation">v = (−1)<sup>s</sup> · (2<sup>52</sup> + fraction) · 2<sup>E−1023−52</sup>.</div>
-          <p>The apparently fractional quantity is therefore an integer on a scaled grid. Holding the exponent field <em>E</em> fixed and increasing the fraction by one moves to the next grid point. The distance between adjacent values in that region is</p>
-          <div class="equation">ulp = 2<sup>E−1023−52</sup>.</div>
-          <div class="aside"><p><strong>One ulp is one local step.</strong> Near 1, adjacent binary64 values in the upper binade differ by 2<sup>−52</sup>, so that distance is one ulp there. Moving the fraction field by one moves the value by one ulp. “Half an ulp” means half of this local gap; it is not one fixed real number throughout the format.</p></div>
-          <p>The conversion chapters use an integer significand and an explicit power of two because that form makes both the exact value and its local spacing available without floating-point arithmetic. When a later chapter uses a <em>decimal</em> ulp, it means the analogous gap between adjacent decimal results at the chosen precision—for example, 0.00001 between five-digit values near 0.33333.</p>
+          <p>The strip shows the bits obtained by parsing <code>0.3</code>. The exponent/fraction boundary happens to align with a hexadecimal boundary because the sign and exponent together occupy twelve bits. The sign/exponent boundary does not: the first hexadecimal digit contains the sign and three exponent bits.</p>
+          <table>
+            <thead><tr><th>Exponent field</th><th>Fraction field</th><th>Class</th></tr></thead>
+            <tbody>
+              <tr><td>1 … 2046</td><td>any</td><td>normal finite value; an implicit leading 1 is present</td></tr>
+              <tr><td>0</td><td>zero</td><td>signed zero</td></tr>
+              <tr><td>0</td><td>nonzero</td><td>subnormal finite value; no implicit leading 1</td></tr>
+              <tr><td>2047</td><td>zero</td><td>signed infinity</td></tr>
+              <tr><td>2047</td><td>nonzero</td><td>NaN</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="normal">
+          <p class="eyebrow">1.3 · Normal finite values</p>
+          <h2>The stored fraction has an implicit leading one</h2>
+          <p>For a normal value, let <em>E</em> be the unsigned integer in the exponent field and <em>F</em> the unsigned integer in the 52-bit fraction field. The exponent uses a bias of 1023. The mathematical value is</p>
+          <div class="equation">v = (−1)<sup>s</sup> · (1 + F / 2<sup>52</sup>) · 2<sup>E−1023</sup>.</div>
+          <p>The leading 1 is not stored because every normal binary significand has one. Multiplying the parenthesis by 2<sup>52</sup> gives the integer form used by the algorithms in this book:</p>
+          <div class="equation">v = (−1)<sup>s</sup> · (2<sup>52</sup> + F) · 2<sup>E−1023−52</sup>.</div>
+          <p>For binary64(<code>0.3</code>), the stored exponent is 1021, hence the unbiased exponent is −2. Decoding all fields produces the exact integer form</p>
+          <div class="equation">5,404,319,552,844,595 · 2<sup>−54</sup>,</div>
+          <p>which is exactly 0.299999999999999988897769753748434595763683319091796875. The source decimal and stored binary value are close, but they are different rational numbers.</p>
         </section>
 
         <section id="binades">
-          <p class="eyebrow">1.2 · Constant-spacing regions</p>
-          <h2>A binade is one regular part of the grid</h2>
-          <p>For a fixed integer <em>e</em>, the positive normal values in the half-open interval [2<sup>e</sup>, 2<sup>e+1</sup>) have the same exponent and the same spacing, 2<sup>e−52</sup>. This interval is called a <em>binade</em>. Each normal binade contains 2<sup>52</sup> distinct values, so relative precision remains essentially constant while absolute spacing grows with magnitude.</p>
-          <p>Crossing from one binade to the next increments the exponent and resets the fraction field. The first gap in the new binade is twice a gap in the preceding binade. Conversely, moving downward across a positive power of two enters a grid with twice as many points per unit of the real line.</p>
-          <div class="aside"><p><strong>Reading the figures.</strong> A tick denotes a representable binary64 value. Tick positions use exact differences from the selected value. A bracket denotes the real distance between adjacent ticks; it is not a count of bit patterns.</p></div>
+          <p class="eyebrow">1.4 · Precision and spacing</p>
+          <h2>Binary64 has 53 significant bits, not fixed decimal places</h2>
+          <p>The implicit leading bit and 52 stored fraction bits give normal values 53 bits of precision. This is roughly 15.95 decimal digits: every decimal number with 15 significant digits can be recovered through binary64, while some binary64 values require 17 decimal digits for guaranteed recovery. These statements concern significant digits, not digits after the decimal point.</p>
+          <p>For a fixed integer <em>e</em>, the positive normal values in [2<sup>e</sup>, 2<sup>e+1</sup>) have one exponent and constant spacing 2<sup>e−52</sup>. Such a region is called a <em>binade</em>. It contains 2<sup>52</sup> fraction-field choices.</p>
+          <div class="equation">one local step = one ulp = 2<sup>e−52</sup>.</div>
+          <div class="aside"><p><strong>One ulp is one local step.</strong> Near 1 on its upper side, consecutive values differ by 2<sup>−52</sup>. Moving the fraction field by one therefore moves the value by one ulp. “Half an ulp” means half the local gap; its absolute size changes when the exponent changes.</p></div>
+          <p>The fixed number of significand bits gives approximately constant <em>relative</em> precision. Absolute precision is not constant: binary64 distinguishes much smaller differences near 1 than near 10<sup>300</sup>.</p>
         </section>
 
         <section id="transition">
-          <p class="eyebrow">1.3 · The boundary at 1</p>
-          <h2>The spacing changes at an exact power of two</h2>
-          <p>The value 1 is the first point in the binade [1,2). Its successor is 1 + 2<sup>−52</sup>. Its predecessor belongs to [½,1) and is 1 − 2<sup>−53</sup>. Thus the predecessor is only half as far from 1 as the successor. The computed figure makes the two local units visible.</p>
+          <p class="eyebrow">1.5 · The boundary at 1</p>
+          <h2>The spacing doubles at an exact power of two</h2>
+          <p>The value 1 is the first point in the binade [1,2). Its successor is 1 + 2<sup>−52</sup>. Its predecessor belongs to [½,1) and is 1 − 2<sup>−53</sup>. The lower neighbor is therefore only half as far from 1 as the upper neighbor.</p>
           <figure class="chapter-figure">
             <canvas id="binade-canvas" width="1000" height="390" role="img" aria-label="Binary64 values around one, showing spacing of two to the minus 53 below one and two to the minus 52 above one."></canvas>
-            <figcaption>Exact-power transitions occur throughout the normal range. The same geometry appears around 2<sup>e</sup> after rescaling.</figcaption>
+            <figcaption>Every normal power of two is a transition between two binades. Rescaling this figure by 2<sup>e</sup> gives the same local geometry at any such transition.</figcaption>
           </figure>
-          <p>The unequal gaps also make the two parsing midpoints unequal in their distance from 1. The lower midpoint lies 2<sup>−54</sup> below 1; the upper midpoint lies 2<sup>−53</sup> above it. A shortest printer that represents its acceptable interval by one symmetric radius would therefore be wrong at these inputs. Algorithms either construct both endpoints, carry distinct lower and upper margins, or enter a specialized shorter-interval case.</p>
+          <p>This asymmetry matters to conversion. The lower and upper parsing boundaries need not be equally distant from the selected value. Algorithms must carry two margins, construct both endpoints, or use an equivalent specialized case.</p>
         </section>
 
         <section id="subnormal">
-          <p class="eyebrow">1.4 · The lower end</p>
-          <h2>Subnormal values preserve a final fixed spacing</h2>
-          <p>If the exponent field is zero, binary64 omits the implicit leading one. A positive subnormal with fraction field <em>f</em> denotes</p>
-          <div class="equation">v = f · 2<sup>−1074</sup>, &nbsp;&nbsp; 1 ≤ f &lt; 2<sup>52</sup>.</div>
-          <p>The positive subnormals therefore form a uniformly spaced continuation from zero. The smallest positive value is 2<sup>−1074</sup>; the next is twice that value; and so forth. After 2<sup>52</sup>−1 subnormal points, the smallest normal value 2<sup>−1022</sup> continues with the same spacing. This mechanism is called <em>gradual underflow</em>.</p>
+          <p class="eyebrow">1.6 · Gradual underflow</p>
+          <h2>Subnormal values continue the grid to zero</h2>
+          <p>If the exponent field is zero, the implicit leading one is absent. A positive subnormal with fraction-field integer <em>F</em> denotes</p>
+          <div class="equation">v = F · 2<sup>−1074</sup>, &nbsp;&nbsp; 1 ≤ F &lt; 2<sup>52</sup>.</div>
+          <p>The smallest positive binary64 value is therefore 2<sup>−1074</sup>, approximately 4.94 × 10<sup>−324</sup>. The positive subnormals form a uniformly spaced continuation from zero. Their spacing remains 2<sup>−1074</sup> through the transition to the smallest normal value, 2<sup>−1022</sup>.</p>
           <figure class="chapter-figure">
             <canvas id="subnormal-canvas" width="1000" height="340" role="img" aria-label="Zero and the first six positive subnormal binary64 values at uniform spacing of two to the minus 1074."></canvas>
-            <figcaption>The first few positive subnormals. The same spacing continues through the smallest normal value; the drawing shows the beginning, not all 2<sup>52</sup> steps.</figcaption>
+            <figcaption>Zero is the sole predecessor of the smallest positive subnormal. The fixed spacing continues for 2<sup>52</sup> subnormal fraction patterns.</figcaption>
           </figure>
-          <p>Subnormals have fewer significant nonzero bits than normal values near the same scale. They do not, however, require a different real-number interpretation: they remain exact integer multiples of a power of two. Many implementations normalize the significand internally and then reuse the main conversion path. A chapter will call out subnormal handling only when it changes the algorithm rather than merely its decoding step.</p>
+          <p>A subnormal can have fewer significant nonzero bits than a normal value. This gradual loss of relative precision is preferable to an abrupt gap between the smallest normal value and zero. Conversion implementations commonly normalize a subnormal significand internally and then reuse their main path.</p>
+        </section>
+
+        <section id="rounding">
+          <p class="eyebrow">1.7 · Operations</p>
+          <h2>Exact arithmetic is rounded back to the format</h2>
+          <p>The exact sum, product, quotient, square root, or parsed decimal often lies between binary64 values. IEEE 754 defines rounding directions that select a representable result. The commonly used direction chooses the nearest value; directed modes choose toward zero, toward positive infinity, or toward negative infinity.</p>
+          <p>Rounding is conceptually performed after the exact result has been determined. An implementation may use guard, round, and sticky information instead of constructing that exact result in full, but it must reach the prescribed choice. The next chapter introduces the exact midpoint rule used by round-to-nearest parsing at the moment those midpoints become part of the conversion problem.</p>
+          <div class="aside"><p><strong>Values are exact; operations may round.</strong> Saying that binary64(<code>0.3</code>) is exact does not say that it equals the real number 3/10. It says that its bit pattern denotes one exact rational. The rounding occurred when 3/10 was mapped to that pattern.</p></div>
+        </section>
+
+        <section id="special">
+          <p class="eyebrow">1.8 · Non-ordinary encodings</p>
+          <h2>Signed zeros, infinities, and NaNs are format cases</h2>
+          <p>Binary64 has both +0 and −0. They compare equal numerically in ordinary comparisons, but retain different sign bits; operations such as reciprocal and some branch-sensitive functions can distinguish them. A formatter must therefore have an explicit signed-zero policy.</p>
+          <p>Exponent field 2047 with a zero fraction denotes +∞ or −∞. A nonzero fraction denotes a NaN. NaNs can carry payload and quiet/signaling information, although language and serialization formats differ in what they preserve. None of these values participates in the shortest finite-decimal search. Production formatters classify them before entering their numerical conversion path.</p>
+          <table>
+            <thead><tr><th>Quantity</th><th>binary64 value</th></tr></thead>
+            <tbody>
+              <tr><td>largest finite magnitude</td><td>(2 − 2<sup>−52</sup>) · 2<sup>1023</sup> ≈ 1.798 × 10<sup>308</sup></td></tr>
+              <tr><td>smallest positive normal</td><td>2<sup>−1022</sup> ≈ 2.225 × 10<sup>−308</sup></td></tr>
+              <tr><td>smallest positive subnormal</td><td>2<sup>−1074</sup> ≈ 4.941 × 10<sup>−324</sup></td></tr>
+            </tbody>
+          </table>
         </section>
 
         <section id="consequences">
-          <p class="eyebrow">1.5 · What later chapters may assume</p>
-          <h2>One grid, with two structural qualifications</h2>
-          <p>For most inputs, neighboring values are equally spaced and the acceptable round-trip interval is symmetric. At a power-of-two transition the lower and upper spacing differ. Near zero, the exponent no longer decreases and the subnormal significand supplies gradual underflow. These are properties of binary64 itself, independent of any printing algorithm.</p>
-          <p>The next chapter places a decimal grid over this binary one and defines exact expansion, fixed-precision output, recovery, shortest recovery, and the midpoint interval used to specify them.</p>
+          <p class="eyebrow">1.9 · What later chapters assume</p>
+          <h2>Decode first; then reason with integers</h2>
+          <p>Every finite nonzero binary64 value can be reduced to an integer significand and a power of two. Neighboring values usually have equal spacing, but powers of two have an asymmetric predecessor gap. Subnormal values continue at one fixed minimum spacing. Zeros, infinities, and NaNs are classified outside the finite conversion algorithm.</p>
+          <p>The next chapter overlays a decimal grid, defines the parsing interval and its endpoint rule, and distinguishes exact, fixed-precision, recovery, and shortest output. From that point onward, the discussion concerns how algorithms find a suitable decimal—not how the 64 input bits are interpreted.</p>
         </section>
 
         <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>All chapters</strong></a><a href="./foundations.html"><span>Next</span><strong>Two grids and one interval →</strong></a></nav>
       </article>
     </div>
   </main>
-  <footer><p><strong>Printing doubles</strong> · floating-point foundations</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+  <footer><p><strong>Printing doubles</strong> · IEEE 754 binary64 primer</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
 </body>
 </html>
