@@ -52,7 +52,11 @@ export function problemTrace(value) {
       label: "The binary neighborhood",
       title: "Begin with three adjacent doubles",
       why: "The selected bits have an immediate predecessor and successor. Their positions, including unequal spacing at a binade transition, are computed from the bit patterns.",
-      registers: { previous: "nextDown(value)", selected: value.toString(), next: "nextUp(value)" },
+      registers: {
+        previous: exactDecimal(previous.value),
+        selected: exact,
+        next: exactDecimal(following.value),
+      },
       visual: { scene: scene() },
     },
     {
