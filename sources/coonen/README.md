@@ -8,6 +8,8 @@ experiment and has not yet completed equation-by-equation verification.
 The working copies are deliberately ignored by Git. Until both the audit and a
 separate publication decision are complete, the scan-derived text remains a
 local transcription with possible errors, not a public critical edition.
+The maintainer may provide a private copy on request; it is not distributed as
+part of this repository or site.
 
 The audit will:
 

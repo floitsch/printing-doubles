@@ -74,7 +74,7 @@
       </div>
       <div class="explorer-app section-body">
         <form class="explorer-controls" id="number-form">
-          <label for="number-input">A JavaScript double</label>
+          <label for="number-input">Enter a decimal spelling to parse as binary64</label>
           <div class="input-row">
             <input id="number-input" name="number" value="0.3" inputmode="decimal" spellcheck="false" aria-describedby="number-help">
             <button type="submit">Inspect</button>
@@ -91,8 +91,9 @@
         <div class="canvas-frame">
           <canvas id="number-line" width="1200" height="470" tabindex="0" aria-label="Interactive overlaid binary and decimal number line. Use arrow keys to pan and plus or minus to zoom."></canvas>
           <div class="canvas-legend" aria-hidden="true"><span><i class="key binary"></i> binary64</span><span><i class="key decimal"></i> decimal</span><span><i class="key interval"></i> round-trip interval</span></div>
-          <p class="canvas-instructions">Scroll to zoom · drag to pan · double-click to reset</p>
+          <p class="canvas-instructions">Wheel or pinch to zoom · drag to pan · double-click to reset</p>
         </div>
+        <output class="tick-inspector" id="tick-inspector" aria-live="polite">Hover or tap a binary tick or midpoint. Neighboring doubles can be selected; with the canvas focused, press P or N.</output>
         <p class="tick-key"><strong>How to read the ticks.</strong> On the decimal line, every fifth and tenth candidate is longer; sparse labels show only the changing final digits. On the binary line, inspect <button type="button" class="text-button" data-example="1">1</button> to see the spacing double as the exponent changes.</p>
         <div class="inspection" aria-live="polite">
           <div><span>Printed by your browser</span><output id="printed-value">0.3</output></div>
@@ -113,7 +114,7 @@
         <output class="monster" aria-label="The exact decimal value stored for double 0.3">0.299999999999999988897769753748434595763683319091796875</output>
         <p>Assume that a decimal parser rounds to the nearest binary64 value, breaking an exact tie toward the value with an even significand. The selected double then owns an interval of real numbers. Its lower boundary is the midpoint between the selected double and the previous double; its upper boundary is the midpoint between the selected double and the next double. Every decimal strictly inside that interval parses to the selected bits.</p>
         <div class="interval-figure">
-          <canvas id="interval-number-line" width="1100" height="390" role="img" aria-label="Exact number line showing the previous double, lower midpoint, selected double, upper midpoint, and next double, with decimal candidates inside the round-trip interval."></canvas>
+          <trace-player class="trace-player problem-player" data-title="Construct the output problem · input 0.3"><script id="problem-trace-data" type="application/json">[]</script></trace-player>
           <div class="interval-definitions">
             <p><strong>Previous and next double</strong> are the adjacent representable binary64 values. There is no other double between either one and the selected value.</p>
             <p><strong>Lower and upper midpoint</strong> are the parsing boundaries halfway to those neighbors. Endpoint inclusion is decided by ties-to-even.</p>
@@ -187,7 +188,6 @@
         <article><p class="status production">New production contender</p><h3>Żmij</h3><p>A late-2025 Schubfach descendant that removes multiplications and branches and integrates faster digit formatting. Its library promises shortest, correctly rounded output and offers size-optimized tables.</p></article>
         <article><p class="status new">New proof, new primitive</p><h3>Unrounded scaling</h3><p>Russ Cox’s 2026 construction uses a carry and sticky bit around a fast scaling primitive. The compact Go implementation covers printing and parsing; its proof is machine-checked in Ivy.</p></article>
         <article><p class="status experimental">Experimental</p><h3>Tejú Jaguá &amp; xjb</h3><p>Both report striking speed. Tejú’s reference repository still labels the core partial and its academic proof forthcoming; xjb is a 2026 preprint. They belong on the watchlist, not yet in the same evidence tier.</p></article>
-        <div class="frontier-conclusion"><strong>Practical conclusion</strong><p>For a new general-purpose implementation, start with Schubfach, Dragonbox, Ryū, Żmij, or unrounded scaling according to your language and proof/portability needs. Benchmark the whole formatter on your actual data.</p></div>
       </div>
     </section>
 
@@ -209,7 +209,7 @@
       <div class="section-number">07</div>
       <div class="section-heading"><p class="eyebrow">Read the evidence</p><h2 id="sources-title">Primary sources first</h2></div>
       <div class="section-body source-list">
-        <a id="source-coonen" href="./chapters/coonen.html"><span>1984 · local OCR preservation</span><strong>Jerome T. Coonen — Accurate Yet Economical Binary–Decimal Conversions</strong><em>A machine-readable transcription is preserved locally while equation-by-equation verification proceeds. The scan-derived text is not included in the public site without separate publication approval.</em></a>
+        <a id="source-coonen" href="./chapters/coonen.html"><span>1984 · local OCR preservation</span><strong>Jerome T. Coonen — Accurate Yet Economical Binary–Decimal Conversions</strong><em>A machine-readable transcription is preserved locally while equation-by-equation verification proceeds. It is not distributed with the public site; a private copy is available from the maintainer on request.</em></a>
         <a href="https://dl.acm.org/doi/10.1145/93542.93559"><span>1990 · PLDI</span><strong>Steele &amp; White — How to Print Floating-Point Numbers Accurately</strong></a>
         <a href="https://doi.org/10.1145/231379.231397"><span>1996 · PLDI</span><strong>Burger &amp; Dybvig — Printing Floating-Point Numbers Quickly and Accurately</strong></a>
         <a href="https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf"><span>2010 · PLDI</span><strong>Loitsch — Printing Floating-Point Numbers Quickly and Accurately with Integers</strong></a>

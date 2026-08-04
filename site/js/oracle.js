@@ -47,11 +47,21 @@ export function exactDecimal(value) {
   const decoded = decodeDouble(value);
   if (decoded.special === "zero") return decoded.negative ? "-0" : "0";
   if (decoded.special) return String(value);
-  const negative = decoded.significand < 0n;
-  const significand = negative ? -decoded.significand : decoded.significand;
-  if (decoded.exponent >= 0) return `${negative ? "-" : ""}${significand << BigInt(decoded.exponent)}`;
-  const places = -decoded.exponent;
-  let digits = (significand * 5n ** BigInt(places)).toString().padStart(places + 1, "0");
+  return exactDecimalOfRational(rationalOfDouble(decoded));
+}
+
+export function exactDecimalOfRational(rational) {
+  const negative = rational.numerator < 0n;
+  let numerator = negative ? -rational.numerator : rational.numerator;
+  let denominator = rational.denominator;
+  let places = 0;
+  while (denominator > 1n && denominator % 2n === 0n) {
+    denominator /= 2n;
+    places++;
+  }
+  if (denominator !== 1n) return `${negative ? "-" : ""}${numerator}/${rational.denominator}`;
+  if (places === 0) return `${negative ? "-" : ""}${numerator}`;
+  let digits = (numerator * 5n ** BigInt(places)).toString().padStart(places + 1, "0");
   const point = digits.length - places;
   digits = `${digits.slice(0, point)}.${digits.slice(point)}`.replace(/0+$/, "").replace(/\.$/, "");
   return `${negative ? "-" : ""}${digits}`;

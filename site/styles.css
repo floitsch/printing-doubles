@@ -102,9 +102,10 @@ code, output { font-family: var(--mono); }
 .canvas-legend { position: absolute; top: 18px; right: 20px; display: flex; gap: 14px; font: 500 9px var(--mono); text-transform: uppercase; }
 .canvas-legend .key { margin-left: 0; }
 .key.interval { height: 10px; background: rgba(223,255,82,0.32); border: 1px solid var(--acid); }
-.canvas-instructions { position: absolute; left: 18px; bottom: 10px; color: #758490; font: 9px var(--mono); text-transform: uppercase; }
+.canvas-instructions { margin: 0; padding: 8px 14px; border-top: 1px solid rgba(255,255,255,.12); color: #758490; font: 9px var(--mono); text-transform: uppercase; }
 .tick-key { margin: 16px 0 0; color: #95a2ad; font-size: 13px; }
 .tick-key strong { color: #f3efe7; }
+.tick-inspector { display: block; min-height: 48px; max-height: 130px; margin-top: 12px; padding: 12px 15px; border: 1px solid rgba(255,255,255,.18); color: #c6d0d7; font: 11px/1.55 var(--mono); overflow: auto; overflow-wrap: anywhere; }
 .inspection { display: grid; grid-template-columns: 1fr 1.1fr 1.6fr; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.2); }
 .inspection div { min-width: 0; padding: 20px 18px 0 0; }
 .inspection div + div { padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.2); }
@@ -114,7 +115,7 @@ code, output { font-family: var(--mono); }
 .problem-body > p:not(.lede) { max-width: 900px; }
 .problem-body .monster { margin-bottom: 50px; }
 .interval-figure { margin: 55px 0 70px; }
-#interval-number-line { display: block; width: 100%; height: clamp(320px, 36vw, 390px); border: 1px solid var(--line); }
+.trace-player.problem-player { margin: 0; }
 .interval-definitions { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-top: 0; }
 .interval-definitions p { margin: 0; padding: 20px 24px; color: var(--muted); font-size: 13px; }
 .interval-definitions p + p { border-left: 1px solid var(--line); }
@@ -157,8 +158,6 @@ code, output { font-family: var(--mono); }
 .frontier-grid article > p:last-child { color: #aeb9c1; }
 .status { display: inline-block; margin: 0; padding: 4px 7px; color: var(--ink); font: 500 9px var(--mono); text-transform: uppercase; }
 .status.established { background: var(--acid); }.status.production { background: var(--blue-pale); }.status.new { background: var(--red-pale); }.status.experimental { background: #c8b3ff; }
-.frontier-conclusion { grid-column: 1 / -1; display: grid; grid-template-columns: 200px 1fr; gap: 30px; padding-top: 35px; }
-.frontier-conclusion strong { color: var(--acid); font: 500 10px var(--mono); text-transform: uppercase; }.frontier-conclusion p { margin: 0; font: 500 26px/1.35 var(--serif); }
 
 .memory .section-body { grid-column: 2 / 4; margin-top: 70px; }
 .memory-cards { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); }
@@ -196,6 +195,10 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter .lead { font: 500 28px/1.35 var(--serif); }
 .chapter .aside { margin: 35px 0; padding: 23px 28px; border-left: 3px solid var(--red); background: var(--paper-deep); }
 .chapter .aside p { margin: 0; font-size: 14px; }
+.implementation-ledger { margin: 35px 0; border-top: 1px solid var(--ink); }
+.implementation-ledger p { display: grid; grid-template-columns: 170px 1fr; gap: 25px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.implementation-ledger strong { font: 500 10px/1.5 var(--mono); text-transform: uppercase; }
+.implementation-ledger span { color: var(--muted); font-size: 14px; }
 .chapter-figure { margin: 45px calc((min(100vw, 1000px) - 760px) / -2); }
 .chapter-figure canvas { display: block; width: 100%; height: clamp(320px, 39vw, 390px); border: 1px solid var(--line); }
 .chapter-figure figcaption { padding: 13px 16px; border: 1px solid var(--line); border-top: 0; color: var(--muted); font-size: 12px; }
@@ -268,9 +271,9 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .input-row { margin: 10px 0 14px; }
   .zoom-controls { margin-top: 25px; }
   .canvas-legend { display: none; }
+  #number-line { height: 430px; }
   .inspection { grid-template-columns: 1fr; }
   .inspection div + div { padding-left: 0; border-left: 0; }
-  #interval-number-line { height: 340px; }
   .callout { margin-top: 80px; }
   .timeline .section-body, .memory .section-body, .sources .section-body { margin-top: 0; }
   .era { display: block; min-height: auto; }
@@ -278,7 +281,9 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .algorithm-sketch { margin-top: 35px; min-height: 180px; }
   .frontier-grid { display: block; margin-top: 0; }
   .frontier-grid article { padding: 32px 0; }
-  .frontier-conclusion { display: block; }.frontier-conclusion strong { display: block; margin-bottom: 15px; }
+  .implementation-ledger p { display: block; }
+  .implementation-ledger strong, .implementation-ledger span { display: block; }
+  .implementation-ledger strong { margin-bottom: 7px; }
   .memory-cards { display: block; }
   .source-list a { display: block; }
   .source-list span, .source-list strong, .source-list em { display: block; margin-bottom: 10px; }

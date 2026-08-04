@@ -14,6 +14,7 @@ import {
   parseDecimal,
   unitExponent,
 } from "../site/js/float.js";
+import { neighboringDoubles } from "../site/js/explorer.js";
 
 test("binary64 bit conversion is reversible", () => {
   for (const value of [0, -0, 0.1, 0.3, 1, -1, Number.MIN_VALUE, Number.MAX_VALUE]) {
@@ -26,6 +27,11 @@ test("nextUp and nextDown cross zero and binade boundaries", () => {
   assert.equal(nextDown(0), -Number.MIN_VALUE);
   assert.equal(nextUp(nextDown(1)), 1);
   assert.equal(nextDown(nextUp(1)), 1);
+});
+
+test("the smallest subnormal's displayed predecessor walk stops at zero", () => {
+  assert.deepEqual(neighboringDoubles(Number.MIN_VALUE, "down").map(({ value }) => value), [0]);
+  assert.deepEqual(neighboringDoubles(-Number.MIN_VALUE, "up").map(({ value }) => value), [-0]);
 });
 
 test("0.3 has the expected exact representation", () => {

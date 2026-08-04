@@ -133,6 +133,21 @@ The execution microscope has five synchronized regions:
 Trace data is deterministic and serializable. A failing test can be exported as
 the same trace the browser displays.
 
+Interaction requirements and remaining work:
+
+- retain named presets for an ordinary value, the smallest subnormal, and a
+  binade transition such as `1`, where predecessor and successor spacing differ;
+- stop the representable-value walk at zero: the smallest positive subnormal
+  has the single predecessor `0`, never a continuation into negative values;
+- make ticks and boundaries inspectable by keyboard focus and tap as well as
+  hover; neighbor selection is implemented, but individual canvas targets still
+  need a DOM-backed focus model;
+- expose exact boundary values and whether ties-to-even includes each endpoint;
+- test two-finger canvas zoom and the visible zoom buttons on actual mobile
+  browsers, not only desktop touch emulation;
+- allow algorithm figures to use lane-local domains for scaling transformations
+  while preserving a shared domain for genuine overlays.
+
 ## Chapter-specific plans
 
 ### Foundations and the naive exact printer

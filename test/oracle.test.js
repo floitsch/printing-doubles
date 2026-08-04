@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { exactDecimal, shortestDecimal } from "../site/js/oracle.js";
+import { exactDecimal, exactDecimalOfRational, shortestDecimal } from "../site/js/oracle.js";
 import { fromBits } from "../site/js/float.js";
 
 test("exact decimal expansion uses only integer arithmetic", () => {
@@ -8,6 +8,11 @@ test("exact decimal expansion uses only integer arithmetic", () => {
   assert.equal(exactDecimal(0.1), "0.1000000000000000055511151231257827021181583404541015625");
   assert.equal(exactDecimal(1), "1");
   assert.equal(exactDecimal(-1.5), "-1.5");
+});
+
+test("exact midpoint rationals can be displayed for boundary inspection", () => {
+  assert.equal(exactDecimalOfRational({ numerator: 3n, denominator: 8n }), "0.375");
+  assert.equal(exactDecimalOfRational({ numerator: -1n, denominator: 4n }), "-0.25");
 });
 
 test("independent interval search finds known shortest decimals", () => {

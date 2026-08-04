@@ -1,1 +1,135 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="coonen"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A detailed, executable presentation of Coonen's economical binary-to-decimal conversion algorithm.">
+  <title>Coonen: scale once, round once · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/coonen.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
+      <h1>Coonen: scale once, round once</h1>
+      <p class="chapter-deck">Coonen replaces complete exact expansion with a short computation in an extended binary format: estimate a decimal decade, scale the input into an integer range, and perform the requested rounding once.</p>
+      <div class="chapter-meta"><span>Chapter 3</span><span>1984 dissertation</span><span>Fixed precision</span><span>Executable control</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 3</strong><a href="#contract">The contract</a><a href="#baseline">What it replaces</a><a href="#algorithm-b">Algorithm B</a><a href="#execution">Worked execution</a><a href="#reciprocal">Division by multiplication</a><a href="#support">L, S, P, and Q</a><a href="#accuracy">Accuracy</a><a href="#status">Implementation status</a></aside>
+      <article class="chapter">
+        <section id="contract">
+          <p class="eyebrow">3.1 · Output contract</p>
+          <h2>This is not yet a shortest printer</h2>
+          <p class="lead">Algorithm B receives the number of significant decimal digits as an input. Its task is to produce exactly that digit field and a decimal exponent, in the current rounding mode.</p>
+          <p>This distinction matters historically and technically. A shortest printer chooses its own precision by asking when a decimal candidate is sufficient for recovery. Coonen’s binary-to-decimal algorithm is designed for formats such as FORTRAN E output, where the caller has already selected <em>N</em>. If asked for five digits, it returns five digits even when one digit would round-trip.</p>
+          <table>
+            <thead><tr><th>Input</th><th>Output</th><th>Guarantee sought</th></tr></thead>
+            <tbody>
+              <tr><td>binary value <em>x</em>, digit count <em>N</em>, rounding mode</td><td><em>N</em>-digit integer coefficient and scientific exponent</td><td>correctly rounded over a central range; tightly bounded extra error elsewhere</td></tr>
+              <tr><td>binary64 value 0.3, <em>N</em> = 17</td><td><code>2.9999999999999999e−1</code></td><td>seventeen requested digits, not shortest <code>0.3</code></td></tr>
+            </tbody>
+          </table>
+          <p>Coonen also gives the inverse conversion, Algorithm D. It turns a bounded decimal digit string into an exact extended-format integer, scales it by a power of ten, records whether discarded input digits were nonzero, and finally rounds to the destination binary format. This chapter begins with B because it is the direct ancestor of the printing problem.</p>
+        </section>
+
+        <section id="baseline">
+          <p class="eyebrow">3.2 · The earlier baseline</p>
+          <h2>Correct rounding by complete expansion</h2>
+          <p>A conceptually direct conversion embeds every binary64 input in a fixed-point buffer wide enough for the entire exponent range, converts the integer and fraction portions exactly, and rounds the resulting decimal buffer. This is dependable, but it performs work proportional to the full expansion rather than the requested output.</p>
+          <p>Coonen’s dissertation gives concrete storage for its Pascal correctly-rounded implementation of double conversion: a 1,400-bit packed-BCD buffer and a 1,000-bit binary buffer. Those two data buffers alone total 300 bytes, before code and temporaries. The figure is historically useful, not a modern whole-program memory measurement.</p>
+          <p>The economical alternative observes that fixed-precision output does not require all intervening digits. If the value can be moved into the integer interval [10<sup>N−1</sup>, 10<sup>N</sup>) with sufficiently small error, a single integer rounding determines the complete output field.</p>
+          <div class="equation">x · 10<sup>N−LOGX−1</sup> → N-digit integer.</div>
+        </section>
+
+        <section id="algorithm-b">
+          <p class="eyebrow">3.3 · The main procedure</p>
+          <h2>Algorithm B in five transformations</h2>
+          <p>The original procedure has steps B0 through B8. The pseudocode below groups adjacent bookkeeping steps while retaining the correction loop and its invariant.</p>
+          <ol class="pseudo" id="coonen-code">
+            <li data-line="1">extend x; save an unmodified copy</li>
+            <li data-line="2">LOGX ← a lower estimate of floor(log10(abs(x)))</li>
+            <li data-line="3">SCALE ← N − LOGX − 1; scale x by 10^SCALE</li>
+            <li data-line="4">round the scaled x to an integer in the requested mode</li>
+            <li data-line="5">correct the decade if necessary; emit N digits and LOGX</li>
+          </ol>
+          <p>If the logarithm estimate is correct, scaling places the magnitude in the desired integer decade. If Algorithm L underestimated by one, the scaled value is approximately ten times too large. The test against 10<sup>N</sup> detects that case, increments <code>LOGX</code>, restores the saved input, and repeats the scaling. Coonen proves that the branch is taken at most once.</p>
+          <p>The opposite test, against 10<sup>N−1</sup>, handles a rarer effect in double conversion: an input only slightly above a power of ten can be nudged below the lower limit by the error in a rounded scale factor. Replacing the result by the lower limit reduces an error already within the established bound.</p>
+        </section>
+
+        <section id="execution">
+          <p class="eyebrow">3.4 · Executable control</p>
+          <h2>Follow five-digit conversion of one third</h2>
+          <p>The execution below is generated by an exact-rational control implementation of Algorithm B. It deliberately computes the scale factor without error. This establishes the intended result and the control flow before the historical 64-bit extended arithmetic of Algorithms S and Q is simulated.</p>
+          <trace-player class="trace-player" data-title="Coonen Algorithm B · input binary64(1/3) · N = 5" data-code="#coonen-code"><script id="coonen-trace-data" type="application/json">[]</script></trace-player>
+          <p>The two-lane scaling step uses the new lane-local coordinate facility in the shared instrument. The upper lane is measured in the source value’s neighborhood; the lower lane is measured in the five-digit integer decade. They describe the same multiplication without pretending that 0.333… and 33,333 occupy one linear domain.</p>
+        </section>
+
+        <section id="reciprocal">
+          <p class="eyebrow">3.5 · A recurring machine-level idea</p>
+          <h2>Replace division with multiplication by a reciprocal</h2>
+          <p>Several conversion algorithms turn a division into multiplication by a stored approximation. The mathematical identity is elementary:</p>
+          <div class="equation">10 / 7 = 10 · (1 / 7).</div>
+          <p>A machine usually cannot store 1/7 exactly. Suppose, in a decimal fixed-point analogy, that six digits are retained:</p>
+          <div class="equation">1 / 7 ≈ 0.142857 = 142857 / 10<sup>6</sup>.</div>
+          <p>The division can then be approximated using an integer multiplication:</p>
+          <div class="equation">10 · 142857 / 10<sup>6</sup> = 1.428570,</div>
+          <p>whereas the exact quotient begins 1.428571…. The reciprocal was rounded downward, and multiplication magnified its small error by ten. Nothing mysterious has happened: the division error has been moved into the precomputation of the reciprocal.</p>
+          <p>Binary implementations choose a scale 2<sup>k</sup> rather than 10<sup>6</sup>. They store an integer <em>M</em> close to 2<sup>k</sup>/7 and approximate</p>
+          <div class="equation">n / 7 ≈ (n · M) / 2<sup>k</sup>.</div>
+          <p>The final division by 2<sup>k</sup> is a right shift. The runtime operation is therefore a multiply, a selection of product bits, and sometimes a correction. A proof must still bound the reciprocal error after multiplication and establish that it cannot change the required rounding decision. Modern cached-power algorithms use the same pattern with reciprocals or scaled powers of five.</p>
+          <div class="aside"><p><strong>Important qualification.</strong> “Division by a constant becomes a multiply” is an implementation theorem with preconditions, not a syntactic substitution. The required product width, direction of reciprocal rounding, discarded low bits, and possible correction all depend on the accepted input range and output contract.</p></div>
+        </section>
+
+        <section id="support">
+          <p class="eyebrow">3.6 · The supporting algorithms</p>
+          <h2>The difficult work is hidden behind “scale”</h2>
+          <p>Algorithm B is short because three subsidiary algorithms establish the properties required by its central scaling operation.</p>
+          <table>
+            <thead><tr><th>Procedure</th><th>Role</th><th>Key invariant</th></tr></thead>
+            <tbody>
+              <tr><td>Algorithm L</td><td>Estimate the decimal decade with fixed-point integer arithmetic.</td><td>The estimate is the true floor or one less; it never overshoots.</td></tr>
+              <tr><td>Algorithm S</td><td>Multiply or divide by a computed power of ten in extended precision.</td><td>The operation is chopped toward zero; any discarded nonzero bits are collected into the least significant retained bit as sticky information.</td></tr>
+              <tr><td>Algorithm P</td><td>Construct powers through 10<sup>53</sup> for 32-bit single-extended conversion.</td><td>Small powers are exact; carefully selected table entries and a few one-ulp corrections honor the rounding direction.</td></tr>
+              <tr><td>Algorithm Q</td><td>Construct powers through 10<sup>340</sup> for 64-bit double-extended conversion.</td><td>At most three multiplications combine exact small powers with a compact table of rounded large powers.</td></tr>
+            </tbody>
+          </table>
+          <h3>Algorithm L: an underestimate is cheaper than a logarithm</h3>
+          <p>Write a normalized value as 2<sup>e</sup>·1.<em>f</em>. On the interval 1≤1.<em>f</em>&lt;2, the fraction 0.<em>f</em> is a lower approximation to log<sub>2</sub>(1.<em>f</em>). Coonen therefore treats the exponent and leading fraction bits as a fixed-point approximation to log<sub>2</sub>(x), multiplies it by a truncated hexadecimal approximation of log<sub>10</sub>(2), and takes the floor. The construction biases every approximation downward.</p>
+          <h3>Algorithm S: preserve the fact that low bits existed</h3>
+          <p>Chopping the extended multiplication loses low bits, but the final rounding still needs to know whether any were nonzero. Algorithm S uses the floating-point inexact flag as an aggregate OR of those discarded bits and sets the retained least-significant bit when necessary. This is an early use of what later presentations usually call a sticky bit.</p>
+          <h3>Algorithms P and Q: powers are part of the proof</h3>
+          <p>For a 64-bit extended significand, 10<sup>0</sup> through 10<sup>27</sup> are exact because 5<sup>27</sup> fits in 64 bits whereas 5<sup>28</sup> does not. Larger powers require rounded table entries. Their error signs and multiplication count determine Algorithm B’s error bound; the table is not merely a performance cache.</p>
+        </section>
+
+        <section id="accuracy">
+          <p class="eyebrow">3.7 · What Coonen proves</p>
+          <h2>Recovery without universal correct rounding</h2>
+          <p>With exact powers of ten, B has only the final expected rounding. Outside that central range, the rounded scale factor contributes additional error. For full 17-digit double output, Coonen bounds that additional binary-to-decimal error at 0.019 decimal ulp in round-to-nearest mode and 0.054 decimal ulp in a directed mode.</p>
+          <p>Those figures are not themselves the recovery theorem. Recovery follows by combining the binary-to-decimal bound, the decimal-to-binary bound of Algorithm D, and the relative density of the two formats. For double precision, the resulting total is bounded at approximately 0.97 binary ulp—strictly below the one-ulp separation needed to prevent one binary value from crossing to a neighbor during the round trip.</p>
+          <p>The margin is narrow. That is why the precision of extended intermediates, the direction of every rounded table entry, and sticky information from discarded bits are correctness conditions rather than optional optimizations.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">3.8 · Evidence and implementation status</p>
+          <h2>What is executable now, and what remains</h2>
+          <p>The public implementation currently contains an exact-rational control for Algorithm B, tests for ordinary fixed-precision output and the one-retry decade correction, and an execution trace generated from that implementation. It does not yet claim to reproduce the dissertation’s 64-bit extended rounding behavior.</p>
+          <div class="implementation-ledger">
+            <p><strong>Verified from scan</strong><span>Algorithm B’s contract and steps B0–B8, dissertation pages 7.15–7.16; the wide-buffer figures on page 7.14.</span></p>
+            <p><strong>Implemented</strong><span>Exact scale-factor control for B, all four rounding directions, trace events, and differential-ready coefficient/exponent output.</span></p>
+            <p><strong>Next in this chapter</strong><span>Bit-accurate Algorithm L; a parameterized extended-format simulator for S; verified Q table constants; recovery and monotonicity corpora.</span></p>
+            <p><strong>Not yet published as measurement</strong><span>Modern code size, table size, stack use, and ESP32 timing. These remain in the memory research ledger until reproduced with pinned toolchains.</span></p>
+          </div>
+          <p>The OCR transcription remains local because it is scan-derived and contains known recognition errors in mathematical constants. It is not distributed with the public site; a private copy is available from the maintainer on request. Chapter prose is checked against the photographed pages, and table constants will not enter executable code until compared character by character with the scan.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./foundations.html"><span>Previous</span><strong>Two grids and one interval</strong></a><a href="./dragon.html"><span>Next</span><strong>Dragon →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · Coonen chapter in progress</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

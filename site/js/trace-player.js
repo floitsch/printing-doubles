@@ -62,6 +62,10 @@ class TracePlayer extends HTMLElement {
   renderVisual() {
     if (!this.numberLine || !this.steps) return;
     const visual = this.steps[this.index].visual || {};
+    if (visual.scene) {
+      this.numberLine.setScene(visual.scene);
+      return;
+    }
     const binaryTicks = (visual.binary || [-1, 0, 1]).map((x) => ({ x, active: x === 0, topLabel: x === 0 ? "v" : undefined }));
     const decimalTicks = (visual.candidates || []).map((candidate) => ({
       x: candidate.x,

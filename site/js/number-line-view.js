@@ -40,6 +40,7 @@ export class NumberLineView {
     const margin = scene.margin ?? 0;
     const mapX = (value) => margin + (value - domain[0]) / (domain[1] - domain[0]) * (width - 2 * margin);
     const mapY = (value) => value <= 1 ? value * height : value;
+    this.hitRegions = [];
 
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = scene.background || "#192632";
@@ -63,15 +64,18 @@ export class NumberLineView {
 
     for (const marker of scene.markers || []) {
       const x = mapX(marker.x);
+      const markerTop = mapY(marker.from ?? .08);
+      const markerBottom = mapY(marker.to ?? .9);
       ctx.strokeStyle = marker.color || "rgba(255,255,255,.35)";
       ctx.lineWidth = marker.width || 1;
       ctx.setLineDash(marker.dash || [2, 7]);
       ctx.beginPath();
-      ctx.moveTo(x, mapY(marker.from ?? .08));
-      ctx.lineTo(x, mapY(marker.to ?? .9));
+      ctx.moveTo(x, markerTop);
+      ctx.lineTo(x, markerBottom);
       ctx.stroke();
       ctx.setLineDash([]);
       if (marker.label) this.label(ctx, marker.label, x, mapY(marker.labelY ?? .94), marker.textColor || marker.color, marker.align || "center");
+      if (marker.inspect) this.hitRegions.push({ x, y1: markerTop, y2: markerBottom, radius: marker.hitRadius || 14, inspect: marker.inspect });
     }
 
     for (const lane of scene.lanes || []) this.drawLane(ctx, lane, mapX, mapY, width);
@@ -89,13 +93,17 @@ export class NumberLineView {
   }
 
   drawLane(ctx, lane, mapX, mapY, width) {
+    const laneMargin = lane.margin ?? 0;
+    const laneMapX = lane.domain
+      ? (value) => laneMargin + (value - lane.domain[0]) / (lane.domain[1] - lane.domain[0]) * (width - 2 * laneMargin)
+      : mapX;
     const y = mapY(lane.y);
     ctx.strokeStyle = lane.color || "#8eb3ff";
     ctx.lineWidth = lane.width || 1;
     ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(width, y + .5); ctx.stroke();
     if (lane.label) this.label(ctx, lane.label, 14, y - (lane.labelOffset || 58), lane.color || "#8eb3ff", "left");
     for (const tick of lane.ticks || []) {
-      const x = mapX(tick.x);
+      const x = laneMapX(tick.x);
       if (x < -8 || x > width + 8) continue;
       const height = tick.height ?? (tick.active ? 48 : 20);
       ctx.strokeStyle = tick.color || lane.color || "#8eb3ff";
@@ -107,7 +115,21 @@ export class NumberLineView {
       }
       if (tick.label) this.label(ctx, tick.label, x + (tick.labelDx || 0), y + (tick.labelY ?? height + 17), tick.textColor || tick.color || lane.color, tick.align || "center");
       if (tick.topLabel) this.label(ctx, tick.topLabel, x, y - height - 10, tick.textColor || tick.color || lane.color, "center");
+      if (tick.inspect) this.hitRegions.push({ x, y, radius: tick.hitRadius || 16, inspect: tick.inspect });
     }
+  }
+
+  hitTest(clientX, clientY) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    let best = null;
+    for (const region of this.hitRegions || []) {
+      const nearestY = region.y1 === undefined ? region.y : Math.max(region.y1, Math.min(region.y2, y));
+      const distance = Math.hypot(x - region.x, y - nearestY);
+      if (distance <= region.radius && (!best || distance < best.distance)) best = { ...region, distance };
+    }
+    return best;
   }
 
   drawBracket(ctx, bracket, mapX, mapY) {
