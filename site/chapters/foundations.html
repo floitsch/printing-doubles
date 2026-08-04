@@ -1,1 +1,118 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="foundations"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="The exact specification behind shortest binary64-to-decimal conversion.">
+  <title>Two grids and one rounding interval · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/foundations.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part I · Specification</p>
+      <h1>Two grids and one rounding interval</h1>
+      <p class="chapter-deck">Before an optimized printer can be understood, the required result must be stated without reference to an implementation. This chapter develops that specification and turns it into an executable, exact oracle.</p>
+      <div class="chapter-meta"><span>Chapter 1</span><span>Exact arithmetic</span><span>Independent oracle</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#representation">Binary64 as an integer</a><a href="#exact">The naive exact printer</a><a href="#contracts">Output contracts</a><a href="#interval">Rounding intervals</a><a href="#oracle">An exact oracle</a><a href="#trace">Execution microscope</a></aside>
+      <article class="chapter">
+        <section id="representation">
+          <p class="eyebrow">1.1 · Representation</p>
+          <h2>A double is already an exact number</h2>
+          <p class="lead">A binary floating-point value is not an imprecise cloud around a real number. Once its bits have been fixed, it denotes one exact rational number.</p>
+          <p>For the finite, nonzero values considered first, it is convenient to decode binary64 into an integer significand <em>f</em> and an integer exponent <em>e</em>:</p>
+          <div class="equation">v = (−1)<sup>s</sup> · f · 2<sup>e</sup>.</div>
+          <p>A normal binary64 value has a 53-bit significand: the 52 stored fraction bits together with the implicit leading one. With this integer convention, the unbiased IEEE exponent is reduced by 52. A subnormal has no implicit leading bit and uses the fixed exponent −1074. These choices are not merely notational. They allow all subsequent reasoning to use integers and powers of two.</p>
+          <p>For example, the bit pattern <code>3fd3333333333333</code> decodes as</p>
+          <div class="equation">0.3<sub>as binary64</sub> = 5,404,319,552,844,595 · 2<sup>−54</sup>.</div>
+          <p>The label “0.3” on the left is the source literal or previously printed text; it is not the exact mathematical value on the right. The right-hand side is exact. The first task of every conversion algorithm is, explicitly or implicitly, to recover this form.</p>
+          <div class="aside"><p><strong>Terminology.</strong> Some papers call <em>f</em> a mantissa; others reserve that word for a fractional value in [1,2). This book uses <em>significand</em> for the integer <em>f</em> and states the exponent convention whenever it differs from the one above.</p></div>
+        </section>
+
+        <section id="exact">
+          <p class="eyebrow">1.2 · Baseline</p>
+          <h2>The naive exact printer</h2>
+          <p>If <em>e</em> is nonnegative, exact printing is only an integer shift: <code>f &lt;&lt; e</code>. If <em>e = −n</em> is negative, the identity</p>
+          <div class="equation">f · 2<sup>−n</sup> = f · 5<sup>n</sup> / 10<sup>n</sup></div>
+          <p>gives a direct algorithm. Compute the integer <em>f · 5ⁿ</em>, pad it to at least <em>n+1</em> digits, and insert a decimal point <em>n</em> places from the right. The browser implementation on this site performs exactly these BigInt operations.</p>
+          <p>Applied to the preceding example, the algorithm obtains</p>
+          <output class="monster" id="foundation-exact">0.299999999999999988897769753748434595763683319091796875</output>
+          <p>This string describes the stored value completely. It is also a poor default representation. It exposes details of the binary approximation that the author of the literal did not write, consumes far more space than necessary, and obscures equality at the level at which most programs exchange numbers.</p>
+          <p>The naive algorithm nevertheless has two important roles. First, it separates exactness from usefulness: the difficulty of printing a double is not caused by an inability to compute its exact decimal expansion. Second, it supplies a simple operation against which the more selective algorithms can be checked.</p>
+        </section>
+
+        <section id="contracts">
+          <p class="eyebrow">1.3 · Problem statement</p>
+          <h2>Several conversions, not one</h2>
+          <p>The phrase “convert a double to a string” leaves the output contract unspecified. Historically important algorithms address different contracts, and a performance comparison is meaningful only after the contract has been fixed.</p>
+          <table>
+            <thead><tr><th>Contract</th><th>Requirement</th><th>Typical use</th></tr></thead>
+            <tbody>
+              <tr><td>Exact expansion</td><td>The decimal denotes precisely <em>v</em>.</td><td>Diagnostics, proofs, exact interchange.</td></tr>
+              <tr><td>Fixed significant digits</td><td>Round <em>v</em> to a requested number of decimal digits and rounding mode.</td><td>Scientific and engineering formats.</td></tr>
+              <tr><td>Fixed fraction digits</td><td>Round at a requested position after the decimal point.</td><td>Tables, monetary-style display.</td></tr>
+              <tr><td>Round-trip or recovery</td><td>Parsing the result returns the original binary value.</td><td>Serialization and source literals.</td></tr>
+              <tr><td>Shortest round trip</td><td>Round trip, using the fewest significant decimal digits.</td><td>Default language and JSON formatting.</td></tr>
+              <tr><td>Closest shortest</td><td>Among shortest round-tripping decimals, choose the one nearest <em>v</em>, with a stated tie rule.</td><td>The Steele–White quality criteria and modern formatters.</td></tr>
+            </tbody>
+          </table>
+          <p>Coonen’s economical Algorithm B, studied in the next chapter, accepts a requested digit count. Dragon4 and the later shortest algorithms instead determine the digit count from the rounding interval. Grisu2 guarantees recovery but may produce more digits than necessary; Grisu3 produces a shortest result or rejects its input. Keeping these distinctions visible prevents an apparent speedup from being obtained by solving an easier problem.</p>
+        </section>
+
+        <section id="interval">
+          <p class="eyebrow">1.4 · Geometry of parsing</p>
+          <h2>Replace the value with its preimage</h2>
+          <p>Let <em>v⁻</em> and <em>v⁺</em> be the adjacent binary64 values below and above a finite value <em>v</em>. Under round-to-nearest parsing, the transition between <em>v⁻</em> and <em>v</em> occurs at their arithmetic midpoint; the transition between <em>v</em> and <em>v⁺</em> occurs at the corresponding upper midpoint:</p>
+          <div class="equation">m⁻ = (v⁻ + v) / 2, &nbsp;&nbsp; m⁺ = (v + v⁺) / 2.</div>
+          <p>Every real number strictly between <em>m⁻</em> and <em>m⁺</em> parses to <em>v</em>. The treatment of the endpoints follows the ties-to-even rule. If the least significant bit of <em>v</em>’s significand is zero, <em>v</em> is the even neighbor at both boundaries and the interval is closed. If that bit is one, the neighboring values win the ties and the interval is open.</p>
+          <div class="equation">I(v) = [m⁻,m⁺] when f is even; &nbsp;&nbsp; I(v) = (m⁻,m⁺) when f is odd.</div>
+          <p>The distances to the two boundaries are usually equal. At an exact power of two, however, the predecessor belongs to a binade with half the spacing. The lower boundary is then closer than the upper boundary. Correct printers therefore carry two margins or construct both endpoints; assuming a symmetric interval fails precisely at a structurally important class of inputs.</p>
+          <p>The shortest-conversion problem can now be stated without mentioning digits or code:</p>
+          <div class="aside"><p>Find the coarsest decimal grid containing a point in <em>I(v)</em>. Among the points of that grid inside the interval, choose the point closest to <em>v</em>, and apply the specified decimal tie rule if necessary.</p></div>
+          <p>A decimal with coefficient <em>d</em> and exponent <em>k</em> is the rational <em>d · 10ᵏ</em>. Changing <em>k</em> changes the spacing of the decimal grid. Thus the picture in the explorer is not an analogy added after the algorithm: it is the problem itself.</p>
+        </section>
+
+        <section id="oracle">
+          <p class="eyebrow">1.5 · Executable specification</p>
+          <h2>An independent exact oracle</h2>
+          <p>Optimized printers use fixed-width approximations, carefully bounded products, and specialized candidate arguments. Their tests should not decide correctness by repeating the same logic in a slower syntax. This project therefore includes a separate oracle whose only arithmetic objects are exact BigInt rationals.</p>
+          <ol class="pseudo" id="oracle-code">
+            <li data-line="1">decode the bits as the exact rational v = f · 2^e</li>
+            <li data-line="2">optionally expand v exactly using f · 5^(−e) / 10^(−e)</li>
+            <li data-line="3">construct v−, v+, and the exact midpoint interval I(v)</li>
+            <li data-line="4">for significant-digit counts n = 1 … 17, choose grid step 10^(q−n+1)</li>
+            <li data-line="5">find all integer coefficients d whose grid points d · 10^k lie in I(v)</li>
+            <li data-line="6">return the closest admissible coefficient; break an exact tie toward even</li>
+          </ol>
+          <p>For a given grid exponent <em>k</em>, the coefficient bounds are obtained by exact division of the interval endpoints by <em>10ᵏ</em>, followed by ceiling at the lower endpoint and floor at the upper endpoint. An open endpoint is excluded if this division is exact. No candidate is rounded to binary floating point during the search.</p>
+          <p>Seventeen significant digits suffice for binary64 round-trip output. The oracle nevertheless derives the first admissible digit count by search, rather than calling the host language’s formatter. The resulting decimal is parsed back only as an additional test, not as the argument for its correctness.</p>
+          <div class="aside"><p><strong>Independence.</strong> The oracle shares the binary64 decoder and exact midpoint definition with the visual explorer. It does not share cached-power tables, multiplication/shift approximations, trailing-zero tests, or candidate-selection branches with Ryū, Schubfach, or Dragonbox.</p></div>
+        </section>
+
+        <section id="trace">
+          <p class="eyebrow">1.6 · Worked execution</p>
+          <h2>Follow the specification for 0.3</h2>
+          <p>The microscope below is populated by the executable oracle. Moving through the steps highlights the corresponding pseudocode line and reconfigures the same layered number-line renderer used by the free explorer. Later chapters will replace the grid-search events with their own internal operations while retaining this common geometric reference.</p>
+          <trace-player class="trace-player" data-title="Exact shortest oracle · input 0.3" data-code="#oracle-code"><script id="oracle-trace-data" type="application/json">[]</script></trace-player>
+          <p>The trace deliberately begins with the long exact expansion. The transition from that expansion to the rounding interval is the conceptual step on which every shortest printer depends: once the interval is known, equality with <em>v</em> is unnecessary. Membership in <em>I(v)</em> is sufficient.</p>
+        </section>
+
+        <section id="limits">
+          <p class="eyebrow">1.7 · Scope</p>
+          <h2>What the oracle does not claim</h2>
+          <p>The BigInt search is a specification and a test instrument. It is not offered as a fast production formatter. It currently treats the finite nonzero path; signed zero, infinities, and NaNs are formatting policies rather than shortest-decimal questions and are tested separately by production wrappers. Text layout—when to use fixed or scientific notation—is also separate from the selection of a decimal coefficient and exponent.</p>
+          <p>This separation will recur throughout the book. Several modern libraries call their core operation “binary to decimal” because it returns an integer coefficient and a decimal exponent. Turning that pair into characters can cost as much as, or more than, the numerical conversion. Comparisons later in the book will state explicitly which part is measured.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>All chapters</strong></a><a href="./coonen.html"><span>Next</span><strong>Coonen →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · executable foundations</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>
