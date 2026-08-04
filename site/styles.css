@@ -50,12 +50,9 @@ code, output { font-family: var(--mono); }
 .button:hover { background: var(--red); border-color: var(--red); }
 .hero-figure { position: relative; min-width: 0; }
 .hero-figure svg { display: block; width: min(52vw, 660px); overflow: visible; }
-.grid-field { fill: none; stroke: none; }
-.bent-grid { fill: none; stroke: color-mix(in srgb, var(--ink) 17%, transparent); stroke-width: .9; }
-.bent-grid path + path { stroke: color-mix(in srgb, var(--ink) 11%, transparent); }
-.dragon-curve { filter: drop-shadow(.22px .28px 0 rgba(20,32,43,.13)); }
 .dragon-curve use { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.dragon-curve-halo { stroke: var(--paper); stroke-width: .31; }
+.dragon-curve-shadow { stroke: color-mix(in srgb, var(--blue) 18%, transparent); stroke-width: .16; }
+.dragon-curve-halo { stroke: var(--paper); stroke-width: .27; }
 .dragon-curve-line { stroke: var(--ink); stroke-width: .085; }
 .key { display: inline-block; width: 22px; height: 3px; margin: 0 5px 2px 18px; vertical-align: middle; background: currentColor; }
 .key.binary { color: var(--blue); }

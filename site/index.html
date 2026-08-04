@@ -38,17 +38,11 @@
       <div class="hero-figure" aria-hidden="true">
         <svg viewBox="0 0 720 450" role="img">
           <defs>
-            <clipPath id="bent-grid-clip"><path d="M67 91C199 11 466 22 594 137c121 108 45 251-144 286C250 460 49 354 31 219 22 151 32 112 67 91Z"/></clipPath>
             <path id="dragon-curve-shape" d="M0 0h1v1h-1v1h-1v-1h-1v1h-1v-1h1v-1h-1v-1h-1v1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h-1v-1h-1v1h-1v-1h1v-1h1v1h1v-1h1v1h-1v1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h-1v-1h-1v1h-1v-1h1v-1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h-1v-1h-1v1h-1v-1h1v-1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h-1v-1h-1v1h1v1h-1v1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h-1v-1h-1v1h-1v-1h1v-1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h-1v-1h-1v1h1v1h-1v1h1v1h1v-1h1v1h-1v1h-1v-1h-1v1h-1v-1h1v-1h-1v-1h-1v1h1v1h-1v1h-1v-1h-1v1h1v1h-1v1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h-1v-1h-1v1h-1v-1h1v-1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h1v1h1v-1h1v1h-1v1h-1v-1h-1v1h1v1h-1v1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h1v1h1v-1h-1v-1h1v-1h-1v-1h-1v1"/>
           </defs>
 
-          <path class="grid-field" d="M67 91C199 11 466 22 594 137c121 108 45 251-144 286C250 460 49 354 31 219 22 151 32 112 67 91Z"/>
-          <g class="bent-grid" clip-path="url(#bent-grid-clip)">
-            <path d="M4 76C179 24 482 37 677 121M-7 126c195-51 503-32 700 55M-15 181c203-43 516-12 716 73M-18 240c214-31 523 14 718 91M-8 301c221-14 503 39 682 99M18 361c211 4 449 51 603 101"/>
-            <path d="M91-8C50 117 57 302 157 470M174-20c-47 139-33 326 55 490M267-24c-39 148-17 337 53 493M361-22c-22 156 4 340 52 484M455-8c-4 158 24 323 41 448M546 16c17 143 38 275 27 392M626 53c35 112 48 220 18 317"/>
-          </g>
-
           <g class="dragon-curve" transform="translate(185 257) rotate(-8) scale(16)">
+            <use class="dragon-curve-shadow" href="#dragon-curve-shape" transform="translate(.72 .86)"/>
             <use class="dragon-curve-halo" href="#dragon-curve-shape"/>
             <use class="dragon-curve-line" href="#dragon-curve-shape"/>
           </g>
