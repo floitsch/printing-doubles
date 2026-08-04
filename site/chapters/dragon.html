@@ -41,9 +41,12 @@
           <p class="eyebrow">4.2 · The familiar recurrence</p>
           <h2>Generate only the digits that settle the answer</h2>
           <p>Dragon needs a decimal candidate inside the parsing interval, but it does not know in advance how many digits that requires. Its strategy is to reveal the decimal expansion from left to right. After each new digit it asks whether the prefix is already accurate enough to recover the input. If not, it reveals one more digit.</p>
-          <p>The mechanism for revealing a digit is ordinary long division. Suppose the unprinted part is represented exactly as <em>R/S</em>, with 0 ≤ <em>R</em> &lt; <em>S</em>. Multiplying the remainder by ten moves the next decimal place into the integer part. Dividing by <em>S</em> separates that digit from what remains:</p>
+          <p>The mechanism is ordinary long division. Consider the exact fraction 1/3. Multiplying it by ten gives 10/3, or 3 + 1/3. The whole part, 3, is the next decimal digit. The fractional part left over is again 1/3, so repeating the same operation produces another 3:</p>
+          <div class="equation">1/3 &nbsp;→&nbsp; multiply by 10 &nbsp;→&nbsp; 3 + 1/3.</div>
+          <p>The same operation works for any exact remainder. Write the still-unprinted fraction as <em>R/S</em>, with <em>R</em> smaller than <em>S</em>. Multiplication by ten brings the next decimal digit into the whole-number part. Integer division produces that digit, while the division remainder becomes the new unprinted fraction.</p>
+          <p>Only now is the compact implementation equation useful:</p>
           <div class="equation">10R = qS + r, &nbsp;&nbsp; 0 ≤ q ≤ 9, &nbsp;&nbsp; 0 ≤ r &lt; S.</div>
-          <p>The quotient <em>q</em> is the next decimal digit and <em>r</em> is the still-unprinted fraction. For 1/3, 10 = 3·3 + 1. The quotient supplies a 3, while the remainder returns to 1; repeating the operation therefore supplies another 3 each time.</p>
+          <p>Here <em>q</em> is the next decimal digit. The fraction <em>r/S</em> is everything still unprinted. In the 1/3 example, <em>R</em> = 1 and <em>S</em> = 3, so 10 = 3·3 + 1: the digit is 3 and the new remainder is again 1.</p>
           <p>That is exactly the problem. Long division knows the digits of the exact value, but shortest output often ends before the exact expansion ends. Binary64(1/3) is not the real number 1/3, and its shortest recovering decimal is <code>0.3333333333333333</code>. A stopping rule must be derived from binary64’s finite spacing, not from the decimal remainder becoming zero.</p>
         </section>
 

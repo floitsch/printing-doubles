@@ -53,4 +53,4 @@ because it was reported by a paper or observed in one unpinned build.
 The Coonen reconstruction is historical and is not an ESP32 benchmark target.
 Large differences intrinsic to an algorithm—for example, requiring arbitrary
 precision or offering a compact cached-power policy—may be mentioned in the
-book. Numerical firmware comparisons remain here until reproduced.
+site. Numerical firmware comparisons remain here until reproduced.

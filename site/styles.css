@@ -25,6 +25,7 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.2em
 button, input { font: inherit; }
 code, output { font-family: var(--mono); }
 .chapter p code, .chapter li code { overflow-wrap: anywhere; }
+.chapter .monster { font-size: clamp(12px, 1.25vw, 18px); white-space: normal; overflow-x: visible; overflow-wrap: anywhere; }
 ::selection { background: var(--acid); color: var(--ink); }
 
 .skip-link { position: fixed; z-index: 100; top: 8px; left: 8px; padding: 10px 14px; background: var(--acid); color: var(--ink); transform: translateY(-150%); }
@@ -102,13 +103,13 @@ code, output { font-family: var(--mono); }
 #number-line { display: block; width: 100%; height: clamp(320px, 38vw, 470px); cursor: grab; touch-action: none; }
 #number-line:active { cursor: grabbing; }
 #number-line:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
-.canvas-legend { position: absolute; top: 18px; right: 20px; display: flex; gap: 14px; font: 500 9px var(--mono); text-transform: uppercase; }
+.canvas-legend { position: absolute; top: 18px; right: 20px; display: flex; gap: 14px; font: 500 10px var(--mono); text-transform: uppercase; }
 .canvas-legend .key { margin-left: 0; }
 .key.interval { height: 10px; background: rgba(223,255,82,0.32); border: 1px solid var(--acid); }
-.canvas-instructions { margin: 0; padding: 8px 14px; border-top: 1px solid rgba(255,255,255,.12); color: #758490; font: 9px var(--mono); text-transform: uppercase; }
+.canvas-instructions { margin: 0; padding: 8px 14px; border-top: 1px solid rgba(255,255,255,.12); color: #8e9ba5; font: 10px var(--mono); text-transform: uppercase; }
 .tick-key { margin: 16px 0 0; color: #95a2ad; font-size: 13px; }
 .tick-key strong { color: #f3efe7; }
-.tick-inspector { display: block; min-height: 48px; max-height: 130px; margin-top: 12px; padding: 12px 15px; border: 1px solid rgba(255,255,255,.18); color: #c6d0d7; font: 11px/1.55 var(--mono); overflow: auto; overflow-wrap: anywhere; }
+.tick-inspector { display: block; min-height: 48px; max-height: 130px; margin-top: 12px; padding: 12px 15px; border: 1px solid rgba(255,255,255,.18); color: #c6d0d7; font: 12px/1.55 var(--mono); overflow: auto; overflow-wrap: anywhere; }
 .inspection { display: grid; grid-template-columns: 1fr 1.1fr 1.6fr; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.2); }
 .inspection div { min-width: 0; padding: 20px 18px 0 0; }
 .inspection div + div { padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.2); }

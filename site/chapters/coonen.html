@@ -23,9 +23,9 @@
       <article class="chapter">
         <section id="contract">
           <p class="eyebrow">3.1 · Output contract</p>
-          <h2>This is not yet a shortest printer</h2>
+          <h2>Accurate and economical digit generation</h2>
           <p class="lead">Algorithm B receives the number of significant decimal digits as an input. Its task is to produce exactly that digit field and a decimal exponent, in the current rounding mode.</p>
-          <p>This distinction matters historically and technically. A shortest printer chooses its own precision by asking when a decimal candidate is sufficient for recovery. Coonen’s binary-to-decimal algorithm is designed for formats such as FORTRAN E output, where the caller has already selected <em>N</em>. If asked for five digits, it returns five digits even when one digit would round-trip.</p>
+          <p>The economy comes from generating only the requested digit field instead of first constructing a possibly enormous exact decimal expansion. This distinction also limits the contract: the procedure has no step that searches for the smallest sufficient value of <em>N</em>. It is designed for formats such as FORTRAN E output, where the caller has already selected <em>N</em>. If asked for five digits, it returns five digits even when one digit would round-trip.</p>
           <table>
             <thead><tr><th>Input</th><th>Output</th><th>Guarantee sought</th></tr></thead>
             <tbody>
@@ -41,32 +41,31 @@
           <p>A conceptually direct conversion first constructs the complete decimal expansion and only then rounds it to the requested width. For binary64(<code>0.3</code>), that means producing</p>
           <output class="monster">0.299999999999999988897769753748434595763683319091796875</output>
           <p>before retaining, for example, only the first five significant digits. A very small binary64 value can require hundreds of leading decimal zeros; a very large one can require hundreds of integer digits. A fixed buffer covering the entire binary64 range makes the method dependable, but most of the constructed digits are discarded when the caller requests a short field.</p>
-          <p>The economical alternative starts from the requested number of digits. If five digits are required, the useful target is an integer between 10,000 and 99,999. Once the binary value has been moved into that range, one rounding operation determines all five output digits.</p>
-          <p>For example, multiplying 0.33333… by 100,000 produces 33,333.33…. Rounding that value to an integer gives the five-digit coefficient 33,333; moving the decimal point back gives 0.33333. As a second example, 123.456 needs only one factor of ten to enter the four-digit range: 1,234.56 rounds to 1,235, which is reported as 1.235 × 10<sup>2</sup>.</p>
-          <div class="aside"><p><strong>The general rule, using 123.456.</strong> The value lies between 10<sup>2</sup> and 10<sup>3</sup>, so <code>LOGX</code> is 2. For four digits, <em>N</em> = 4, and the decimal point must move 4 − 2 − 1 = 1 place. Multiplying by 10 produces 1,234.56, which lies in the four-digit integer range [1,000, 10,000). After rounding to 1,235, the saved decade 2 places the leading digit back at 10<sup>2</sup>, giving 1.235 × 10<sup>2</sup>.</p></div>
+          <p>The economical alternative starts from the requested number of digits. If five digits are required, the useful target is an integer from 10000 through 99999. Once the binary value has been moved into that range, one rounding operation determines all five output digits.</p>
+          <p>For example, multiplying 0.33333… by 10<sup>5</sup> moves the decimal point five places and produces 33333.33…. Rounding that value to an integer gives the five-digit coefficient 33333; moving the decimal point back gives 0.33333. As a second example, 123.456 needs only one factor of ten to enter the four-digit range: 1234.56 rounds to 1235, which is reported as 1.235 × 10<sup>2</sup>.</p>
+          <div class="aside"><p><strong>The general rule, using 123.456.</strong> The value lies between 10<sup>2</sup> and 10<sup>3</sup>, so <code>LOGX</code> is 2. For four digits, <em>N</em> = 4, and the decimal point must move 4 − 2 − 1 = 1 place. Multiplying by 10 produces 1234.56, which lies in the four-digit integer range [1000, 10000). After rounding to 1235, the saved decade 2 places the leading digit back at 10<sup>2</sup>, giving 1.235 × 10<sup>2</sup>.</p></div>
         </section>
 
         <section id="algorithm-b">
           <p class="eyebrow">3.3 · The main procedure</p>
-          <h2>Algorithm B in five transformations</h2>
+          <h2>Algorithm B in four transformations</h2>
           <p>The original procedure has steps B0 through B8. It first asks “which decimal decade contains the input?” and then asks “how many decimal places move that decade into the requested integer range?” The pseudocode groups adjacent bookkeeping steps while retaining the correction loop and its invariant.</p>
           <ol class="pseudo" id="coonen-code">
-            <li data-line="1">extend x; save an unmodified copy</li>
-            <li data-line="2">LOGX ← a lower estimate of floor(log10(abs(x)))</li>
-            <li data-line="3">SCALE ← N − LOGX − 1; scale x by 10^SCALE</li>
-            <li data-line="4">round the scaled x to an integer in the requested mode</li>
-            <li data-line="5">correct the decade if necessary; emit N digits and LOGX</li>
+            <li data-line="1">identify the decimal decade; choose the shift into the N-digit integer range</li>
+            <li data-line="2">construct 10^SCALE (or its reciprocal) and multiply in extended binary precision</li>
+            <li data-line="3">round the scaled value once to an integer</li>
+            <li data-line="4">correct a one-decade underestimate if necessary; emit N digits and LOGX</li>
           </ol>
-          <p>For binary64(1/3) with <em>N</em> = 5, <code>LOGX</code> is −1. The scale is therefore 5 − (−1) − 1 = 5, so the procedure multiplies by 10<sup>5</sup> and rounds 33,333.333333333… to 33,333.</p>
+          <p>For binary64(1/3) with <em>N</em> = 5, <code>LOGX</code> is −1. The scale is therefore 5 − (−1) − 1 = 5, so the procedure multiplies by 10<sup>5</sup> and rounds 33333.333333333… to 33333.</p>
           <p>Computing <code>LOGX</code> need not be exact. Coonen uses a cheap estimate that can identify the preceding decade but never a later one. If it is one too low, the scaled value is approximately ten times too large. The test against 10<sup>N</sup> detects that case, increments <code>LOGX</code>, restores the saved input, and repeats the scaling. Coonen proves that the branch is taken at most once; the supporting section later explains the estimator as Algorithm L.</p>
           <p>The opposite test, against 10<sup>N−1</sup>, handles a rarer effect in double conversion: an input only slightly above a power of ten can be nudged below the lower limit by the error in a rounded scale factor. Replacing the result by the lower limit reduces an error already within the established bound.</p>
         </section>
 
         <section id="execution">
           <p class="eyebrow">3.4 · Executable control</p>
-          <h2>Follow five-digit conversion of binary64(1/3)</h2>
-          <p>The execution below is generated by an exact-rational control implementation of Algorithm B. It computes the mathematical scale without error. At the scaling step, a schematic shaded region distinguishes that exact control from a finite-precision implementation. In this example 10<sup>5</sup> is exactly representable, but the product still has to be rounded. For other exponents, the stored power or reciprocal may itself already be rounded before the multiplication takes place.</p>
-          <trace-player class="trace-player" data-title="Coonen Algorithm B · input binary64(1/3) · N = 5" data-code="#coonen-code"><script id="coonen-trace-data" type="application/json">[]</script></trace-player>
+          <h2>Move four significant digits into an integer</h2>
+          <p>In decimal notation the operation is merely a movement of the point. The trace first shows a small value that must move six places to the left, then a large value that must move two places to the right. Both arrive at the same four-digit integer. It then repeats the small example as a binary64 operation, where constructing the scale factor and multiplying by it may introduce error.</p>
+          <trace-player class="trace-player" data-title="Coonen scaling · four requested digits" data-code="#coonen-code"><script id="coonen-trace-data" type="application/json">[]</script></trace-player>
         </section>
 
         <section id="reciprocal">
@@ -88,7 +87,7 @@
         <section id="support">
           <p class="eyebrow">3.6 · The supporting algorithms</p>
           <h2>The difficult work is hidden behind “scale”</h2>
-          <p>Algorithm B is short because four subsidiary algorithms establish the properties required by its central scaling operation.</p>
+          <p>In written decimal arithmetic, multiplication by 10<sup>k</sup> only moves the decimal point. The machine starts with a binary significand and exponent instead. Most negative powers of ten, many positive powers, and most products with them cannot be represented exactly in a bounded binary format. The implementation must construct a rounded power or reciprocal, multiply without losing the direction of its error, and preserve whether discarded low bits were nonzero. Algorithm B is short because four subsidiary algorithms establish those properties for its apparently simple scaling operation.</p>
           <table>
             <thead><tr><th>Procedure</th><th>Role</th><th>Key invariant</th></tr></thead>
             <tbody>
@@ -100,7 +99,9 @@
           </table>
           <h3>Algorithm L: an underestimate is cheaper than a logarithm</h3>
           <p>A library logarithm would be excessive here. Algorithm B does not need a finely rounded value of log<sub>10</sub>(x); it needs only the integer identifying the decimal decade, and it can cheaply detect one particular error. Algorithm L is therefore designed to return either the correct decade or the preceding decade, never a later one.</p>
-          <p>Begin by normalizing the input as 2<sup>e</sup>·(1 + <em>f</em>), where 0 ≤ <em>f</em> &lt; 1. The exponent <em>e</em> gives the integer part of the binary logarithm. The fraction <em>f</em> is also a convenient lower estimate of the remaining logarithm because <em>f</em> ≤ log<sub>2</sub>(1 + <em>f</em>) over this interval.</p>
+          <p>Recall that a normal binary floating-point value consists of a significand in the range [1, 2) multiplied by a power of two. For this estimate, write the significand as 1 plus a fractional part:</p>
+          <div class="equation">absolute value = 2<sup>e</sup> × (1 + fraction), &nbsp;&nbsp; 0 ≤ fraction &lt; 1.</div>
+          <p>The exponent <em>e</em> gives the integer part of the binary logarithm. The fractional part is also a convenient lower estimate of what remains because <em>fraction</em> ≤ log<sub>2</sub>(1 + <em>fraction</em>) throughout this interval.</p>
           <p>Consider 12 = 2<sup>3</sup>·1.5. Here <em>e</em> = 3 and <em>f</em> = 0.5, so 3.5 is used in place of log<sub>2</sub>(12) ≈ 3.585. Multiplication by log<sub>10</sub>(2) gives approximately 1.05; taking the floor returns decade 1, correctly placing 12 between 10 and 100.</p>
           <p>The deliberately low estimate can miss at a decimal power. For 10 = 2<sup>3</sup>·1.25, the preliminary value is 3.25. After conversion to a decimal logarithm it is about 0.978, whose floor is 0 rather than 1. Algorithm B then scales 10 as though it belonged to the preceding decade, obtains an integer that is ten times too large, and corrects the decade once.</p>
           <p>The implementation does not perform these calculations with real logarithms. It takes leading exponent and fraction bits as a fixed-point integer, multiplies by a hexadecimal constant slightly below log<sub>10</sub>(2), and discards the fractional result. The downward choices are the proof: they make an overestimate impossible.</p>

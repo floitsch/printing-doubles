@@ -172,7 +172,7 @@ export class NumberLineView {
     if (bracket.label) this.label(ctx, bracket.label, (left + right) / 2, y - 13, bracket.color || "#ef4b35", "center");
   }
 
-  label(ctx, text, x, y, color, align = "left", font = "9px 'DM Mono', monospace") {
+  label(ctx, text, x, y, color, align = "left", font = "10px 'DM Mono', monospace") {
     ctx.fillStyle = color;
     ctx.font = font;
     ctx.textAlign = align;

@@ -17,6 +17,15 @@ test("Coonen B exact control is fixed precision rather than shortest", () => {
   assert.equal(result.text, "2.9999999999999999e-1");
 });
 
+test("Coonen B moves small and large values into the same four-digit range", () => {
+  const small = coonenBReference(0.00135, 4);
+  const large = coonenBReference(135000, 4);
+  assert.equal(small.scale, 6);
+  assert.equal(large.scale, -2);
+  assert.equal(small.coefficient, 1350n);
+  assert.equal(large.coefficient, 1350n);
+});
+
 test("Coonen B correction loop handles a carry into the next decade", () => {
   const result = coonenBReference(9.999, 3);
   assert.equal(result.coefficient, 100n);

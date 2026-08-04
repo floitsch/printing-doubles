@@ -29,7 +29,7 @@ Continued    : 2100100/2100100 (0 skipped). 0 errors.
 
 The figure requires interpretation. The first 100,100 cases come from `tests.txt` and have expected digit strings. For the two million generated cases, `ensureAgreement` runs Toothless first and uses its output as the reference for the other algorithms; it checks only that Toothless parses back to the input. Therefore the zero-error line does not independently prove shortestness or closestness for those generated values. The 1,200 disagreements are differences somewhere among the algorithms and are not classified by the harness.
 
-I added a temporary native wrapper and compared 9,996 deterministic finite positive binary64 bit patterns directly with this book's exact rational interval oracle. There were zero disagreements. Named and transition values in the existing 100,100-case file also passed. This is good regression evidence, not an exhaustive proof.
+I added a temporary native wrapper and compared 9,996 deterministic finite positive binary64 bit patterns directly with this site's exact rational interval oracle. There were zero disagreements. Named and transition values in the existing 100,100-case file also passed. This is good regression evidence, not an exhaustive proof.
 
 ## Blocking proof issues
 

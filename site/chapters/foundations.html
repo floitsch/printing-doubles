@@ -31,7 +31,7 @@
           <p>For example, the bit pattern <code>3fd3333333333333</code> decodes as</p>
           <div class="equation">0.3<sub>as binary64</sub> = 5,404,319,552,844,595 · 2<sup>−54</sup>.</div>
           <p>The label “0.3” on the left is the source literal or previously printed text; it is not the exact mathematical value on the right. The right-hand side is exact. The first task of every conversion algorithm is, explicitly or implicitly, to recover this form.</p>
-          <div class="aside"><p><strong>Terminology.</strong> Some papers call <em>f</em> a mantissa; others reserve that word for a fractional value in [1,2). This book uses <em>significand</em> for the integer <em>f</em> and states the exponent convention whenever it differs from the one above.</p></div>
+          <div class="aside"><p><strong>Terminology.</strong> Some papers call <em>f</em> a mantissa; others reserve that word for a fractional value in [1,2). This site uses <em>significand</em> for the integer <em>f</em> and states the exponent convention whenever it differs from the one above.</p></div>
         </section>
 
         <section id="exact">
@@ -106,7 +106,7 @@
           <p class="eyebrow">2.7 · Scope</p>
           <h2>What the oracle does not claim</h2>
           <p>The BigInt search is a specification and a test instrument. It is not offered as a fast production formatter. It currently treats the finite nonzero path; signed zero, infinities, and NaNs are formatting policies rather than shortest-decimal questions and are tested separately by production wrappers. Text layout—when to use fixed or scientific notation—is also separate from the selection of a decimal coefficient and exponent.</p>
-          <p>This separation will recur throughout the book. Several modern libraries call their core operation “binary to decimal” because it returns an integer coefficient and a decimal exponent. Turning that pair into characters can cost as much as, or more than, the numerical conversion. Comparisons later in the book will state explicitly which part is measured.</p>
+          <p>This separation will recur throughout the site. Several modern libraries call their core operation “binary to decimal” because it returns an integer coefficient and a decimal exponent. Turning that pair into characters can cost as much as, or more than, the numerical conversion. Later comparisons will state explicitly which part is measured.</p>
         </section>
 
         <nav class="chapter-links"><a href="./binary64-number-line.html"><span>Previous</span><strong>The binary64 number line</strong></a><a href="./coonen.html"><span>Next</span><strong>Coonen →</strong></a></nav>

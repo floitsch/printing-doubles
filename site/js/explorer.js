@@ -16,6 +16,8 @@ import { NumberLineView } from "./number-line-view.js";
 import { exactDecimal, exactDecimalOfRational, intervalOf } from "./oracle.js";
 
 const LOG10_2 = Math.LOG10E * Math.LN2;
+const MIN_ZOOM = -240;
+const MAX_ZOOM = 100;
 
 export class NumberLineExplorer {
   constructor(canvas, elements) {
@@ -105,7 +107,7 @@ export class NumberLineExplorer {
   }
 
   setZoom(zoom) {
-    this.zoom = Math.max(0, Math.min(100, zoom));
+    this.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
     if (this.elements.zoomRange) this.elements.zoomRange.value = String(this.zoom);
     this.draw();
   }
@@ -128,7 +130,7 @@ export class NumberLineExplorer {
   setZoomAt(zoom, position, anchor) {
     const previousPan = this.pan;
     const previousSpan = this.span();
-    this.zoom = Math.max(0, Math.min(100, zoom));
+    this.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
     this.pan = anchor === undefined
       ? anchoredPan(previousPan, previousSpan, this.span(), position)
       : anchor - (position * 2 - 1) * this.span();
@@ -308,6 +310,16 @@ export class NumberLineExplorer {
       const coordinate = decimalCoordinate(printed.coefficient, printed.exponent, this.center, this.unitExp);
       ticks.push({ x: coordinate, active: true, color: "#ef4b35", width: 3, height: 60, dot: 5, topLabel: `short output: ${this.value.toString()}` });
     }
+    ticks.push({
+      x: 0,
+      active: true,
+      color: "#dfff52",
+      width: 2,
+      height: 42,
+      dot: 4,
+      label: "selected double",
+      textColor: "#dfff52",
+    });
     return ticks;
   }
 

@@ -1,6 +1,6 @@
 # Editorial and implementation blueprint
 
-This project is an interactive technical book, backed by executable
+This project is an interactive technical exposition, backed by executable
 implementations. The landing page is only the table of contents.
 
 ## Audience and promise
@@ -38,7 +38,7 @@ summaries. In particular:
 - let visuals restate an argument spatially, but never use a picture as the sole
   statement of a required invariant.
 
-The intended tone is closer to a clear survey or textbook chapter than to a
+The intended tone is closer to a clear survey paper than to a
 paper abstract: less compressed than the original research, but no less exact.
 
 ## Shared narrative spine

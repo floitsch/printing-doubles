@@ -24,7 +24,7 @@
         <section id="model">
           <p class="eyebrow">1.1 · Scope and model</p>
           <h2>A format for values, and rules for operations</h2>
-          <p class="lead">IEEE 754 defines floating-point formats and the behavior of operations on them. This book uses its 64-bit binary format, binary64—the format ordinarily meant by an IEEE <code>double</code>.</p>
+          <p class="lead">IEEE 754 defines floating-point formats and the behavior of operations on them. This site uses its 64-bit binary format, binary64—the format ordinarily meant by an IEEE <code>double</code>.</p>
           <p>Binary64 does not store an arbitrary real number. Its 64 bits select one member of a finite set: finite numbers, two signed zeros, two infinities, and NaNs. A finite nonzero value can always be written in the form</p>
           <div class="equation">v = (−1)<sup>s</sup> · c · 2<sup>q</sup>,</div>
           <p>where <em>s</em> is the sign bit, <em>c</em> is an integer significand, and <em>q</em> is an integer exponent. This form is exact. Approximation arises when a source number is not in the binary64 set, or when the exact result of an operation is not representable and must be rounded to one of the available values.</p>
@@ -54,7 +54,7 @@
           <h2>The stored fraction has an implicit leading one</h2>
           <p>For a normal value, let <em>E</em> be the unsigned integer in the exponent field and <em>F</em> the unsigned integer in the 52-bit fraction field. The exponent uses a bias of 1023. The mathematical value is</p>
           <div class="equation">v = (−1)<sup>s</sup> · (1 + F / 2<sup>52</sup>) · 2<sup>E−1023</sup>.</div>
-          <p>The leading 1 is not stored because every normal binary significand has one. Multiplying the parenthesis by 2<sup>52</sup> gives the integer form used by the algorithms in this book:</p>
+          <p>The leading 1 is not stored because every normal binary significand has one. Multiplying the parenthesis by 2<sup>52</sup> gives the integer form used by the algorithms presented here:</p>
           <div class="equation">v = (−1)<sup>s</sup> · (2<sup>52</sup> + F) · 2<sup>E−1023−52</sup>.</div>
           <p>For binary64(<code>0.3</code>), the stored exponent is 1021, hence the unbiased exponent is −2. Decoding all fields produces the exact integer form</p>
           <div class="equation">5,404,319,552,844,595 · 2<sup>−54</sup>,</div>

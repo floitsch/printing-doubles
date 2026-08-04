@@ -20,8 +20,8 @@ export function problemTrace(value) {
   ];
   const endpoint = interval.closed ? "included" : "excluded";
   const boundaries = [
-    { x: lowerX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint, endpointLabel: endpoint, endpointLabelDx: -8, endpointAlign: "right", label: "lower midpoint", labelY: .94 },
-    { x: upperX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint, endpointLabel: endpoint, endpointLabelDx: 8, endpointAlign: "left", label: "upper midpoint", labelY: .94 },
+    { x: lowerX, from: .13, to: .82, color: "#dfff52", dash: [3, 5], endpoint, endpointLabel: endpoint, endpointLabelDx: -8, endpointAlign: "right", label: "lower midpoint", labelY: .84 },
+    { x: upperX, from: .13, to: .82, color: "#dfff52", dash: [3, 5], endpoint, endpointLabel: endpoint, endpointLabelDx: 8, endpointAlign: "left", label: "upper midpoint", labelY: .84 },
   ];
   const band = { from: lowerX, to: upperX, top: .13, bottom: .88, color: "rgba(223,255,82,.14)", label: "ROUND-TRIP INTERVAL" };
   const decimalTick = (text, label, active = false) => {
@@ -41,7 +41,7 @@ export function problemTrace(value) {
     bands: options.interval ? [band] : [],
     markers: options.interval ? boundaries : [],
     lanes: [
-      { y: .39, color: "#ff9b8e", label: options.decimalLabel || "DECIMAL VALUES", ticks: options.decimals || [] },
+      { y: .39, color: "#ff9b8e", label: options.decimalLabel || "DECIMAL VALUES", labelOffset: 88, ticks: options.decimals || [] },
       { y: .69, color: "#8eb3ff", label: "ADJACENT BINARY64 VALUES", ticks: binaryTicks },
     ],
     footer: options.footer || "POSITIONS ARE COMPUTED FROM THE EXACT BINARY64 VALUE",
@@ -83,9 +83,9 @@ export function problemTrace(value) {
     {
       label: "The output contract",
       title: "The required answer is now precisely stated",
-      why: "The printer must find a round-tripping decimal with the fewest significant digits and choose the nearest among equally short results. The remaining problem is to devise an algorithm that finds exactly that decimal efficiently.",
+      why: "The decimal 0.3 has one significant digit, lies inside the parsing interval, and therefore parses back to the selected double. No nonzero decimal can use fewer than one significant digit. For inputs whose shortest result needs several digits, the algorithm must determine the first precision at which a decimal enters the interval, then choose the nearest candidate at that precision.",
       registers: { required_output: "0.3", significant_digits: 1, remaining_task: "find and prove the shortest decimal" },
-      visual: { scene: scene({ interval: true, decimalLabel: "FIRST ADMISSIBLE DECIMAL GRID", decimals: [decimalTick("0.2", "0.2"), decimalTick("0.3", "selected: 0.3", true), decimalTick("0.4", "0.4")], footer: "ROUND TRIP · FEWEST DIGITS · NEAREST AMONG EQUALLY SHORT CANDIDATES" }) },
+      visual: { scene: scene({ interval: true, decimalLabel: "DECIMALS WITH ONE SIGNIFICANT DIGIT AT THIS SCALE", decimals: [decimalTick("0.2", "0.2"), decimalTick("0.3", "selected: 0.3", true), decimalTick("0.4", "0.4")], footer: "0.3 PARSES BACK TO THE SELECTED DOUBLE; ONE DIGIT IS ENOUGH" }) },
     },
   ];
 }
