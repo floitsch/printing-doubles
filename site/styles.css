@@ -53,12 +53,6 @@ code, output { font-family: var(--mono); }
 .grid-field { fill: none; stroke: none; }
 .bent-grid { fill: none; stroke: color-mix(in srgb, var(--ink) 17%, transparent); stroke-width: .9; }
 .bent-grid path + path { stroke: color-mix(in srgb, var(--ink) 11%, transparent); }
-.hero-orbit { fill: none; stroke-width: 1.6; }
-.hero-orbit-binary { stroke: color-mix(in srgb, var(--ink) 32%, transparent); }
-.hero-orbit-decimal { stroke: color-mix(in srgb, var(--ink) 20%, transparent); stroke-dasharray: 3 8; }
-.orbit-nodes circle { stroke: var(--paper); stroke-width: 2; }
-.binary-node { fill: color-mix(in srgb, var(--ink) 52%, var(--paper)); }
-.decimal-node { fill: color-mix(in srgb, var(--ink) 32%, var(--paper)); }
 .dragon-curve { filter: drop-shadow(.22px .28px 0 rgba(20,32,43,.13)); }
 .dragon-curve use { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .dragon-curve-halo { stroke: var(--paper); stroke-width: .31; }
