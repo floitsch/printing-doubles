@@ -154,9 +154,9 @@ export class NumberLineExplorer {
     this.lowerBoundary = midpointCoordinate(this.previous, this.center, this.center, this.unitExp);
     this.upperBoundary = midpointCoordinate(this.center, this.following, this.center, this.unitExp);
     this.pan = 0;
-    this.elements.printed.textContent = value.toString();
-    this.elements.bits.textContent = bitHex(this.center);
-    this.elements.exact.textContent = exactForm(this.center);
+    if (this.elements.printed) this.elements.printed.textContent = value.toString();
+    if (this.elements.bits) this.elements.bits.textContent = bitHex(this.center);
+    if (this.elements.exact) this.elements.exact.textContent = exactForm(this.center);
     if (this.elements.bitFields?.setValue) this.elements.bitFields.setValue(value);
     if (this.elements.inspector) this.elements.inspector.textContent = `Selected double ${value.toString()} · bits ${bitHex(this.center)}. Hover or tap a tick or midpoint; press P or N to select a neighbor.`;
     this.draw();

@@ -48,24 +48,3 @@ document.querySelector("#reset-view").addEventListener("click", () => explorer.r
 
 document.querySelector("#problem-trace-data").textContent = JSON.stringify(problemTrace(0.3));
 await import("./trace-player.js");
-
-const binaryDots = document.querySelector(".binary-dots");
-const decimalDots = document.querySelector(".decimal-dots");
-for (let i = 0; i < 52; i++) {
-  const angle = i / 52 * Math.PI * 2;
-  const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  dot.setAttribute("cx", String(320 + Math.cos(angle) * (260 + 16 * Math.sin(angle * 3))));
-  dot.setAttribute("cy", String(210 + Math.sin(angle) * 155));
-  dot.setAttribute("r", i % 13 === 0 ? "3.2" : "1.5");
-  dot.setAttribute("fill", "#1565ff");
-  binaryDots.append(dot);
-}
-for (let i = 0; i < 36; i++) {
-  const angle = i / 36 * Math.PI * 2 + .22;
-  const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  dot.setAttribute("cx", String(320 + Math.cos(angle) * 234));
-  dot.setAttribute("cy", String(210 + Math.sin(angle) * (174 + 14 * Math.cos(angle * 2))));
-  dot.setAttribute("r", i % 9 === 0 ? "3.2" : "1.5");
-  dot.setAttribute("fill", "#ef4b35");
-  decimalDots.append(dot);
-}

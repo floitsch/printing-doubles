@@ -67,10 +67,35 @@
         <section id="interval">
           <p class="eyebrow">2.4 · Geometry of parsing</p>
           <h2>Replace the value with its preimage</h2>
+          <p>Begin with the two grids rather than their formulas. The upper blue lane contains the discrete binary64 values. The lower red lane contains decimal values at the currently visible scale. Selecting one blue value also highlights the complete region of the number line that a round-to-nearest parser maps to it. Zooming reveals that many different real and decimal values share those same 64 output bits.</p>
+          <div class="foundation-grid-applet">
+            <form class="explorer-controls foundation-grid-controls" id="foundation-number-form">
+              <label for="foundation-number-input">Choose the binary64 value at the center</label>
+              <div class="input-row">
+                <input id="foundation-number-input" name="number" value="0.3" inputmode="decimal" spellcheck="false" aria-describedby="foundation-number-help">
+                <button type="submit">Select double</button>
+              </div>
+              <p class="explorer-help" id="foundation-number-help">Try <button type="button" class="text-button" data-foundation-example="0.1">0.1</button>, <button type="button" class="text-button" data-foundation-example="1">an exponent transition</button>, or <button type="button" class="text-button" data-foundation-example="5e-324">the smallest subnormal</button>.</p>
+              <div class="zoom-controls" aria-label="Zoom controls">
+                <button type="button" id="foundation-zoom-out" aria-label="Zoom out">−</button>
+                <label for="foundation-zoom-range">Zoom</label>
+                <input id="foundation-zoom-range" type="range" min="-240" max="100" value="72">
+                <button type="button" id="foundation-zoom-in" aria-label="Zoom in">+</button>
+                <button type="button" id="foundation-reset-view">Reset view</button>
+              </div>
+            </form>
+            <div class="canvas-frame">
+              <canvas class="explorer-canvas" id="foundation-number-line" width="1200" height="470" tabindex="0" aria-label="Interactive overlaid binary64 and decimal number line. Use arrow keys to pan and plus or minus to zoom."></canvas>
+              <div class="canvas-legend" aria-hidden="true"><span><i class="key binary"></i> binary64</span><span><i class="key decimal"></i> decimal</span><span><i class="key interval"></i> parser preimage</span></div>
+              <p class="canvas-instructions">Wheel or pinch to zoom · drag to pan · select a neighboring blue tick</p>
+            </div>
+            <output class="tick-inspector" id="foundation-tick-inspector" aria-live="polite">Hover or tap a blue tick or midpoint.</output>
+          </div>
+          <p>The highlighted band—not merely its central blue tick—is what matters to a printer. Any decimal point inside it is parsed back to the selected value. We can now name the points that determine its extent.</p>
           <p>Let <em>v⁻</em> and <em>v⁺</em> be the adjacent binary64 values below and above a finite value <em>v</em>. Under round-to-nearest parsing, the transition between <em>v⁻</em> and <em>v</em> occurs at their arithmetic midpoint; the transition between <em>v</em> and <em>v⁺</em> occurs at the corresponding upper midpoint:</p>
           <div class="equation">m⁻ = (v⁻ + v) / 2, &nbsp;&nbsp; m⁺ = (v + v⁺) / 2.</div>
           <p>Every real number strictly between <em>m⁻</em> and <em>m⁺</em> parses to <em>v</em>. The treatment of the endpoints follows the ties-to-even rule. If the least significant bit of <em>v</em>’s significand is zero, <em>v</em> is the even neighbor at both boundaries and the interval is closed. If that bit is one, the neighboring values win the ties and the interval is open.</p>
-          <div class="equation">I(v) = [m⁻,m⁺] when f is even; &nbsp;&nbsp; I(v) = (m⁻,m⁺) when f is odd.</div>
+          <div class="equation interval-cases"><span>I(v) = [m⁻,m⁺] when f is even</span><span>I(v) = (m⁻,m⁺) when f is odd</span></div>
           <p>The distances to the two boundaries are usually equal. As established in <a href="./binary64-number-line.html#transition">the preceding chapter</a>, an exact power of two has a closer predecessor, and therefore a closer lower midpoint. Correct printers carry distinct margins, construct both endpoints, or enter an equivalent specialized case.</p>
           <p>The shortest-conversion problem can now be stated without mentioning digits or code:</p>
           <div class="aside"><p>Find the coarsest decimal grid containing a point in <em>I(v)</em>. Among the points of that grid inside the interval, choose the point closest to <em>v</em>, and apply the specified decimal tie rule if necessary.</p></div>
