@@ -210,6 +210,34 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter .lead { font: 500 28px/1.35 var(--serif); }
 .chapter .aside { margin: 35px 0; padding: 23px 28px; border-left: 3px solid var(--red); background: var(--paper-deep); }
 .chapter .aside p { margin: 0; font-size: 14px; }
+.math-fact { display: grid; grid-template-columns: 175px minmax(0, 1fr); gap: 8px 24px; margin: 30px 0; padding: 18px 20px; border-left: 2px solid var(--muted); background: rgba(20,32,43,.035); }
+.math-fact strong { font: 500 10px/1.5 var(--mono); text-transform: uppercase; }
+.math-fact code { font: 500 16px/1.5 var(--mono); }
+.math-fact span { grid-column: 2; color: var(--muted); font-size: 13px; }
+.normalization-demo { display: grid; grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr); align-items: stretch; margin: 32px 0; border: 1px solid var(--line); }
+.normalization-demo > div:not(.normalization-action) { padding: 20px; background: var(--paper-deep); }
+.normalization-demo span, .hidden-bit-demo span { display: block; margin-bottom: 13px; color: var(--muted); font: 500 9px/1.4 var(--mono); text-transform: uppercase; }
+.normalization-demo code { display: block; margin: 8px 0; font: 500 18px/1.5 var(--mono); }
+.normalization-demo code b { color: var(--red); }
+.normalization-action { display: grid; place-content: center; padding: 15px; text-align: center; }
+.normalization-action span { max-width: 120px; margin: 0; }
+.normalization-action b { color: var(--red); font: 400 32px var(--serif); }
+.hidden-bit-demo { margin: 35px 0; border: 1px solid var(--line); background: var(--paper-deep); }
+.hidden-bit-demo > div { padding: 18px 20px; }
+.hidden-bit-demo code { display: block; font: 500 13px/1.65 var(--mono); overflow-wrap: anywhere; }
+.hidden-bit-demo code b { display: inline-block; margin-right: 3px; padding: 4px 8px; background: #ffc9c1; color: var(--ink); }
+.hidden-bit-demo code i { padding: 4px 8px; background: #e5f5a8; font-style: normal; }
+.hidden-bit-note { display: flex; align-items: baseline; gap: 18px; border-block: 1px solid var(--line); background: var(--paper); }
+.hidden-bit-note b { color: var(--red); font: 500 11px var(--mono); text-transform: uppercase; }
+.hidden-bit-note span { margin: 0; }
+.stored-bits code { padding: 4px 8px; background: #e5f5a8; }
+.representation-facts { display: grid; grid-template-columns: 1fr 1fr; margin: 30px 0; border: 1px solid var(--line); }
+.representation-facts p { margin: 0; padding: 20px; }
+.representation-facts p + p { border-left: 1px solid var(--line); }
+.representation-facts strong, .representation-facts code, .representation-facts span { display: block; }
+.representation-facts strong { margin-bottom: 15px; font: 500 10px var(--mono); text-transform: uppercase; }
+.representation-facts code { margin-bottom: 12px; font: 500 14px/1.6 var(--mono); }
+.representation-facts span { color: var(--muted); font-size: 13px; }
 .implementation-ledger { margin: 35px 0; border-top: 1px solid var(--ink); }
 .implementation-ledger p { display: grid; grid-template-columns: 170px 1fr; gap: 25px; margin: 0; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .implementation-ledger strong { font: 500 10px/1.5 var(--mono); text-transform: uppercase; }
@@ -310,6 +338,13 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .chapter-hero { padding-inline: 20px; }
   .chapter-layout { display: block; padding: 70px 20px; }
   .chapter-toc { position: static; margin-bottom: 70px; }
+  .math-fact { display: block; }
+  .math-fact code, .math-fact span { display: block; margin-top: 10px; }
+  .normalization-demo { grid-template-columns: 1fr; }
+  .normalization-action { min-height: 100px; }
+  .normalization-action b { transform: rotate(90deg); }
+  .representation-facts { grid-template-columns: 1fr; }
+  .representation-facts p + p { border-top: 1px solid var(--line); border-left: 0; }
   .pseudo li { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .trace-stage { grid-template-columns: 1fr; }
   .trace-visual { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.16); }

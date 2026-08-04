@@ -25,9 +25,9 @@
           <p class="eyebrow">1.1 · Scope and model</p>
           <h2>A format for values, and rules for operations</h2>
           <p class="lead">IEEE 754 defines floating-point formats and the behavior of operations on them. This site uses its 64-bit binary format, binary64—the format ordinarily meant by an IEEE <code>double</code>.</p>
-          <p>Binary64 does not store an arbitrary real number. Its 64 bits select one member of a finite set: finite numbers, two signed zeros, two infinities, and NaNs. A finite nonzero value can always be written in the form</p>
-          <div class="equation">v = (−1)<sup>s</sup> · c · 2<sup>q</sup>,</div>
-          <p>where <em>s</em> is the sign bit, <em>c</em> is an integer significand, and <em>q</em> is an integer exponent. This form is exact. Approximation arises when a source number is not in the binary64 set, or when the exact result of an operation is not representable and must be rounded to one of the available values.</p>
+          <p>Binary64 does not store an arbitrary real number. Its 64 bits select one member of a finite set: finite numbers, two signed zeros, two infinities, and NaNs. For the conversion algorithms, the useful way to decode a finite nonzero value is as a sign, an integer, and a binary shift. The integer supplies the significant bits; the shift says where their binary point belongs.</p>
+          <div class="math-fact"><strong>Exact finite-value model</strong><code>v = (−1)<sup>s</sup> × c × 2<sup>q</sup></code><span><em>s</em> is the sign bit, <em>c</em> an integer significand, and <em>q</em> an integer exponent.</span></div>
+          <p>This decoded form is exact. Approximation arises when a source number is not in the binary64 set, or when the exact result of an operation is not representable and must be rounded to one of the available values.</p>
           <div class="aside"><p><strong>Language qualification.</strong> IEEE 754 names the format <em>binary64</em>. C, C++, Java, JavaScript, and many other environments commonly expose it as <code>double</code> or <code>Number</code>, but language and ABI rules determine the precise type mapping.</p></div>
         </section>
 
@@ -51,14 +51,38 @@
 
         <section id="normal">
           <p class="eyebrow">1.3 · Normal finite values</p>
-          <h2>The stored fraction has an implicit leading one</h2>
-          <p>For a normal value, let <em>E</em> be the unsigned integer in the exponent field and <em>F</em> the unsigned integer in the 52-bit fraction field. The exponent uses a bias of 1023. The mathematical value is</p>
-          <div class="equation">v = (−1)<sup>s</sup> · (1 + F / 2<sup>52</sup>) · 2<sup>E−1023</sup>.</div>
-          <p>The leading 1 is not stored because every normal binary significand has one. Multiplying the parenthesis by 2<sup>52</sup> gives the integer form used by the algorithms presented here:</p>
-          <div class="equation">v = (−1)<sup>s</sup> · (2<sup>52</sup> + F) · 2<sup>E−1023−52</sup>.</div>
-          <p>For binary64(<code>0.3</code>), the stored exponent is 1021, hence the unbiased exponent is −2. Decoding all fields produces the exact integer form</p>
-          <div class="equation">5,404,319,552,844,595 · 2<sup>−54</sup>,</div>
-          <p>which is exactly 0.299999999999999988897769753748434595763683319091796875. The source decimal and stored binary value are close, but they are different rational numbers.</p>
+          <h2>One guaranteed bit buys one extra bit of precision</h2>
+          <p>Before deciding what to store, put every nonzero binary value into scientific notation. Move the binary point until exactly one digit remains to its left. That digit cannot be 0—otherwise the number would still begin with zeros—so it is always 1.</p>
+          <div class="normalization-demo" aria-label="Two binary values normalized so that their leading digit is one">
+            <div><span>Before normalization</span><code>101.101<sub>2</sub></code><code>0.001101<sub>2</sub></code></div>
+            <div class="normalization-action"><span>move the point; compensate with the exponent</span><b>→</b></div>
+            <div><span>Normalized</span><code><b>1</b>.01101<sub>2</sub> × 2<sup>2</sup></code><code><b>1</b>.101<sub>2</sub> × 2<sup>−3</sup></code></div>
+          </div>
+          <p>Normal binary64 values use exactly this normalized form. Because the first significand bit is known in advance, writing it into every value would waste a storage bit. Binary64 stores only the 52 bits after the point and restores the leading 1 while decoding. Read as an integer, every normal significand therefore has exactly 53 binary digits and its first digit is always 1. The omitted leading digit is the extra precision bit.</p>
+          <div class="hidden-bit-demo" aria-label="The guaranteed leading one is omitted while the following 52 bits are stored">
+            <div class="precision-bits"><span>53 precision bits used by the value</span><code><b>1</b><i>0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011</i></code></div>
+            <div class="hidden-bit-note"><b>known to be 1</b><span>do not store it</span></div>
+            <div class="stored-bits"><span>52 bits written in the fraction field</span><code>0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011</code></div>
+          </div>
+
+          <h3>Two significand conventions describe the same value</h3>
+          <p>There are two equally valid places to imagine the point. Coonen and many numerical descriptions use a fractional significand in [1, 2). Conversion implementations often use the same bits as a 53-bit integer. Nothing in the stored value changes: moving the point 52 binary places in the significand is exactly cancelled by subtracting 52 from the attached exponent.</p>
+          <p>A decimal analogue makes the equivalence visible without binary notation:</p>
+          <table class="representation-table">
+            <thead><tr><th>View</th><th>Significand</th><th>Scale</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>fractional significand</td><td><code>1.2345</code></td><td><code>× 10²</code></td><td><code>123.45</code></td></tr>
+              <tr><td>integer significand</td><td><code>12345</code></td><td><code>× 10⁻²</code></td><td><code>123.45</code></td></tr>
+            </tbody>
+          </table>
+          <p>The binary64 exponent field is the same in both readings. Let <em>E</em> be its unsigned integer and <em>F</em> the 52 stored fraction bits interpreted as an integer. The field bias 1023 first turns <em>E</em> into the exponent used by the fractional reading. The integer reading then moves the point 52 places and compensates with a further −52 in the exponent.</p>
+          <div class="representation-facts">
+            <p><strong>Fractional reading</strong><code>(1 + F / 2<sup>52</sup>) × 2<sup>E−1023</sup></code><span>The significand lies in [1, 2).</span></p>
+            <p><strong>Integer reading</strong><code>(2<sup>52</sup> + F) × 2<sup>E−1023−52</sup></code><span>The significand is a 53-bit integer.</span></p>
+          </div>
+          <p>For binary64(<code>0.3</code>), the exponent field contains 1021. The fractional convention therefore attaches 2<sup>−2</sup>. The integer convention uses the 53-bit significand 5404319552844595 and attaches 2<sup>−54</sup> instead. They denote the same exact value:</p>
+          <div class="math-fact"><strong>Integer reading of binary64(0.3)</strong><code>5404319552844595 × 2<sup>−54</sup></code><span>The −54 is the unbiased field exponent −2, adjusted by −52 because the significand is treated as an integer.</span></div>
+          <p>which is exactly <code>0.299999999999999988897769753748434595763683319091796875</code>. The source decimal and stored binary value are close, but they are different rational numbers.</p>
         </section>
 
         <section id="binades">
@@ -66,7 +90,7 @@
           <h2>Binary64 has 53 significant bits, not fixed decimal places</h2>
           <p>The implicit leading bit and 52 stored fraction bits give normal values 53 bits of precision. This is roughly 15.95 decimal digits: every decimal number with 15 significant digits can be recovered through binary64, while some binary64 values require 17 decimal digits for guaranteed recovery. These statements concern significant digits, not digits after the decimal point.</p>
           <p>For a fixed integer <em>e</em>, the positive normal values in [2<sup>e</sup>, 2<sup>e+1</sup>) have one exponent and constant spacing 2<sup>e−52</sup>. Such a region is called a <em>binade</em>. It contains 2<sup>52</sup> fraction-field choices.</p>
-          <div class="equation">one local step = one ulp = 2<sup>e−52</sup>.</div>
+          <div class="math-fact"><strong>Local spacing fact</strong><code>one local step = one ulp = 2<sup>e−52</sup></code><span>This holds throughout the normal binade [2<sup>e</sup>, 2<sup>e+1</sup>).</span></div>
           <div class="aside"><p><strong>One ulp is one local step.</strong> Near 1 on its upper side, consecutive values differ by 2<sup>−52</sup>. Moving the fraction field by one therefore moves the value by one ulp. “Half an ulp” means half the local gap; its absolute size changes when the exponent changes.</p></div>
           <p>The fixed number of significand bits gives approximately constant <em>relative</em> precision. Absolute precision is not constant: binary64 distinguishes much smaller differences near 1 than near 10<sup>300</sup>.</p>
         </section>
@@ -85,8 +109,8 @@
         <section id="subnormal">
           <p class="eyebrow">1.6 · Gradual underflow</p>
           <h2>Subnormal values continue the grid to zero</h2>
-          <p>If the exponent field is zero, the implicit leading one is absent. A positive subnormal with fraction-field integer <em>F</em> denotes</p>
-          <div class="equation">v = F · 2<sup>−1074</sup>, &nbsp;&nbsp; 1 ≤ F &lt; 2<sup>52</sup>.</div>
+          <p>If the exponent field is zero, the implicit leading one is absent. The stored 52-bit fraction is used directly as an integer. Each increment moves one minimum binary64 step, so positive subnormal values count upward from zero in multiples of 2<sup>−1074</sup>.</p>
+          <div class="math-fact"><strong>Subnormal decoding fact</strong><code>v = F × 2<sup>−1074</sup></code><span>For a positive nonzero subnormal, 1 ≤ <em>F</em> &lt; 2<sup>52</sup>.</span></div>
           <p>The smallest positive binary64 value is therefore 2<sup>−1074</sup>, approximately 4.94 × 10<sup>−324</sup>. The positive subnormals form a uniformly spaced continuation from zero. Their spacing remains 2<sup>−1074</sup> through the transition to the smallest normal value, 2<sup>−1022</sup>.</p>
           <figure class="chapter-figure">
             <canvas id="subnormal-canvas" width="1000" height="340" role="img" aria-label="Zero and the first six positive subnormal binary64 values at uniform spacing of two to the minus 1074."></canvas>
