@@ -62,7 +62,7 @@ export class Binary64Fields extends HTMLElement {
       <div class="bit-fields" role="img" aria-label="Binary64 fields: sign ${sign}; exponent ${exponent}; fraction ${fraction}">
         <div class="bit-field bit-field-sign"><span>Sign · 1 bit</span><code>${sign}</code><small>${sign === "1" ? "negative" : "positive"}</small></div>
         <div class="bit-field bit-field-exponent"><span>Exponent · 11 bits</span><code>${groupBits(exponent)}</code><small>${exponentMeaning}</small></div>
-        <div class="bit-field bit-field-fraction"><span>Fraction · 52 stored bits</span><code class="bit-lines"><i>${groupBits(fraction.slice(0, 26))}</i><i>${groupBits(fraction.slice(26))}</i></code><small>${fractionMeaning}</small></div>
+        <div class="bit-field bit-field-fraction"><span>Fraction · 52 stored bits</span><code class="bit-lines"><i>${groupBits(fraction.slice(0, 28))}</i><i>${groupBits(fraction.slice(28))}</i></code><small>${fractionMeaning}</small></div>
       </div>
       <p class="bit-fields-hex"><span>Hexadecimal</span><code>${hex.slice(0, 3)} | ${hex.slice(3)}</code><small>The exponent/fraction boundary aligns after three hex digits; the sign/exponent boundary lies inside the first digit.</small></p>`;
     const input = this.querySelector(".bit-fields-input");
