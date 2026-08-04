@@ -162,8 +162,8 @@
         </article>
         <article class="era" data-era="2016">
           <div class="era-year">2016</div>
-          <div class="era-copy"><p class="eyebrow">Andrysco, Jhala &amp; Lerner · Errol</p><h3>More precision, almost no exceptions</h3><p>Errol uses double-double arithmetic and a refined error analysis. Errol3 handles the remaining exceptional inputs explicitly, eliminating Grisu’s general bignum fallback while retaining an interval-based view.</p></div>
-          <div class="algorithm-sketch precision-sketch" aria-hidden="true"><span>53 bits</span><span>+ 53 bits</span><b>45 listed cases</b></div>
+          <div class="era-copy"><p class="eyebrow">Andrysco, Jhala &amp; Lerner · Errol</p><h3>More precision, then explicit corrections</h3><p>Errol uses double-double arithmetic and a refined error analysis. Errol3 handles the remaining exceptional inputs with a generated bit-pattern table. The corrected paper reports 45 cases; the current public artifact contains 432, a discrepancy recorded in the chapter.</p><a href="./chapters/errol.html">Open the chapter</a></div>
+          <div class="algorithm-sketch precision-sketch" aria-hidden="true"><span>53 bits</span><span>+ 53 bits</span><b>generated corrections</b></div>
         </article>
         <article class="era" data-era="2018">
           <div class="era-year">2018</div>
@@ -191,6 +191,7 @@
         <article><p class="status new">New proof, new primitive</p><h3>Unrounded scaling</h3><p>Russ Cox’s 2026 construction uses a carry and sticky bit around a fast scaling primitive. The compact Go implementation covers printing and parsing; its proof is machine-checked in Ivy.</p></article>
         <article><p class="status experimental">Experimental</p><h3>Tejú Jaguá &amp; xjb</h3><p>Both report striking speed. Tejú’s reference repository still labels the core partial and its academic proof forthcoming; xjb is a 2026 preprint. They belong on the watchlist, not yet in the same evidence tier.</p></article>
       </div>
+      <div class="section-body"><p><a href="./chapters/frontier.html">Open the pinned frontier evidence review</a></p></div>
     </section>
 
     <section class="sources section-grid" id="sources" aria-labelledby="sources-title">

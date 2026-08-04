@@ -1,1 +1,137 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="dragonbox"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A detailed executable account of Dragonbox: Schubfach geometry, large and small divisors, shorter intervals, parity tests, and policy-based output.">
+  <title>Dragonbox: organize the Schubfach cases · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/dragonbox.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part III · Fixed-width conversion</p>
+      <h1>Dragonbox: organize the Schubfach cases</h1>
+      <p class="chapter-deck">Dragonbox keeps Schubfach’s bounded candidate set, but arranges the arithmetic around one multiplier window and two constant divisors. A large divisor attempts the shorter result; a smaller divisor reuses the remainder when refinement is necessary. Separate policies define what the core conversion should return.</p>
+      <div class="chapter-meta"><span>Chapter 9</span><span>2020–2024</span><span>Fixed width</span><span>Policy interface</span><span>Executable exact policy model</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 9</strong><a href="#inheritance">What is inherited</a><a href="#window">Multiplier window</a><a href="#divisors">Two divisors</a><a href="#large">Large path</a><a href="#small">Small path</a><a href="#shorter">Shorter interval</a><a href="#policies">Policies</a><a href="#traces">Executions</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
+      <article class="chapter">
+        <section id="inheritance">
+          <p class="eyebrow">9.1 · Relation to Schubfach</p>
+          <h2>The candidate theorem remains the foundation</h2>
+          <p class="lead">Dragonbox is not a new output specification and it does not replace the rounding interval. It is an implementation strategy for selecting the Schubfach candidates with fewer expensive operations on common machine architectures.</p>
+          <p>The previous chapter established that only the two decimals bracketing the value on each of two adjacent grids need be considered. The coarser grid contains at most one admissible candidate. If it contains none, at least one candidate on the finer grid is admissible. Dragonbox begins from precisely these conclusions.</p>
+          <p>Its main change is arithmetic scheduling. A straightforward Schubfach implementation computes rounded representations of the scaled lower boundary, center, and upper boundary. Dragonbox instead centers the calculation on the scaled right endpoint and the scaled interval width. Subtractions and parity queries recover the facts required about the remaining points. This reduces the number of wide multiplications, though it introduces carefully structured branches.</p>
+        </section>
+
+        <section id="window">
+          <p class="eyebrow">9.2 · One cached multiplier</p>
+          <h2>Choose a scale that exposes several decimal digits at once</h2>
+          <p>For binary64, Dragonbox uses κ=2. The selected cached power and binary shift place the scaled right endpoint in an integer range where division by 10<sup>κ+1</sup>=1000 tests a coarse candidate and division by 10<sup>κ</sup>=100 refines it by one digit. The exact exponent formulas ensure that the interval width lies in the corresponding bounded range.</p>
+          <p>The cached entry is a 128-bit approximation to a power of ten. Multiplying it by a roughly 54-bit guarded significand produces a wide result. The algorithm retains an integer part, a parity fact from the discarded portion, and an exactness bit. These are sufficient for all later endpoint and tie decisions.</p>
+          <p>As in Schubfach, making a product bit odd when discarded bits are nonzero preserves threshold comparisons. Dragonbox packages these operations as format-specific multiplication traits. The binary32 specialization needs a 64-bit cache entry; binary64 uses a two-word entry and a wider partial product.</p>
+        </section>
+
+        <section id="divisors">
+          <p class="eyebrow">9.3 · Candidate lengths</p>
+          <h2>Try 1000 first; retain the remainder for 100</h2>
+          <p>Let <em>z</em><sub>i</sub> be the retained integer portion of the scaled right endpoint and Δ<sub>i</sub> the correspondingly scaled interval width. Division by 1000 gives a tentative coarse significand <em>q</em> and remainder <em>r</em>:</p>
+          <div class="equation">z<sub>i</sub> = 1000q + r, &nbsp; 0 ≤ r &lt; 1000.</div>
+          <p>The remainder says where the right endpoint lies relative to the candidate cell. Comparing <em>r</em> with Δ<sub>i</sub> determines whether the candidate is to the right of the lower boundary. Equality requires a fractional parity query because the retained integer parts alone cannot distinguish exact contact from a point infinitesimally outside.</p>
+          <p>If the coarse test fails, Dragonbox does not recompute the cached product. It multiplies <em>q</em> by ten and derives the fine digit from a transformed version of the same remainder. This reuse is the principal operational distinction displayed in the traces below.</p>
+        </section>
+
+        <section id="large">
+          <p class="eyebrow">9.4 · Step 2 in the reference implementation</p>
+          <h2>The large divisor asks whether the shorter candidate survives</h2>
+          <p>When <em>r</em>&lt;Δ<sub>i</sub>, the coarse candidate is normally inside the interval. A special check excludes the right endpoint when the selected binary significand is odd and the cached product proves exact contact. When <em>r</em>&gt;Δ<sub>i</sub>, the candidate is outside. Equality invokes a multiplication-parity computation for the opposite boundary.</p>
+          <p>On success, the decimal pair is already determined. Optional trailing zeros can be removed from the significand while the decimal exponent is increased by the same amount. This normalization changes neither the represented decimal nor its significant-digit length.</p>
+          <p>The implementation uses compile-time division routines specialized for a known divisor and bounded numerator. On targets without a fast integer division instruction, the compiler can replace division by 1000 with multiplication by a reciprocal and a shift. The correctness argument remains ordinary Euclidean quotient and remainder.</p>
+        </section>
+
+        <section id="small">
+          <p class="eyebrow">9.5 · Step 3 in the reference implementation</p>
+          <h2>The small divisor locates the closest fine candidate</h2>
+          <p>After a coarse failure, the answer must come from the fine grid. Dragonbox forms a distance-like integer from <em>r</em>, half of Δ<sub>i</sub>, and half of the small divisor. Dividing this quantity by 100 supplies the next significand digit. The quotient is added to ten times the failed coarse significand.</p>
+          <p>Most values need no further work. When the distance integer is exactly divisible by 100, the discarded fraction may represent a genuine halfway point. A parity computation on the scaled center distinguishes the two neighboring positions. If the center is exact and the tentative decimal significand is odd, decrementing produces the even candidate required by the closest-shortest contract.</p>
+          <p>This branch is dense in the C++ source because division, remainder reuse, exactness, product parity, and tie policy meet in a few lines. Read in geometric order, it says something simpler: locate the center within the fine decimal cell, choose the nearer endpoint, and ask for parity only when the location is exactly halfway.</p>
+        </section>
+
+        <section id="shorter">
+          <p class="eyebrow">9.6 · Powers of two</p>
+          <h2>Give asymmetric intervals their own path</h2>
+          <p>At a normal power of two, the predecessor spacing is half the successor spacing. The parsing interval extends one quarter of the upper spacing to the left and one half to the right. Dragonbox detects this from a zero fraction field and enters a separate shorter-interval procedure.</p>
+          <p>This procedure computes scaled left and right endpoints directly. It first attempts division by ten; if that candidate lies to the right of the left endpoint, the result can be returned after removing trailing zeros. Otherwise it computes the rounded center candidate and adjusts it for an excluded endpoint or an exact tie.</p>
+          <p>Separating this case is not a conceptual requirement—Schubfach can express both geometries uniformly—but it simplifies and shortens the common regular path. Subnormals use regular spacing. The smallest normal value deserves care because it has a zero fraction field but its predecessor is a subnormal at regular spacing; the maintained simple implementation documents why sending it through the nominal shorter path nevertheless selects the same closest shortest result.</p>
+        </section>
+
+        <section id="policies">
+          <p class="eyebrow">9.7 · What <code>to_decimal</code> returns</p>
+          <h2>Conversion policy is separate from character formatting</h2>
+          <p>The core Dragonbox interface returns a decimal significand and exponent. A separate <code>to_chars</code> layer emits digits, places a decimal point, and selects fixed or scientific notation. This boundary makes several policies explicit:</p>
+          <table>
+            <thead><tr><th>Policy family</th><th>Examples</th><th>Effect</th></tr></thead>
+            <tbody>
+              <tr><td>sign</td><td>ignore, return sign</td><td>Whether the decimal record includes the original sign.</td></tr>
+              <tr><td>trailing zero</td><td>remove, report, ignore</td><td>Spend arithmetic now, expose a flag, or leave normalization to the caller.</td></tr>
+              <tr><td>decimal tie</td><td>to even, to odd, toward or away from zero</td><td>Which equally close decimal significand is selected.</td></tr>
+              <tr><td>binary interval</td><td>nearest variants, directed variants</td><td>Which parser preimage interval is modeled.</td></tr>
+              <tr><td>cache</td><td>full, compact</td><td>Direct table lookup or reconstruction from a smaller table.</td></tr>
+            </tbody>
+          </table>
+          <p>For this book’s default contract, the binary interval is round-to-nearest ties-to-even, the closest decimal tie is resolved to even, trailing zeros are removed, and the sign is returned. Other policies are useful library engineering, but they must not be confused with the default shortest-round-trip specification used to compare algorithms.</p>
+        </section>
+
+        <section id="traces">
+          <p class="eyebrow">9.8 · Executable branch model</p>
+          <h2>The large divisor succeeds for binary64(0.3)</h2>
+          <p>The trace executes the exact Schubfach candidate model and presents the corresponding Dragonbox branch and policy state. It does not pretend that BigInt arithmetic is the optimized 128-bit cached product; the multiplier replacement is isolated in the preceding sections.</p>
+          <ol class="pseudo" id="dragonbox-code">
+            <li data-line="1">classify regular or shorter interval</li>
+            <li data-line="2">load a cache entry and compute the multiplier window and scaled width</li>
+            <li data-line="3">try the 10^(κ+1) large divisor</li>
+            <li data-line="4">after failure, reuse the remainder with the 10^κ small divisor</li>
+            <li data-line="5">apply sign, trailing-zero, tie, and cache policies; return the decimal pair</li>
+          </ol>
+          <trace-player class="trace-player" data-title="Dragonbox branch model · input binary64(0.3)" data-code="#dragonbox-code"><script id="dragonbox-big-data" type="application/json">[]</script></trace-player>
+
+          <h2>The small divisor is required for nextUp(1)</h2>
+          <p>The successor of 1 has no admissible coarse candidate. The fine path reuses the retained remainder and returns 1.0000000000000002.</p>
+          <trace-player class="trace-player" data-title="Dragonbox branch model · input nextUp(1)" data-code="#dragonbox-code"><script id="dragonbox-small-data" type="application/json">[]</script></trace-player>
+
+          <h2>An exact power of two enters the shorter-interval path</h2>
+          <p>For 2, the left side of the parsing interval is visibly shorter. The selected result is still the one-digit decimal 2, but the endpoint arithmetic that certifies it differs from the regular case.</p>
+          <trace-player class="trace-player" data-title="Dragonbox branch model · input binary64(2)" data-code="#dragonbox-code"><script id="dragonbox-short-data" type="application/json">[]</script></trace-player>
+        </section>
+
+        <section id="proof">
+          <p class="eyebrow">9.9 · Correctness structure</p>
+          <h2>Each optimized branch refines one Schubfach decision</h2>
+          <p>The candidate-set theorem is inherited from Schubfach. Dragonbox must then prove that its cached multiplication produces the required integer and parity facts; that the large-divisor inequalities are equivalent to coarse-candidate interval membership; that the small-divisor distance calculation selects the same fine candidate as exact comparison; and that the shorter-interval procedure treats its asymmetric endpoints correctly.</p>
+          <p>Policies enlarge the proof surface. A cache policy must reconstruct an entry with the specified error direction. A trailing-zero policy may alter representation but not value. A rounding policy must supply endpoint inclusion and decimal tie rules consistently to every branch. Template composition is therefore not merely an interface convenience: invalid combinations must be rejected or assigned a precise contract.</p>
+          <p>The chapter follows Junekey Jeon’s <a href="https://github.com/jk-jeon/dragonbox/blob/master/other_files/Dragonbox.pdf">Dragonbox paper</a>, the maintained <a href="https://github.com/jk-jeon/dragonbox">reference repository</a>, and especially its smaller pedagogical implementation. The main header is optimized and policy-rich; the simple subproject makes the large-divisor, small-divisor, and shorter-interval control flow easier to audit.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">9.10 · Evidence and implementation status</p>
+          <h2>The candidate and policy decisions are executable</h2>
+          <div class="implementation-ledger">
+            <p><strong>Implemented in the browser</strong><span>Exact Schubfach candidate selection; regular versus shorter-interval classification; large versus small divisor path; sign policy; trailing-zero remove, report, and ignore policies; full versus compact cache metadata; decimal-pair output and synchronized traces.</span></p>
+            <p><strong>Scope of the model</strong><span>The executable model deliberately reuses the exact Schubfach skeleton because Dragonbox is based on that theorem. It exposes Dragonbox control and policy decisions, but does not substitute BigInt for a claimed line-by-line port of the wide-product implementation.</span></p>
+            <p><strong>Corpus evidence</strong><span>Both divisor paths, the shorter-interval path, policy behavior, hard transitions, and 10,000 deterministic binary64 patterns agree with the independent oracle under the default contract.</span></p>
+            <p><strong>Still to pin</strong><span>A direct JavaScript port of the simple implementation’s cached multiplication and parity traits; differential execution against a fixed native <code>to_decimal</code>; measured full and compressed cache footprints under identical compiler and linker settings.</span></p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./schubfach.html"><span>Previous</span><strong>Schubfach</strong></a><a href="./frontier.html"><span>Next</span><strong>Frontier →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · executable Dragonbox chapter</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

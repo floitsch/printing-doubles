@@ -1,1 +1,136 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="schubfach"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="An executable explanation of Schubfach: interval width, two decimal grids, local candidates, round-to-odd estimates, and fixed-width powers of ten.">
+  <title>Schubfach: only the neighboring candidates matter · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/schubfach.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part III · Fixed-width conversion</p>
+      <h1>Schubfach: only the neighboring candidates matter</h1>
+      <p class="chapter-deck">Schubfach chooses a decimal spacing from the width of the parsing interval. A spacing of that size cannot miss the interval; the next coarser spacing cannot hit it twice. This confines the complete shortest search to the decimals immediately below and above the value on two adjacent grids.</p>
+      <div class="chapter-meta"><span>Chapter 8</span><span>2017–2021</span><span>Non-iterative selection</span><span>Round-to-odd estimates</span><span>Executable exact skeleton</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 8</strong><a href="#principle">Drawer principle</a><a href="#scale">Choose k</a><a href="#candidates">Four candidates</a><a href="#selection">Selection</a><a href="#integer">Integer rewriting</a><a href="#odd">Round to odd</a><a href="#cache">Power table</a><a href="#traces">Executions</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
+      <article class="chapter">
+        <section id="principle">
+          <p class="eyebrow">8.1 · The geometric lemma</p>
+          <h2>A fine grid cannot miss; a coarse grid cannot hit twice</h2>
+          <p class="lead">The name <em>Schubfach</em> refers to the pigeonhole or drawer principle. Its role is concrete: compare the spacing between adjacent decimals with the width of the parsing interval.</p>
+          <p>Fix a decimal exponent <em>i</em>. The corresponding grid consists of all integers multiplied by 10<sup><em>i</em></sup>. Adjacent grid points are exactly 10<sup><em>i</em></sup> apart. Let the parsing interval have width <em>W</em>, and choose the unique integer <em>k</em> for which</p>
+          <div class="equation">10<sup>k</sup> ≤ W &lt; 10<sup>k+1</sup>.</div>
+          <p>The 10<sup><em>k</em></sup> grid is no wider than the interval. Irrespective of alignment, at least one of its ticks must lie inside. The 10<sup><em>k+1</em></sup> grid is wider than the interval, so it can contribute at most one tick. These two statements replace an open-ended search with a bounded local inspection.</p>
+          <p>Decimals on still finer grids cannot be shorter than the useful candidates already found at <em>k</em>. Decimals on still coarser grids are represented among the points of the <em>k</em>+1 grid: multiplying their coefficient by a power of ten places them on that grid without changing the real value. Thus, for the optimal shortest representation, two adjacent grids suffice.</p>
+        </section>
+
+        <section id="scale">
+          <p class="eyebrow">8.2 · Determine the grids</p>
+          <h2>The interval width, not the value’s magnitude, chooses k</h2>
+          <p>For ordinary binary64 values, the parsing interval width equals one unit in the last place. At an exact power of two the lower neighbor is closer, and the total interval width becomes three quarters of the ordinary spacing. Schubfach therefore computes one of two logarithms:</p>
+          <div class="equation">k = ⌊log₁₀(2<sup>q</sup>)⌋ &nbsp; or &nbsp; k = ⌊log₁₀((3/4)·2<sup>q</sup>)⌋.</div>
+          <p>The optimized calculation does not call a logarithm function. Over the complete binary64 exponent range, multiplication by a fixed integer followed by a right shift gives the exact floor. The constants are chosen offline and their safe exponent ranges are proved. This is another recurring pattern: an irrational logarithm is used to derive the formula, but the runtime program executes an integer identity valid on a finite domain.</p>
+          <p>Notice the contrast with Ryū. Ryū’s initial scale leaves enough decimal digits and then removes them. Schubfach’s <em>k</em> already identifies the two relevant spacings from the interval width; the selection procedure has no digit-removal loop.</p>
+        </section>
+
+        <section id="candidates">
+          <p class="eyebrow">8.3 · Bracket the value</p>
+          <h2>Two neighbors on each of two grids</h2>
+          <p>Scale the selected value by 10<sup>−<em>k</em></sup> and take its floor:</p>
+          <div class="equation">s = ⌊v · 10<sup>−k</sup>⌋.</div>
+          <p>The fine-grid candidates are <em>u</em> = <em>s</em>·10<sup><em>k</em></sup> and <em>w</em> = (<em>s</em>+1)·10<sup><em>k</em></sup>. They bracket <em>v</em>, and at least one is in the parsing interval. No other point on this grid can be closer.</p>
+          <p>Repeat the bracket at exponent <em>k</em>+1. Call the two points <em>u′</em> and <em>w′</em>. Because this grid spacing is wider than the interval, at most one is admissible. If either one lies inside, it supplies a shorter decimal and is returned immediately. Otherwise the answer is one of <em>u</em> and <em>w</em>.</p>
+          <table>
+            <thead><tr><th>Grid</th><th>Guaranteed fact</th><th>Decision</th></tr></thead>
+            <tbody>
+              <tr><td>10<sup>k+1</sup></td><td>At most one admissible point.</td><td>If present, return it: it is shorter.</td></tr>
+              <tr><td>10<sup>k</sup></td><td>At least one admissible point.</td><td>If needed, choose the admissible point closest to the value.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="selection">
+          <p class="eyebrow">8.4 · The exact skeleton</p>
+          <h2>Membership first, distance second</h2>
+          <p>The coarse candidates are tested first because length takes precedence over distance. A coarse decimal may be farther from the exact binary value than a fine decimal and must still win: the output contract first minimizes the number of significant digits.</p>
+          <p>If no coarse candidate is admissible, inspect the two fine candidates. If only one lies inside the parsing interval, it wins without a distance calculation. If both lie inside, compare <em>v</em>−<em>u</em> with <em>w</em>−<em>v</em>. Equality is a decimal selection tie and is resolved toward the candidate whose integer significand is even.</p>
+          <ol class="pseudo" id="schubfach-code">
+            <li data-line="1">compute k = floor(log10(width of the parsing interval))</li>
+            <li data-line="2">form the two candidates bracketing v on the 10^k grid</li>
+            <li data-line="3">form the two candidates on the 10^(k+1) grid; return its admissible point if present</li>
+            <li data-line="4">otherwise select the admissible 10^k candidate closest to v</li>
+          </ol>
+          <p>This chapter implements that pseudocode directly with exact rationals. The rest of the algorithm explains how Schubfach obtains identical membership and distance comparisons with bounded arithmetic.</p>
+        </section>
+
+        <section id="integer">
+          <p class="eyebrow">8.5 · Remove rational comparisons</p>
+          <h2>Scale the center and endpoints into one local coordinate system</h2>
+          <p>Define <em>V</em> = <em>v</em>·10<sup>−<em>k</em></sup> and similarly scaled lower and upper endpoints <em>V</em><sub>ℓ</sub> and <em>V</em><sub>r</sub>. The fine candidate integers are <em>s</em> and <em>t</em>=<em>s</em>+1. Membership of the lower candidate reduces to comparing <em>V</em><sub>ℓ</sub> with <em>s</em>; membership of the upper reduces to comparing <em>t</em> with <em>V</em><sub>r</sub>. The other side of each interval comparison is already known because the candidates bracket the center.</p>
+          <p>Distance also becomes local:</p>
+          <div class="equation">v−u compared with w−v &nbsp; is equivalent to &nbsp; 2V compared with s+t.</div>
+          <p>The same integers serve the coarse-grid tests: the coarse significand is the decimal quotient of <em>s</em>, and multiplication by ten puts it back into the fine coordinate system. Consequently, after scaling, every branch is an inequality between small integers—provided that sufficiently accurate integer representatives of <em>V</em><sub>ℓ</sub>, <em>V</em>, and <em>V</em><sub>r</sub> can be computed.</p>
+        </section>
+
+        <section id="odd">
+          <p class="eyebrow">8.6 · Preserve inequalities</p>
+          <h2>Round to odd records whether discarded information was zero</h2>
+          <p>Ordinary rounding may move an approximation across an integer threshold and reverse a comparison. Schubfach uses a different projection. An exact even integer is retained. Every non-even value between two adjacent even integers is represented by the odd integer between them. In compact form, the retained integer is made odd whenever discarded bits are nonzero.</p>
+          <div class="equation">ro(x) = x when x is even; otherwise ro(x) is the odd integer between its adjacent even integers.</div>
+          <p>This construction preserves comparisons with even thresholds: <em>x</em> is below, equal to, or above 2<em>h</em> exactly when <code>ro(x)</code> is. Schubfach multiplies its membership inequalities by four and its distance inequality by two so that every threshold to be tested is even. The rounded representatives can then replace the exact rationals without changing a branch outcome.</p>
+          <p>The high-performance variant actually uses a carefully modified “almost round-to-odd” on a slight overestimate. A separation theorem establishes that the exact scaled values never lie dangerously close to an integer except when they are integers. The overestimate is accurate enough to distinguish these cases, and one sticky bit records whether the discarded product portion was nonzero.</p>
+          <div class="aside"><p><strong>Why the odd bit matters.</strong> It is not the final decimal tie-breaking rule. It is an internal encoding of exactness: even means that the discarded fraction was proved zero; odd means that some discarded information exists. Final closest-candidate ties are still resolved according to the requested output policy.</p></div>
+        </section>
+
+        <section id="cache">
+          <p class="eyebrow">8.7 · Limited-precision scaling</p>
+          <h2>Use a proved overestimate of 10<sup>−k</sup></h2>
+          <p>The paper normalizes each required decimal power to a 126-bit integer <em>g</em> and a binary exponent. The integer is rounded upward, making <em>g</em> times its power of two a known overestimate of 10<sup>−<em>k</em></sup>. Multiplication by the guarded binary numerators yields corresponding overestimates of the scaled lower endpoint, center, and upper endpoint.</p>
+          <p>For binary64, the error is bounded below half of 2<sup>−64</sup> in the relevant coordinate system. A theorem due to Dmitry Nadezhin supplies an exclusion zone around integer thresholds. Together, these facts prove that the modified round-to-odd values obtained from the 126-bit table are exactly the representatives that full-precision rational arithmetic would produce.</p>
+          <p>The original full table has one two-word entry for every required decimal exponent. Implementations may compress the table and reconstruct entries at runtime, trading a small amount of arithmetic for read-only data. That engineering choice is especially relevant to microcontrollers, but this project will report byte counts only after compiling pinned implementations under the same toolchain and options.</p>
+        </section>
+
+        <section id="traces">
+          <p class="eyebrow">8.8 · Executable selection</p>
+          <h2>A coarse candidate exists for binary64(0.3)</h2>
+          <p>The exact interval width selects the fine and coarse grids. The markers show only the two grid points bracketing the stored value; points farther away cannot win. Here the coarse grid contributes 0.3, so the algorithm returns it without comparing the fine candidates’ distances.</p>
+          <trace-player class="trace-player" data-title="Exact Schubfach skeleton · input binary64(0.3)" data-code="#schubfach-code"><script id="schubfach-coarse-data" type="application/json">[]</script></trace-player>
+
+          <h2>The coarse grid is empty for nextUp(1)</h2>
+          <p>The binary64 successor of 1 is 1.0000000000000002. Its shortest decimal requires all seventeen displayed digits. Neither coarse neighbor lies in the parsing interval, so the fine pair must be considered. Only the upper fine candidate is admissible.</p>
+          <trace-player class="trace-player" data-title="Exact Schubfach skeleton · input nextUp(1)" data-code="#schubfach-code"><script id="schubfach-fine-data" type="application/json">[]</script></trace-player>
+        </section>
+
+        <section id="proof">
+          <p class="eyebrow">8.9 · Correctness structure</p>
+          <h2>The bounded candidate set is a theorem, not a heuristic</h2>
+          <p>The interval-width argument proves completeness of the four-candidate set. Bracketing proves that only the lower and upper neighbor on a given grid can be closest. The coarse-grid uniqueness result proves that a coarse hit is unambiguous and shorter. When the coarse grid is empty, the fine-grid existence result guarantees that selection cannot fail.</p>
+          <p>The limited-precision implementation then establishes refinement: integer logarithm formulas produce the same <em>k</em>; cached powers produce overestimates within the stated bound; modified round-to-odd produces the same comparison representatives as exact scaling; and the rewritten integer comparisons choose the same candidate as the rational skeleton.</p>
+          <p>The primary source is Raffaello Giulietti’s <a href="https://fmt.dev/papers/Schubfach4.pdf">The Schubfach way to render doubles</a>, revision 2021-11-07. It first defines the exact non-iterative algorithm and only then derives the limited-precision program. This chapter deliberately follows that order.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">8.10 · Evidence and implementation status</p>
+          <h2>The non-iterative exact algorithm is executable</h2>
+          <div class="implementation-ledger">
+            <p><strong>Implemented in the browser</strong><span>Exact interval width; exact computation of k; fine and coarse decimal brackets; open and closed interval membership; coarse-first selection; exact distance comparison; decimal tie-to-even; formatting for the optimal shortest contract.</span></p>
+            <p><strong>Independent structure</strong><span>The implementation does not call the shortest-decimal oracle and does not remove digits. It follows the paper’s four-candidate skeleton, while sharing only rational arithmetic primitives with other chapters.</span></p>
+            <p><strong>Corpus evidence</strong><span>Named values, both candidate paths, ordinary and asymmetric spacing, smallest subnormals, the normal/subnormal boundary, binade transitions, both signs, and 10,000 deterministic binary64 patterns agree with the independent grid-search oracle.</span></p>
+            <p><strong>Still to pin</strong><span>A direct port of the paper’s 126-bit table and modified round-to-odd product; state-by-state native comparison; the Java-specific minimum-two-digit variant for tiny values; uniform microcontroller size measurements outside the site.</span></p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./ryu.html"><span>Previous</span><strong>Ryū</strong></a><a href="./dragonbox.html"><span>Next</span><strong>Dragonbox →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · executable Schubfach chapter</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

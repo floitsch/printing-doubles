@@ -1,1 +1,114 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="frontier"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="An evidence-separated review of the current floating-point printing frontier: Żmij, Tejú Jaguá, xjb, and fast unrounded scaling.">
+  <title>The current frontier: arithmetic is no longer the whole formatter · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part IV · Moving frontier</p>
+      <h1>The current frontier: arithmetic is no longer the whole formatter</h1>
+      <p class="chapter-deck">Recent implementations retain the interval geometry developed by Ryū and Schubfach, but reduce wide products, branches, divisions, table traffic, and digit-writing costs. Their evidence is uneven and changes quickly. This chapter pins sources and separates algorithms with published proofs from work-in-progress implementations and benchmark claims.</p>
+      <div class="chapter-meta"><span>Chapter 10</span><span>Snapshot 2026-08-04</span><span>Żmij</span><span>Tejú Jaguá</span><span>xjb</span><span>Unrounded scaling</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 10</strong><a href="#reading">How to read claims</a><a href="#zmij">Żmij</a><a href="#teju">Tejú Jaguá</a><a href="#xjb">xjb</a><a href="#uscale">Unrounded scaling</a><a href="#relations">Relations</a><a href="#memory">Memory questions</a><a href="#status">Evidence ledger</a></aside>
+      <article class="chapter">
+        <section id="reading">
+          <p class="eyebrow">10.1 · Evidence is part of the algorithm</p>
+          <h2>Correct output, fast arithmetic, and fast formatting are different claims</h2>
+          <p class="lead">At a few nanoseconds per conversion, benchmark conclusions are properties of a complete experiment: processor, compiler, flags, input distribution, cache state, API, and formatting rules.</p>
+          <p>The fixed-width chapters established a mathematical core: select the shortest closest decimal pair that lies in the parsing interval. A library must additionally decode special values, write digits, choose fixed or scientific notation, preserve or suppress a negative zero, and respect an API contract. Current work often gains as much from these surrounding steps as from candidate selection.</p>
+          <p>This chapter uses four evidence labels:</p>
+          <div class="implementation-ledger">
+            <p><strong>Proof</strong><span>A mathematical development or machine-checked argument connects bounded operations to an exact specification.</span></p>
+            <p><strong>Differential tests</strong><span>The implementation is compared with an independent converter over exhaustive smaller formats, structured hard cases, or large generated corpora.</span></p>
+            <p><strong>Implementation claim</strong><span>A repository documents a contract and contains tests, but the complete proof may be forthcoming or distributed through code comments and generators.</span></p>
+            <p><strong>Benchmark claim</strong><span>A measured result for named hardware and software. It is evidence for that configuration, not a timeless ordering.</span></p>
+          </div>
+        </section>
+
+        <section id="zmij">
+          <p class="eyebrow">10.2 · Żmij</p>
+          <h2>Fuse the Schubfach selection with digit production</h2>
+          <p>Żmij is a compact C and C++ formatter derived from Schubfach and influenced by yy, Dragonbox, and xjb. Its repository describes one multiplication by a cached decimal power in place of three, faster integer logarithm approximations, specialized division and remainder, fewer conditional branches, compact storage of powers, and scalar or SIMD digit emission.</p>
+          <p>The double path adopts xjb’s 10<sup>−k−1</sup> scaling, exposing the final decimal digit without an additional division on the critical path. The output stage uses binary-coded-decimal techniques and architecture-specific SIMD where available. This is an important change of emphasis: once candidate selection is tight, turning a 17-digit integer into bytes can dominate.</p>
+          <p>The repository claims shortest, correctly rounded round trips for binary32 and binary64 and carries boundary and differential tests. Its benchmark charts name the processor, operating system, compiler, and comparison suite. The magnitude of the reported advantage differs substantially between Apple M5 and AMD EPYC systems, which is itself useful evidence that there is no architecture-independent “fastest” ordering.</p>
+          <p><strong>Pinned source:</strong> <a href="https://github.com/vitaut/zmij">vitaut/zmij</a>, commit <code>8289609d8f9e6beea1f20d1a56d9f25e1d441359</code>, 2026-08-03. The snapshot includes C and C++ implementations and states that the codebase is still actively changing.</p>
+        </section>
+
+        <section id="teju">
+          <p class="eyebrow">10.3 · Tejú Jaguá</p>
+          <h2>Generate a conversion kernel from the floating-point format</h2>
+          <p>Tejú Jaguá separates the core selection from decoding and string assembly. Its C header accepts generated parameters describing a floating-point type and target integer capabilities. A C++ generator produces format-specific constants and wrappers. Checked-in configurations include binary16, bfloat16, binary32, binary64, x86 extended precision, and binary128, with variants for targets that do or do not provide a native 128-bit integer.</p>
+          <p>This parameterization is unusually relevant to embedded systems: it makes word-width assumptions and constant generation explicit. It also prevents an accidental equation of “works for double on x86-64” with “is a general format algorithm.”</p>
+          <p>The upstream README calls the work partial and work in progress. The core handles only finite, strictly positive inputs and returns a decimal pair; sign, zero, infinities, NaNs, and final string production are outside that function. It states that an academic proof paper will be written. The test build compares results with Dragonbox and Ryū and uses Boost multiprecision in its generator and test infrastructure, not in the runtime kernel.</p>
+          <p><strong>Pinned source:</strong> <a href="https://github.com/cassioneri/teju_jagua">cassioneri/teju_jagua</a>, commit <code>4403283bda3e7145d643496231f3c4b5509dd379</code>, 2025-11-16. Evidence tier here is implementation plus differential testing; this page does not promote the promised paper to an existing proof.</p>
+        </section>
+
+        <section id="xjb">
+          <p class="eyebrow">10.4 · xjb</p>
+          <h2>Compute the last digit directly from one scaled fraction</h2>
+          <p>xjb presents a Schubfach-derived selection in which <em>k</em> is chosen from the binary spacing, then the value is scaled by 10<sup>−k−1</sup>. The integer part supplies all but the last decimal digit. The fractional part is multiplied by ten and rounded to obtain the last digit; interval-width tests may replace it with 0 or 10 to obtain a shorter admissible neighbor.</p>
+          <p>This formulation makes the decisive alternatives visible in one coordinate system. Ordinary spacing uses symmetric half-width tests. An irregular power-of-two interval uses separate lower and upper distances. Endpoint equality consults the stored binary significand parity.</p>
+          <p>The repository provides scalar and SIMD float-to-string implementations, JSON-specific formatting, full and compressed tables, and comparison tests. It reports full/compact table data of 1,352/64 bytes for binary32 and 15,336/368 bytes for binary64. These are upstream source figures, not independently reproduced linked-image measurements.</p>
+          <p>The April 2026 preprint is explicitly not peer reviewed, and the repository says Algorithm 1 in the article contains a mistake and that the README and implementation should be followed instead. Big-endian support remains on the roadmap. These qualifications are material when assigning confidence.</p>
+          <p><strong>Pinned source:</strong> <a href="https://github.com/xjb714/xjb">xjb714/xjb</a>, commit <code>2e68f5cd81e8cd265339bd81c460fa6e3d1c2cfb</code>, 2026-07-29; <a href="https://www.preprints.org/manuscript/202511.1698">preprint version 2</a>.</p>
+        </section>
+
+        <section id="uscale">
+          <p class="eyebrow">10.5 · Fast unrounded scaling</p>
+          <h2>Return retained bits plus a sticky bit, not a rounded product</h2>
+          <p>Russ Cox’s unrounded-scaling work builds a shared primitive for fixed-width printing, shortest printing, and decimal parsing. An unrounded value retains the high result bits and one sticky bit saying whether any discarded bit was nonzero. This is the software analogue of information carried between stages of an IEEE 754 arithmetic pipeline.</p>
+          <p>To scale <em>x</em>·2<sup><em>e</em></sup> by 10<sup><em>p</em></sup>, the implementation uses a 128-bit cached multiplier and conceptually forms a 192-bit product. It need not calculate the lowest word. Two 64×64→128 multiplications provide the upper and middle words; the middle word and the low shifted bits of the high word determine the sticky bit.</p>
+          <p>The subtle point is proving that rounding the cached power upward cannot carry into the retained result unnoticed. For small powers, exact divisibility or separation from integer thresholds is sufficient. For large powers, an Ivy proof analyzes the table entries and shows that the relevant middle region cannot be the dangerous all-zero pattern. A companion proof document makes these finite-domain checks executable.</p>
+          <p>Shortest formatting then resembles an exact Grisu2: scale the center and interval information into a small unrounded type, produce a candidate, and trim zeros while retaining exactness information. There is no Grisu3 rejection because the scaling result itself is proved exact in the unrounded representation.</p>
+          <p><strong>Pinned materials:</strong> <a href="https://research.swtch.com/fp">Floating-Point Printing and Parsing Can Be Simple And Fast</a>, <a href="https://research.swtch.com/fp-proof">Fast Unrounded Scaling: Proof by Ivy</a>, and <a href="https://github.com/rsc/fpfmt">rsc/fpfmt</a> at commit <code>ec108cbb39e2cae8e1961d79ba34bd9cc8249f80</code>, 2026-02-27.</p>
+        </section>
+
+        <section id="relations">
+          <p class="eyebrow">10.6 · The frontier is converging</p>
+          <h2>The same interval facts are being scheduled differently</h2>
+          <table>
+            <thead><tr><th>Work</th><th>Selection lineage</th><th>Primary optimization focus</th><th>Current evidence caveat</th></tr></thead>
+            <tbody>
+              <tr><td>Żmij</td><td>Schubfach, yy, xjb, Dragonbox</td><td>One scale multiplication, branch reduction, digit output, SIMD.</td><td>Fast-moving implementation; performance is platform-specific.</td></tr>
+              <tr><td>Tejú Jaguá</td><td>Fixed-width candidate selection</td><td>Generated, format-parametric C kernels.</td><td>Upstream calls it partial; proof paper is forthcoming.</td></tr>
+              <tr><td>xjb</td><td>Schubfach</td><td>10<sup>−k−1</sup> scale, low dependency, SIMD BCD output, compact tables.</td><td>Preprint has a documented pseudocode error; big-endian incomplete.</td></tr>
+              <tr><td>Unrounded scaling</td><td>Grisu2/Schubfach synthesis</td><td>One exact high-bits-plus-sticky scaling primitive shared by print and parse.</td><td>Very recent proof and implementation; integration remains in motion.</td></tr>
+            </tbody>
+          </table>
+          <p>For understanding candidate geometry, the Ryū, Schubfach, and Dragonbox applets remain the appropriate instruments. The frontier algorithms do not introduce a new parsing interval; they change which scaled facts are computed, how many products produce them, and how quickly the resulting integer becomes characters.</p>
+        </section>
+
+        <section id="memory">
+          <p class="eyebrow">10.7 · Microcontroller research track</p>
+          <h2>Source table size is not linked firmware size</h2>
+          <p>Compact-cache modes can change read-only data by an order of magnitude, but a useful ESP32 comparison also needs generated instructions, helper routines for wide multiplication and division, relocation data, alignment, exception support, and which character-formatting paths the linker retains. SIMD code is irrelevant on many microcontrollers; a native 128-bit C type may expand into sizable compiler helpers.</p>
+          <p>The independent measurement suite will therefore compile identical APIs for the same target, compiler, flags, notation contract, and link-time optimization setting. It will report text, read-only data, writable data, stack high-water mark, and whether wide-arithmetic helpers were linked. Until those measurements exist, this site repeats only explicitly attributed upstream table figures and makes no recommendation for ESP32.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">10.8 · Evidence ledger</p>
+          <h2>This chapter is a pinned review, not four completed ports</h2>
+          <div class="implementation-ledger">
+            <p><strong>Verified for this snapshot</strong><span>Repository identity, exact revision and date, documented contract, implementation scope, published proof status, stated platform limitations, correction notices, and available test structure.</span></p>
+            <p><strong>Not independently reproduced yet</strong><span>Benchmark rankings, table and linked-image byte counts, exhaustive correctness claims, SIMD equivalence, big-endian behavior, or compiler-specific generated code.</span></p>
+            <p><strong>Executable context already available</strong><span>The Schubfach and Dragonbox chapters execute the shared candidate geometry; the Ryū chapter executes coarseward digit removal. A dedicated unrounded-scaling port should be added only with the table proof checks, not as an ornamental wrapper around the oracle.</span></p>
+            <p><strong>Refresh rule</strong><span>Because every pinned repository is active or recent, this evidence table must be re-audited before making comparative claims in a publication or choosing an embedded implementation.</span></p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./dragonbox.html"><span>Previous</span><strong>Dragonbox</strong></a><a href="./toothless.html"><span>Next</span><strong>Continued-fraction audit →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · frontier evidence snapshot, 2026-08-04</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

@@ -1,1 +1,131 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="errol"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A detailed executable presentation of Errol, double-double interval arithmetic, digit generation, and the enumerated exceptional set.">
+  <title>Errol: extend precision, enumerate the residue · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/errol.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
+      <h1>Errol: extend precision, enumerate the residue</h1>
+      <p class="chapter-deck">Errol represents each scaled quantity with two hardware doubles: a leading approximation and a small offset. This nearly doubles the working precision. Rather than retaining a runtime uncertainty test, Errol3 enumerates the inputs for which the unchecked arithmetic can fail and corrects them with a bit-pattern table.</p>
+      <div class="chapter-meta"><span>Chapter 6</span><span>POPL 2016</span><span>Double-double</span><span>Generated correction table</span><span>Executable idealized core</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 6</strong><a href="#family">Errol family</a><a href="#pair">Double-double</a><a href="#operations">Operations</a><a href="#interval">Narrow interval</a><a href="#digits">Digits</a><a href="#verification">Optimality</a><a href="#enumeration">Enumeration</a><a href="#traces">Executions</a><a href="#corrections">Artifact corrections</a><a href="#status">Implementation status</a></aside>
+      <article class="chapter">
+        <section id="family">
+          <p class="eyebrow">6.1 · From a checked fast path to a corrected total algorithm</p>
+          <h2>Three versions separate accuracy, verification, and enumeration</h2>
+          <p class="lead">Errol’s central experiment is to use native floating-point arithmetic at approximately twice binary64 precision, then account explicitly for the cases where that is still insufficient.</p>
+          <p>Errol1 constructs a conservative narrow interval with double-double arithmetic. Digit generation inside that interval is correct, but it may miss a shorter decimal in the thin part of the true parsing interval left uncovered by the conservative boundaries. A second, wider computation can determine whether this happened.</p>
+          <p>Errol2 improves the optimality check. Errol3 then moves the remaining work offline: it removes the conservative narrowing and runtime verification, enumerates every input for which the unchecked core can return a wrong or non-shortest result, and stores corrections for those inputs. At runtime, a bit-pattern lookup precedes the ordinary arithmetic path.</p>
+          <table>
+            <thead><tr><th>Version</th><th>Main guarantee mechanism</th><th>Runtime outcome</th></tr></thead>
+            <tbody>
+              <tr><td>Errol1</td><td>Conservative double-double interval plus optimality test.</td><td>Correct result and an optimality indication.</td></tr>
+              <tr><td>Errol2</td><td>More precise characterization of the uncovered interval.</td><td>Fewer unresolved optimality cases.</td></tr>
+              <tr><td>Errol3</td><td>Offline exhaustive exceptional-set construction.</td><td>Table correction or unchecked fast result; always shortest and correct for the artifact’s domain.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="pair">
+          <p class="eyebrow">6.2 · High precision from ordinary doubles</p>
+          <h2>Represent x as a leading value plus a non-overlapping offset</h2>
+          <p>A double-double value is a pair ⟨<em>x</em><sub>hi</sub>, <em>x</em><sub>lo</sub>⟩ denoting their exact mathematical sum. The leading component is the nearest binary64 approximation. The offset records the residual that the leading rounding discarded.</p>
+          <div class="equation">x̃ = x<sub>hi</sub> + x<sub>lo</sub>, &nbsp; |x<sub>lo</sub>| far smaller than one ulp of x<sub>hi</sub>.</div>
+          <p>The components are maintained in a non-overlapping form: significant bits present in the leading component do not reappear in the offset. With two 53-bit significands this supplies roughly 106 useful bits, although not every operation is as accurate as one correctly rounded 106-bit hardware operation.</p>
+          <p>Normalization adds the components once, then reconstructs the rounding residual. If <em>s</em> is the rounded sum, <em>x</em><sub>lo</sub>+(<em>x</em><sub>hi</sub>−<em>s</em>) recovers the portion lost by that addition under the non-overlap assumptions. The normalized pair is ⟨<em>s</em>, residual⟩.</p>
+        </section>
+
+        <section id="operations">
+          <p class="eyebrow">6.3 · Compensated arithmetic</p>
+          <h2>Recover the error of each operation instead of discarding it</h2>
+          <p>Multiplication splits each double into high and low halves. Four partial products reconstruct the exact product error of the leading components: high×high supplies the rounded product, while the remaining cross terms recover the lower bits. The old offset multiplied by the scalar is added to this product error before normalization.</p>
+          <p>Multiplication and division by ten receive specialized routines. For multiplication, the code forms the ordinary rounded product and independently evaluates 8<em>x</em>+2<em>x</em>. Their difference exposes the rounding error in 10<em>x</em>. Division performs the inverse reconstruction: multiply the rounded quotient by eight and two, subtract from the original, and place the remaining tenth into the offset.</p>
+          <div class="equation">rounded(10x) − (8x + 2x) reveals the product’s rounding residue.</div>
+          <p>These formulas matter because digit generation repeatedly subtracts an integer and multiplies the remainder by ten. A small bias in that recurrence would grow until an endpoint crossed a decimal integer and changed the stopping digit.</p>
+        </section>
+
+        <section id="interval">
+          <p class="eyebrow">6.4 · Normalize the parsing interval</p>
+          <h2>Scale both boundaries into the decade [1,10)</h2>
+          <p>Errol estimates the decimal exponent from the binary exponent, looks up a double-double approximation of the corresponding power of ten, and multiplies the input by it. A short correction loop handles an estimate one decade too high or too low. The scaled center lies in [1,10), and the decimal exponent is saved for reconstruction.</p>
+          <p>The distances to the predecessor and successor supply the lower and upper midpoint offsets. Errol1 divides those distances by a value slightly greater than two to move inward, forming a narrow interval proved to remain inside the exact parsing interval despite later arithmetic error. A companion wide interval uses a slightly smaller divisor and extends outward.</p>
+          <p>Errol3’s unchecked core removes this deliberate narrowing. It computes midpoint approximations directly, accepting that a finite set of inputs will be mishandled and relying on the generated correction table to intercept them first.</p>
+        </section>
+
+        <section id="digits">
+          <p class="eyebrow">6.5 · Common-prefix generation</p>
+          <h2>Continue while both endpoint pairs have the same integer digit</h2>
+          <p>On every iteration, truncate the lower and upper double-double endpoints. If a leading component is itself an integer but its offset is negative, decrement the truncation: the represented pair is just below that integer. When the two digits agree, every number in the interval begins with that digit. Append it, subtract it from both pairs, and multiply both remainders by ten.</p>
+          <p>When the endpoint digits differ, the common prefix is complete. The core rounds the position midway between the two remaining endpoints to obtain the final digit, breaking an exact decimal tie toward an even digit.</p>
+          <ol class="pseudo" id="errol-code">
+            <li data-line="1">represent each scaled endpoint as a normalized (hi, lo) pair</li>
+            <li data-line="2">estimate and correct the decimal scale so the leading digit is exposed</li>
+            <li data-line="3">append common endpoint digits; update both remainders with compensated ×10</li>
+            <li data-line="4">before the unchecked core, return a generated correction for exceptional input bits</li>
+          </ol>
+          <p>This is close to the common-prefix view of Dragon, but the representation and proof obligation differ. Dragon’s integer margins are exact. Errol’s endpoints are very accurate floating-point pairs whose residual failure set is established offline.</p>
+        </section>
+
+        <section id="verification">
+          <p class="eyebrow">6.6 · Correctness is not yet optimality</p>
+          <h2>A narrow interval may omit a shorter valid decimal</h2>
+          <p>If a generated decimal lies in a conservative interval wholly contained within the parsing interval, it certainly recovers the input. That does not establish shortestness with respect to the complete parsing interval. A shorter decimal may lie in one of the uncovered strips between a narrow boundary and the exact midpoint.</p>
+          <p>Errol1 therefore also computes with a widened interval. A shortest result from the wide interval need not itself be valid, but its length is a lower bound on what the exact interval could contain. When the narrow and wide computations produce equal lengths, the narrow result is certified optimal. Errol2 analyzes possible decimal midpoints in the uncovered strips more directly and reduces the cases requiring uncertainty.</p>
+        </section>
+
+        <section id="enumeration">
+          <p class="eyebrow">6.7 · Errol3’s offline proof step</p>
+          <h2>Search exceptional decimal midpoints, not all 2<sup>64</sup> bit patterns</h2>
+          <p>Brute-force enumeration of every binary64 input would be an unattractive proof technique. The paper instead characterizes potentially pathological outputs through decimal midpoints. A shortest binary64 rendering has at most seventeen significant digits; only shorter decimal midpoints capable of approaching a parsing boundary need be examined.</p>
+          <p>The enumeration constructs structured sequences of shifts between midpoint congruence classes. It advances to the first offset that moves a midpoint closer to zero, alternately approaching from above and below. Once a midpoint enters the derived error neighborhood, nearby shifts are searched exhaustively. Subnormal ranges are covered by changing the effective precision associated with the exponent.</p>
+          <p>The resulting input bit patterns are stored in a search-friendly level-order table together with corrected digit strings and exponents. The runtime function performs the table lookup first. Only a miss enters the unchecked double-double core.</p>
+        </section>
+
+        <section id="traces">
+          <p class="eyebrow">6.8 · Executable arithmetic</p>
+          <h2>Follow the double-double endpoints for binary64(0.3)</h2>
+          <p>The browser implementation constructs an idealized double-double pair from each exact scaled boundary, then executes Errol’s compensated common-prefix recurrence. This isolates the pair arithmetic and digit logic from errors introduced by a particular cached power table.</p>
+          <trace-player class="trace-player" data-title="Idealized Errol core · input binary64(0.3)" data-code="#errol-code"><script id="errol-ordinary-data" type="application/json">[]</script></trace-player>
+
+          <h2>A checked correction path is exercised</h2>
+          <p>For the bit pattern below, the idealized pair core ends two decimal units above the closest shortest result. The teaching implementation detects the disagreement against the exact interval control and replaces it. This is intentionally a runtime check; the native Errol3 artifact uses its offline-generated bit-pattern table instead.</p>
+          <trace-player class="trace-player" data-title="Checked Errol teaching path · input 0x435eb281e7c86675" data-code="#errol-code"><script id="errol-correction-data" type="application/json">[]</script></trace-player>
+        </section>
+
+        <section id="corrections">
+          <p class="eyebrow">6.9 · Primary-source discrepancies</p>
+          <h2>The corrected artifact must accompany the paper</h2>
+          <p>The corrected paper reports 45 exceptional inputs for Errol3. The current public repository at commit <code>5364de45fcecd91a3795c93e4f8cc680d34ccabf</code> declares <code>errol_enum3[432]</code> and an equally sized correction array. The repository does not explain this ninefold difference in its short history. This chapter therefore records both figures and treats 432 as the fact about the pinned current artifact, without claiming that it is the same set described in the paper.</p>
+          <p>The repository also carries a performance correction. The original evaluation accidentally compared Errol with a Grisu3 build lacking optimization and reported an advantage. Corrected measurements showed Errol approximately twice as slow as optimized Grisu3 on that setup. The updated paper reports Errol3 as 2.4× slower than Grisu3 and than Grisu3 with Dragon4 fallback on its measured distribution. These historical measurements should not be generalized to current processors or microcontrollers.</p>
+          <p>The authoritative materials used here are the <a href="https://cseweb.ucsd.edu/~mandrysc/pub/dtoa.pdf">corrected paper</a> and the <a href="https://github.com/marcandrysco/Errol">public implementation and correction notice</a>.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">6.10 · Evidence and implementation status</p>
+          <h2>The arithmetic core is executable; the native table remains distinct</h2>
+          <div class="implementation-ledger">
+            <p><strong>Implemented in the browser</strong><span>Rational-to-double-double decomposition; normalization; split-product compensation; specialized multiplication and division by ten; exact midpoint scaling for the teaching input; endpoint truncation; common-prefix digit generation; decimal tie-to-even; checked correction path.</span></p>
+            <p><strong>Deliberate idealization</strong><span>The browser constructs each starting pair directly from the exact rational boundary. It does not copy the native power table or claim bit-for-bit equivalence with <code>errol3u_dtoa</code>. The checked wrapper uses the independent exact oracle where the idealized core disagrees.</span></p>
+            <p><strong>Corpus evidence</strong><span>Familiar values and hard transitions pass the pair core; the checked wrapper agrees with the exact oracle for 10,000 deterministic bit patterns and is required to exercise a disagreement.</span></p>
+            <p><strong>Native artifact evidence</strong><span>The pinned public source uses 432 bit-pattern corrections despite the corrected paper’s statement of 45. A compiled differential harness and provenance audit of that expansion remain necessary before calling the browser code a faithful Errol3 port.</span></p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./grisu.html"><span>Previous</span><strong>Grisu</strong></a><a href="./ryu.html"><span>Next</span><strong>Ryū →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · executable Errol chapter</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

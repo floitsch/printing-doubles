@@ -1,1 +1,87 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../styles.css"><script type="module" src="../js/chapter-shell.js"></script></head><body data-chapter="toothless"></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Correctness audit of the unfinished Toothless continued-fraction floating-point printer.">
+  <title>Appendix: audit of the continued-fraction printer · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Appendix · Correctness audit</p>
+      <h1>Audit of the continued-fraction printer</h1>
+      <p class="chapter-deck">The unfinished algorithm called Toothless uses best rational approximations of decimal scales. Its implementation has encouraging test results, but the current manuscripts do not prove the universal claim. This appendix records the idea and the precise proof gaps; it does not present the work as a completed state-of-the-art algorithm.</p>
+      <div class="chapter-meta"><span>Appendix</span><span>Unpublished draft</span><span>Audit 2026-08-04</span><span>Benchmarks excluded</span><span>Not verified</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Appendix</strong><a href="#idea">The intended idea</a><a href="#evidence">Test evidence</a><a href="#separation">Missing separation theorem</a><a href="#shortest">Shortestness gap</a><a href="#closest">Closestness error</a><a href="#boundary">Boundary defect</a><a href="#decision">Publication decision</a></aside>
+      <article class="chapter">
+        <section id="idea">
+          <p class="eyebrow">A.1 · What is interesting here</p>
+          <h2>Use number theory to prevent a bounded approximation from crossing a decision</h2>
+          <p class="lead">The useful insight is not simply that continued fractions produce accurate ratios. It is that a best approximation can leave no lower-denominator rational between the cached ratio and the exact decimal scale.</p>
+          <p>Binary64 boundaries can be written with bounded integer significands. Toothless stores a tagged ratio <em>num</em>/<em>den</em> approximating the required power-of-two divided by a power of ten. If this ratio is a best approximation and its denominator exceeds the denominator of every rational induced by a boundary comparison, then no such comparison rational can lie in the narrow gap between the cache entry and the exact scale.</p>
+          <p>That separation property can convert the direction of a cached approximation into exact inequality decisions. Endpoint products are adjusted by one integer unit according to whether the cache entry is exact, low, or high and according to endpoint inclusion. Digits are then taken from the scaled upper boundary until the prefix reaches the scaled lower boundary; the last digit is moved downward toward the center.</p>
+          <p>This is a genuine algorithmic idea. It is also now obsolete as an implementation strategy: newer fixed-width methods are more developed, simpler to validate in their current artifacts, and faster on the platforms for which evidence is available.</p>
+        </section>
+
+        <section id="evidence">
+          <p class="eyebrow">A.2 · What the code currently demonstrates</p>
+          <h2>Millions of round trips are not a proof of shortestness</h2>
+          <p>The original C sources compile and run. The bundled suite reports zero errors for Toothless over 2,100,100 inputs. The first 100,100 have expected digit strings. For the generated values, however, the harness runs Toothless first and uses its output as the reference for other algorithms; Toothless itself is checked only by parsing its result back. That portion cannot establish that its string is shortest or closest.</p>
+          <p>An additional native wrapper was compared directly with this book’s independent exact rational oracle for 9,996 deterministic finite positive bit patterns. There were no disagreements. The existing transition and expected-output corpus also passed. This is meaningful regression evidence and supports continuing the proof effort, but it leaves an enormous sparse space in which a cache-boundary error could hide.</p>
+          <p>No number in the draft’s benchmark table was trusted or reproduced. Performance claims are excluded from this appendix.</p>
+        </section>
+
+        <section id="separation">
+          <p class="eyebrow">A.3 · The central theorem is absent from the short draft</p>
+          <h2>“Very close” does not justify the ±1 endpoint table</h2>
+          <p>The short manuscript says convergents provide the most precise fraction fitting the integer limits, then applies one-unit corrections to scaled endpoint products. Those statements do not connect. A numerically small scale error can become larger than one after multiplication by a 53-bit significand.</p>
+          <p>The older draft contains the intended connection: no rational <em>x</em>/<em>f</em> with bounded <em>f</em> may lie between the cached best approximation and the exact scale. The final paper must state the exact best-approximation definition, include semiconvergents, prove numerator and denominator limits for all comparison rationals, and certify every cache entry—including reciprocals—against those limits.</p>
+          <p>Without this proposition, the implementation may be plausible and well tested, but the table that decides open, closed, lower, and upper products has no proof.</p>
+        </section>
+
+        <section id="shortest">
+          <p class="eyebrow">A.4 · The generated-agent proof assumes the hard part</p>
+          <h2>A prefix must be related to a decimal grid before length can be discussed</h2>
+          <p>The short proof calls a generated prefix the largest decimal of its length below the upper boundary. That assertion is not established. The prefix integer, the place value of its next digit, the cached decimal exponent, and the normalized significant-digit length are different quantities. Trailing zeros further change length without changing value.</p>
+          <p>A valid repair should define the decimal lattice for each significant length. It must show that the current prefix is the greatest point on that lattice below the exact upper boundary and that the next lattice point is above it. Failure to reach the lower boundary on the previous coarser lattice then proves that no shorter point lies in the interval.</p>
+          <p>The older manuscript already marks this region with unresolved TODOs and contains two competing shortestness lemmas. The compact agent-written replacement removes the TODOs by omitting the missing argument.</p>
+        </section>
+
+        <section id="closest">
+          <p class="eyebrow">A.5 · The displayed algebra does not match the program</p>
+          <h2>The candidate is multiplied by the cached ratio twice on paper</h2>
+          <p>The C program compares twice the scaled integer candidate with twice the scaled center plus one decimal grid step. After division by the cached denominator, this is an ordinary midpoint comparison between adjacent decimal candidates.</p>
+          <p>The short manuscript rewrites the candidate as though it were again multiplied by <em>num</em>/<em>den</em>. That equation is dimensionally inconsistent with the code. A corrected proof must begin from the actual integer inequality, then handle the branches for a high cache approximation, an exact decimal tie, even decimal significands, and the closer lower boundary at powers of two.</p>
+        </section>
+
+        <section id="boundary">
+          <p class="eyebrow">A.6 · One concrete implementation defect</p>
+          <h2>The smallest normal value is assigned the wrong lower midpoint</h2>
+          <p>The boundary routine treats every normal value with zero fraction bits as an exact power of two whose predecessor is closer. That rule has one binary64 exception: the smallest normal value, <code>0x0010000000000000</code>, has a subnormal predecessor at the same spacing as its successor.</p>
+          <p>The current code therefore moves this value’s lower boundary inward. Its selected output still matches the exact oracle, and the sampled corpora found no output failure. Nevertheless, the modeled interval is wrong and cannot support a universal proof. The implementation should special-case this transition and add the predecessor, value, and successor to an exact boundary test.</p>
+        </section>
+
+        <section id="decision">
+          <p class="eyebrow">A.7 · Audit conclusion</p>
+          <h2>Retain the research; do not publish the theorem yet</h2>
+          <div class="implementation-ledger">
+            <p><strong>Supported</strong><span>The continued-fraction separation idea is promising; the C implementation round-trips and agrees with the exact oracle on the inspected corpora; the cache generator and older paper preserve useful proof material.</span></p>
+            <p><strong>Not supported</strong><span>The present universal claims of accurate, shortest, and closest output for every binary64 value. The short proof is incomplete and partly incorrect; the older proof is explicitly unfinished.</span></p>
+            <p><strong>Required before promotion</strong><span>Fix the smallest-normal boundary; certify cache separation and width invariants; replace the shortestness proof with a decimal-grid lemma; prove the exact closest-candidate branches; run exhaustive binary32 and much larger structured binary64 comparisons.</span></p>
+            <p><strong>Full audit</strong><span>The repository contains a machine-readable <a href="https://github.com/floitsch/printing-doubles/blob/main/docs/toothless-correctness-audit.md">correctness audit</a> with the inspected files, test interpretation, and repair sequence.</span></p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./frontier.html"><span>Previous</span><strong>Frontier</strong></a><a href="./index.html"><span>Return</span><strong>All chapters →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · continued-fraction correctness audit</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

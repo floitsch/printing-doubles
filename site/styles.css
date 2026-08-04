@@ -24,6 +24,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.65 v
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 button, input { font: inherit; }
 code, output { font-family: var(--mono); }
+.chapter p code, .chapter li code { overflow-wrap: anywhere; }
 ::selection { background: var(--acid); color: var(--ink); }
 
 .skip-link { position: fixed; z-index: 100; top: 8px; left: 8px; padding: 10px 14px; background: var(--acid); color: var(--ink); transform: translateY(-150%); }
@@ -308,6 +309,7 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .chapter-hero { padding-inline: 20px; }
   .chapter-layout { display: block; padding: 70px 20px; }
   .chapter-toc { position: static; margin-bottom: 70px; }
+  .pseudo li { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .trace-stage { grid-template-columns: 1fr; }
   .trace-visual { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.16); }
   .trace-canvas { min-height: 300px; }

@@ -251,6 +251,13 @@ Build explicit double-double operations and an educational interval/candidate
 implementation. Verify the exceptional-input table and do not infer it from a
 benchmark corpus.
 
+**Current status (2026-08-04):** the chapter executes an idealized
+double-double core whose starting endpoints are exact, then checks its result
+against the independent oracle. The checked corpus deliberately exercises a
+correction. The corrected paper's 45 exceptional inputs and the current public
+artifact's 432-entry tables are recorded separately. A direct browser port of
+the artifact and native state-by-state comparison remain open.
+
 **Visual:** compare the width of ordinary double, DiyFp, and double-double error
 boxes. A “precision lens” shows why nearly every interval becomes decisive;
 exceptional values switch to the table path.
@@ -268,6 +275,13 @@ precomputed powers of five, split multiplications, divisibility tests, and digit
 removal. Keep the simple and optimized functions side by side. Differential-test
 against Ulf Adams's C implementation.
 
+**Current status (2026-08-04):** the exact teaching specification is complete
+and executable. It constructs Ryū's guarded integer numerators, projects the
+exact interval once, and removes digits coarseward. It agrees with the
+independent fineward oracle on transitions and 10,000 deterministic binary64
+patterns. The bounded split-power implementation and native C comparison remain
+open.
+
 **Visual:** the binary interval is projected onto a large integer lattice in one
 fixed-width multiplication. Removing a decimal digit coarsens the lattice; stop
 when another removal would merge the admissible endpoints.
@@ -283,6 +297,12 @@ scaled integer interval → trailing-zero knowledge → remove digits → tie ha
 **Implementation:** executable exact specification of `rop`, followed by the
 limited-precision version from Giulietti's paper. The proof-critical inequalities
 are named and asserted in debug builds.
+
+**Current status (2026-08-04):** the exact candidate theorem is executable: the
+interval width selects the fine and coarse grids, and at most four local
+candidates are considered. Both paths agree with the independent oracle on
+transitions and 10,000 deterministic binary64 patterns. The bounded `rop` and
+cached-power implementation remains open.
 
 **Visual:** instead of a digit-removal tape, use a decimal lattice at the chosen
 exponent. The admissible interval can contain only the central candidate or an
@@ -300,6 +320,13 @@ policies; digit-to-character formatting is a separate concern.
 **Implementation:** wrap the reference C++ `to_decimal`, then make a teaching
 port that exposes the shorter-interval and nearest-rounding cases. Run full and
 compact cache policies through the same corpus.
+
+**Current status (2026-08-04):** the executable policy model exposes regular and
+shorter intervals, large- and small-divisor paths, sign handling, trailing-zero
+policies, and full/compact cache semantics on top of the exact Schubfach
+candidate theorem. The default contract agrees with the independent oracle on
+transitions and 10,000 deterministic patterns. A direct wide-product port and
+reference C++ wrapper remain open.
 
 **Visual:** a decision tree beside the candidate lattice. Cache-policy toggles
 change memory and table reconstruction work without changing the output.
@@ -323,6 +350,11 @@ been assessed.
 - **xjb:** treat as experimental while the 2026 preprint and implementation are
   reviewed. Claims remain attributed.
 
+**Current status (2026-08-04):** the evidence-review chapter pins exact source
+revisions for Żmij, Tejú Jaguá, xjb, and unrounded scaling, and distinguishes
+proof, implementation, differential-test, and benchmark claims. These are not
+presented as four completed ports.
+
 ### Toothless (continued fractions)
 
 This chapter is conditional on the audit. The current generated draft is not a
@@ -334,6 +366,12 @@ If correct, the visual is a rational-approximation ladder: continued-fraction
 convergents approach a power-of-ten ratio under a 63-bit numerator/denominator
 budget, followed by the ordinary decimal-candidate interval. If the proof has a
 gap, publish an audit note rather than presenting the method as correct.
+
+**Audit result (2026-08-04):** publish the audit note. The inspected native code
+passes the bundled suite and agrees with the independent oracle on an additional
+9,996 deterministic positive patterns, but the manuscripts have blocking proof
+gaps and the boundary routine models the smallest normal value incorrectly.
+Benchmark figures remain excluded.
 
 ## Definition of done for an algorithm chapter
 
