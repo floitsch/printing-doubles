@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive history of algorithms that print IEEE 754 doubles as decimal strings.">
+  <meta name="theme-color" content="#f4f0e8">
+  <title>Printing doubles — the integer between two worlds</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the story</a>
+  <header class="masthead">
+    <a class="wordmark" href="#top" aria-label="Printing doubles, home">
+      <span aria-hidden="true">10</span><i></i><span aria-hidden="true">2</span>
+      <strong>Printing doubles</strong>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#problem">The problem</a>
+      <a href="#explorer">Explorer</a>
+      <a href="./chapters/index.html">Chapters</a>
+      <a href="#frontier">Now</a>
+      <a href="#sources">Sources</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">One value · two number systems</p>
+        <h1 id="hero-title">The integer<br>between two worlds</h1>
+        <p class="standfirst">A <code>double</code> is a point on a binary grid. Its printed form is a point on a decimal grid. The useful answer is usually the shortest decimal that lands back on the same binary point.</p>
+        <a class="button" href="#explorer">Put 0.3 under the microscope <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-figure" aria-hidden="true">
+        <div class="hero-value">0.3</div>
+        <svg viewBox="0 0 640 420" role="img">
+          <path class="orbit binary-orbit" d="M65 85C230 8 478 32 565 164C648 290 471 383 279 356C98 331 16 217 65 85Z"/>
+          <path class="orbit decimal-orbit" d="M105 38C298 76 609 139 571 286C535 425 195 407 78 274C-5 180 13 74 105 38Z"/>
+          <g class="binary-dots"></g>
+          <g class="decimal-dots"></g>
+          <circle class="value-dot" cx="329" cy="210" r="12"/>
+          <text x="338" y="196">same destination</text>
+        </svg>
+        <p><span class="key binary"></span> base 2 <span class="key decimal"></span> base 10</p>
+      </div>
+    </section>
+
+    <section class="problem section-grid" id="problem" aria-labelledby="problem-title">
+      <div class="section-number">01</div>
+      <div class="section-heading">
+        <p class="eyebrow">The problem</p>
+        <h2 id="problem-title">Not “what is the exact decimal?”</h2>
+      </div>
+      <div class="section-body intro-columns">
+        <div>
+          <p class="lede">The exact value stored for <code>0.3</code> is not 0.3. It is the 52-digit fraction below. Printing all of it is honest—and almost never helpful.</p>
+          <output class="monster" aria-label="The exact decimal value stored for double 0.3">0.299999999999999988897769753748434595763683319091796875</output>
+        </div>
+        <div class="three-rules" aria-label="The three goals of shortest conversion">
+          <article><span>1</span><h3>Round trip</h3><p>Reading the text must recover the exact original bits.</p></article>
+          <article><span>2</span><h3>Be shortest</h3><p>No decimal with fewer significant digits may do the same.</p></article>
+          <article><span>3</span><h3>Be closest</h3><p>Among equally short answers, choose the one nearest the value.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="explorer section-grid dark-section" id="explorer" aria-labelledby="explorer-title">
+      <div class="section-number">02</div>
+      <div class="section-heading">
+        <p class="eyebrow">Interactive number line</p>
+        <h2 id="explorer-title">Two grids, overlaid</h2>
+        <p>Blue ticks are representable doubles. Red ticks are decimal candidates at the current scale. The lit interval contains every real number that rounds to the selected double.</p>
+      </div>
+      <div class="explorer-app section-body">
+        <form class="explorer-controls" id="number-form">
+          <label for="number-input">A JavaScript double</label>
+          <div class="input-row">
+            <input id="number-input" name="number" value="0.3" inputmode="decimal" spellcheck="false" aria-describedby="number-help">
+            <button type="submit">Inspect</button>
+          </div>
+          <p id="number-help">Try <button type="button" class="text-button" data-example="0.1">0.1</button>, <button type="button" class="text-button" data-example="1">1</button>, <button type="button" class="text-button" data-example="1e23">1e23</button>, or <button type="button" class="text-button" data-example="5e-324">the smallest subnormal</button>.</p>
+          <div class="zoom-controls" aria-label="Zoom controls">
+            <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+            <label for="zoom-range">Zoom</label>
+            <input id="zoom-range" type="range" min="0" max="100" value="72">
+            <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="reset-view">Reset view</button>
+          </div>
+        </form>
+        <div class="canvas-frame">
+          <canvas id="number-line" width="1200" height="470" tabindex="0" aria-label="Interactive overlaid binary and decimal number line. Use arrow keys to pan and plus or minus to zoom."></canvas>
+          <div class="canvas-legend" aria-hidden="true"><span><i class="key binary"></i> binary64</span><span><i class="key decimal"></i> decimal</span><span><i class="key interval"></i> round-trip interval</span></div>
+          <p class="canvas-instructions">Scroll to zoom · drag to pan · double-click to reset</p>
+        </div>
+        <div class="inspection" aria-live="polite">
+          <div><span>Printed by your browser</span><output id="printed-value">0.3</output></div>
+          <div><span>IEEE 754 bits</span><output id="bit-value">3fd3333333333333</output></div>
+          <div><span>Exact form</span><output id="exact-value">5404319552844595 × 2⁻⁵⁴</output></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="interval-explainer section-grid" aria-labelledby="interval-title">
+      <div class="section-number">03</div>
+      <div class="section-heading">
+        <p class="eyebrow">The central trick</p>
+        <h2 id="interval-title">Stop thinking about a point</h2>
+      </div>
+      <div class="section-body interval-layout">
+        <div class="interval-diagram" role="img" aria-label="The interval between the midpoints to neighboring doubles, containing several decimal candidates">
+          <div class="neighbor left"><b>v−</b><i></i></div>
+          <div class="boundary left"><b>m−</b><i></i></div>
+          <div class="selected"><b>v</b><i></i></div>
+          <div class="boundary right"><b>m+</b><i></i></div>
+          <div class="neighbor right"><b>v+</b><i></i></div>
+          <div class="safe-zone"><span>every decimal here reads back to <b>v</b></span></div>
+          <div class="candidate c1"><i></i><span>long</span></div>
+          <div class="candidate c2"><i></i><span>shortest</span></div>
+          <div class="candidate c3"><i></i><span>also short</span></div>
+        </div>
+        <div class="callout">
+          <p>A printer does not need the full expansion of <em>v</em>. It needs one decimal inside the interval bounded by the midpoints to the neighboring doubles.</p>
+          <p>Shortest algorithms ask a geometric question: <strong>what is the coarsest decimal grid that still puts a point inside?</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="timeline section-grid" id="timeline" aria-labelledby="timeline-title">
+      <div class="section-number">04</div>
+      <div class="section-heading">
+        <p class="eyebrow">A forty-year relay race</p>
+        <h2 id="timeline-title">The dragons, and what they changed</h2>
+        <p>This is not one single benchmark. Early work solved several related output contracts: fixed precision, correct rounding, recovery, and shortest round trip.</p>
+      </div>
+      <div class="section-body timeline-list">
+        <article class="era" data-era="1984">
+          <div class="era-year">1984</div>
+          <div class="era-copy"><p class="eyebrow">Coonen · Algorithms B, S, P, Q</p><h3>Scale once, round once</h3><p>Coonen showed that fixed-digit binary↔decimal conversion did not need enormous exact buffers. Use an extended format, estimate the decimal exponent cheaply, scale by a carefully rounded cached power of ten, and round to the requested digits. The result preserves recovery with tightly bounded error—but it is not a shortest-string algorithm.</p><a href="./chapters/coonen.html">Open the chapter</a></div>
+          <div class="algorithm-sketch scale-sketch" aria-hidden="true"><span class="binary-block">f × 2<sup>e</sup></span><b>× 10<sup>scale</sup></b><span class="integer-block">N-digit integer</span></div>
+        </article>
+        <article class="era" data-era="1990">
+          <div class="era-year">1990</div>
+          <div class="era-copy"><p class="eyebrow">Steele &amp; White · Dragon</p><h3>Carry the boundaries along</h3><p>Dragon generates digits left to right while tracking the exact rounding margins. It stops at the first digit that proves the output will round back correctly. Arbitrary-precision integers make it general and trustworthy, but comparatively expensive.</p><a href="./chapters/dragon.html">Open the chapter</a></div>
+          <div class="algorithm-sketch digit-sketch" aria-hidden="true"><i>3</i><i>.</i><i>1</i><i>4</i><i>1</i><i>5</i><i class="faded">…</i><span>stop when the interval decides</span></div>
+        </article>
+        <article class="era" data-era="1990–96">
+          <div class="era-year">1990<br>—96</div>
+          <div class="era-copy"><p class="eyebrow">Gay · Burger &amp; Dybvig</p><h3>Make exact arithmetic practical</h3><p>Gay’s <code>dtoa</code> and Burger–Dybvig retained the exact interval method while avoiding expensive work in common cases: better scaling, powers of ten, and small-integer fast paths. This family became the dependable fallback for later speculative algorithms.</p></div>
+          <div class="algorithm-sketch paths-sketch" aria-hidden="true"><span>small integer</span><span>fast path</span><span class="fallback">bignum fallback</span></div>
+        </article>
+        <article class="era featured" data-era="2010">
+          <div class="era-year">2010</div>
+          <div class="era-copy"><p class="eyebrow">Loitsch · Grisu</p><h3>A tiny floating point built from integers</h3><p>Grisu replaces bignums with a 64-bit “diy-fp” and a cache of powers of ten. Grisu3 proves when its approximate interval is safe: roughly 99.4% of random doubles take the fast path; the rest fall back. That hybrid was a major practical speedup.</p><p class="author-note">This site is maintained by Grisu’s author.</p><a href="./chapters/grisu.html">Open the chapter</a></div>
+          <div class="algorithm-sketch grisu-sketch" aria-hidden="true"><div class="true-interval"></div><div class="safe-interval"></div><i class="candidate-dot"></i><span>safe?</span><b>yes</b></div>
+        </article>
+        <article class="era" data-era="2016">
+          <div class="era-year">2016</div>
+          <div class="era-copy"><p class="eyebrow">Andrysco, Jhala &amp; Lerner · Errol</p><h3>More precision, almost no exceptions</h3><p>Errol uses double-double arithmetic and a refined error analysis. Errol3 handles the remaining exceptional inputs explicitly, eliminating Grisu’s general bignum fallback while retaining an interval-based view.</p></div>
+          <div class="algorithm-sketch precision-sketch" aria-hidden="true"><span>53 bits</span><span>+ 53 bits</span><b>45 listed cases</b></div>
+        </article>
+        <article class="era" data-era="2018">
+          <div class="era-year">2018</div>
+          <div class="era-copy"><p class="eyebrow">Adams · Ryū</p><h3>Jump to the answer with fixed-size integers</h3><p>Ryū proves that precomputed 126-bit power-of-five approximations are enough. It converts the interval with fixed-size multiplication, removes decimal digits, and needs neither a bignum nor a fallback. Its proof, portability, and open implementations drove broad adoption.</p><a href="./chapters/ryu.html">Open the chapter</a></div>
+          <div class="algorithm-sketch jump-sketch" aria-hidden="true"><span>binary interval</span><i></i><span>integer interval</span><b>÷ 10</b><b>÷ 10</b></div>
+        </article>
+        <article class="era" data-era="2018–22">
+          <div class="era-year">2018<br>—22</div>
+          <div class="era-copy"><p class="eyebrow">Giulietti · Schubfach; Jeon · Dragonbox</p><h3>The same geometry, less work</h3><p>Schubfach maps the rounding interval to a narrow integer interval and proves there are only a few candidates worth testing—no digit-removal loop. Dragonbox develops this family further with policy-driven caches and careful integer arithmetic.</p><a href="./chapters/schubfach.html">Open the Schubfach chapter</a></div>
+          <div class="algorithm-sketch candidates-sketch" aria-hidden="true"><i></i><i class="possible"></i><i></i><span>test only the possible candidate</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="frontier section-grid dark-section" id="frontier" aria-labelledby="frontier-title">
+      <div class="section-number">05</div>
+      <div class="section-heading">
+        <p class="eyebrow">State of the art · August 2026</p>
+        <h2 id="frontier-title">The frontier is moving again</h2>
+        <p>“Fastest” depends on CPU, compiler, data distribution, cache policy, and whether timing includes turning the significand into characters.</p>
+      </div>
+      <div class="section-body frontier-grid">
+        <article><p class="status established">Established</p><h3>Schubfach &amp; Dragonbox</h3><p>Mature, proven fixed-width algorithms. A 2026 cross-platform review found them generally ahead of Ryū across real datasets, with neither winning every workload.</p></article>
+        <article><p class="status production">New production contender</p><h3>Żmij</h3><p>A late-2025 Schubfach descendant that removes multiplications and branches and integrates faster digit formatting. Its library promises shortest, correctly rounded output and offers size-optimized tables.</p></article>
+        <article><p class="status new">New proof, new primitive</p><h3>Unrounded scaling</h3><p>Russ Cox’s 2026 construction uses a carry and sticky bit around a fast scaling primitive. The compact Go implementation covers printing and parsing; its proof is machine-checked in Ivy.</p></article>
+        <article><p class="status experimental">Experimental</p><h3>Tejú Jaguá &amp; xjb</h3><p>Both report striking speed. Tejú’s reference repository still labels the core partial and its academic proof forthcoming; xjb is a 2026 preprint. They belong on the watchlist, not yet in the same evidence tier.</p></article>
+        <div class="frontier-conclusion"><strong>Practical conclusion</strong><p>For a new general-purpose implementation, start with Schubfach, Dragonbox, Ryū, Żmij, or unrounded scaling according to your language and proof/portability needs. Benchmark the whole formatter on your actual data.</p></div>
+      </div>
+    </section>
+
+    <section class="memory section-grid" id="memory" aria-labelledby="memory-title">
+      <div class="section-number">06</div>
+      <div class="section-heading"><p class="eyebrow">Microcontroller lens</p><h2 id="memory-title">Speed is not the only budget</h2><p>For an ESP32, flash tables and code size can matter more than a few nanoseconds measured on a desktop CPU.</p></div>
+      <div class="section-body">
+        <div class="memory-cards">
+          <article><span>≈1.4 KiB</span><h3>Grisu3 cache</h3><p>87 cached powers × 16 bytes, before fallback code.</p></article>
+          <article><span>9,872 B</span><h3>Ryū full tables</h3><p>The paper’s binary64 lookup tables; implementations may trade time for smaller tables.</p></article>
+          <article><span>584 B</span><h3>Dragonbox compact cache</h3><p>Reported static cache storage for binary64, versus 9,904 bytes for its full policy.</p></article>
+          <article><span>measure it</span><h3>Total firmware cost</h3><p>Templates, digit formatting, fallback paths, and compiler dead-code elimination change the real result.</p></article>
+        </div>
+        <p class="research-caveat"><strong>Research note:</strong> these are cache/table figures from papers or implementation documentation—not comparable whole-program measurements. Reproducible object-size experiments are being kept outside the public claims until the ESP32 toolchain results are stable.</p>
+      </div>
+    </section>
+
+    <section class="sources section-grid" id="sources" aria-labelledby="sources-title">
+      <div class="section-number">07</div>
+      <div class="section-heading"><p class="eyebrow">Read the evidence</p><h2 id="sources-title">Primary sources first</h2></div>
+      <div class="section-body source-list">
+        <a id="source-coonen" href="./chapters/coonen.html"><span>1984 · local OCR preservation</span><strong>Jerome T. Coonen — Accurate Yet Economical Binary–Decimal Conversions</strong><em>A machine-readable transcription is preserved locally while equation-by-equation verification proceeds. The scan-derived text is not included in the public site without separate publication approval.</em></a>
+        <a href="https://dl.acm.org/doi/10.1145/93542.93559"><span>1990 · PLDI</span><strong>Steele &amp; White — How to Print Floating-Point Numbers Accurately</strong></a>
+        <a href="https://doi.org/10.1145/231379.231397"><span>1996 · PLDI</span><strong>Burger &amp; Dybvig — Printing Floating-Point Numbers Quickly and Accurately</strong></a>
+        <a href="https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf"><span>2010 · PLDI</span><strong>Loitsch — Printing Floating-Point Numbers Quickly and Accurately with Integers</strong></a>
+        <a href="https://doi.org/10.1145/2837614.2837654"><span>2016 · POPL</span><strong>Andrysco, Jhala &amp; Lerner — Printing Floating-Point Numbers: A Faster, Always Correct Method</strong></a>
+        <a href="https://doi.org/10.1145/3192366.3192369"><span>2018 · PLDI</span><strong>Adams — Ryū: Fast Float-to-String Conversion</strong></a>
+        <a href="https://fmt.dev/papers/Schubfach4.pdf"><span>2021 · technical paper</span><strong>Giulietti — The Schubfach Way to Render Doubles</strong></a>
+        <a href="https://fmt.dev/papers/Dragonbox.pdf"><span>2022 · technical paper</span><strong>Jeon — Dragonbox</strong></a>
+        <a href="https://doi.org/10.1002/spe.70056"><span>2026 · experimental review</span><strong>Champagne Gareau &amp; Lemire — Converting Binary Floating-Point Numbers to Shortest Decimal Strings</strong></a>
+        <a href="https://research.swtch.com/fp"><span>2026 · article + proof</span><strong>Cox — Floating-Point Printing and Parsing Can Be Simple And Fast</strong></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Printing doubles</strong> · built as an open, testable explainer.</p>
+    <p><a href="https://github.com/floitsch/printing-doubles">Source &amp; research notes</a> <span aria-hidden="true">↗</span></p>
+  </footer>
+</body>
+</html>

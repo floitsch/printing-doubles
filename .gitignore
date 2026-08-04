@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.DS_Store
+dist/
+# Scan-derived transcription: kept locally pending explicit publication approval.
+sources/coonen/*.tex
+site/papers/*.tex
