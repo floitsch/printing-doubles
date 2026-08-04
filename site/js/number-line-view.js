@@ -74,6 +74,17 @@ export class NumberLineView {
       ctx.lineTo(x, markerBottom);
       ctx.stroke();
       ctx.setLineDash([]);
+      if (marker.endpoint) {
+        const endpointY = mapY(marker.endpointY ?? .35);
+        ctx.beginPath();
+        ctx.arc(x, endpointY, marker.endpointRadius || 5, 0, Math.PI * 2);
+        ctx.fillStyle = marker.endpoint === "included" ? (marker.color || "#dfff52") : (scene.background || "#192632");
+        ctx.fill();
+        ctx.strokeStyle = marker.color || "#dfff52";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        if (marker.endpointLabel) this.label(ctx, marker.endpointLabel, x + (marker.endpointLabelDx || 0), endpointY + (marker.endpointLabelDy || -12), marker.textColor || marker.color, marker.endpointAlign || "center");
+      }
       if (marker.label) this.label(ctx, marker.label, x, mapY(marker.labelY ?? .94), marker.textColor || marker.color, marker.align || "center");
       if (marker.inspect) this.hitRegions.push({ x, y1: markerTop, y2: markerBottom, radius: marker.hitRadius || 14, inspect: marker.inspect });
     }

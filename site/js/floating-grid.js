@@ -1,3 +1,4 @@
+import "./bit-fields.js";
 import { binaryCoordinate, decodeDouble, nextDown, nextUp, unitExponent } from "./float.js";
 import { NumberLineView } from "./number-line-view.js";
 

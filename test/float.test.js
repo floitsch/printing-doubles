@@ -14,7 +14,7 @@ import {
   parseDecimal,
   unitExponent,
 } from "../site/js/float.js";
-import { neighboringDoubles } from "../site/js/explorer.js";
+import { anchoredPan, neighboringDoubles, NumberLineExplorer } from "../site/js/explorer.js";
 
 test("binary64 bit conversion is reversible", () => {
   for (const value of [0, -0, 0.1, 0.3, 1, -1, Number.MIN_VALUE, Number.MAX_VALUE]) {
@@ -32,6 +32,45 @@ test("nextUp and nextDown cross zero and binade boundaries", () => {
 test("the smallest subnormal's displayed predecessor walk stops at zero", () => {
   assert.deepEqual(neighboringDoubles(Number.MIN_VALUE, "down").map(({ value }) => value), [0]);
   assert.deepEqual(neighboringDoubles(-Number.MIN_VALUE, "up").map(({ value }) => value), [-0]);
+});
+
+test("anchored zoom preserves the coordinate under the cursor", () => {
+  const position = 0.8;
+  const pan = anchoredPan(12, 8, 2, position);
+  assert.equal(12 + (2 * position - 1) * 8, pan + (2 * position - 1) * 2);
+});
+
+test("detailed binary ticks are generated around a panned viewport", () => {
+  const explorer = Object.create(NumberLineExplorer.prototype);
+  explorer.value = 0.3;
+  explorer.center = decodeDouble(explorer.value);
+  explorer.unitExp = unitExponent(explorer.value);
+  const points = explorer.visibleBinaryPoints(996, 1004);
+  assert.ok(points.length >= 8);
+  assert.ok(points[0].coordinate >= 996);
+  assert.ok(points.at(-1).coordinate <= 1004);
+  assert.ok(points.some(({ coordinate }) => coordinate === 1000));
+});
+
+test("decimal ticks are generated around a panned viewport", () => {
+  const explorer = Object.create(NumberLineExplorer.prototype);
+  explorer.value = 0.3;
+  explorer.center = decodeDouble(explorer.value);
+  explorer.unitExp = unitExponent(explorer.value);
+  explorer.lowerBoundary = -0.5;
+  explorer.upperBoundary = 0.5;
+  const ticks = explorer.decimalTicks(995, 1005, 5, 1000);
+  assert.ok(ticks.some(({ x }) => x >= 995 && x <= 1005));
+});
+
+test("the least positive subnormal scene has zero as its only predecessor", () => {
+  const explorer = Object.create(NumberLineExplorer.prototype);
+  explorer.value = Number.MIN_VALUE;
+  explorer.center = decodeDouble(explorer.value);
+  explorer.unitExp = unitExponent(explorer.value);
+  const points = explorer.visibleBinaryPoints(-8, 4);
+  assert.equal(points[0].value, 0);
+  assert.ok(points.slice(1).every(({ value }) => value > 0));
 });
 
 test("0.3 has the expected exact representation", () => {

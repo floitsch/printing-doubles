@@ -16,8 +16,8 @@ export function problemTrace(value) {
     { x: nextX, color: "#8eb3ff", height: 30, topLabel: "next double" },
   ];
   const boundaries = [
-    { x: lowerX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], label: "lower midpoint", labelY: .94 },
-    { x: upperX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], label: "upper midpoint", labelY: .94 },
+    { x: lowerX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint: "excluded", endpointLabel: "excluded", endpointLabelDx: -8, endpointAlign: "right", label: "lower midpoint", labelY: .94 },
+    { x: upperX, from: .13, to: .86, color: "#dfff52", dash: [3, 5], endpoint: "excluded", endpointLabel: "excluded", endpointLabelDx: 8, endpointAlign: "left", label: "upper midpoint", labelY: .94 },
   ];
   const band = { from: lowerX, to: upperX, top: .13, bottom: .88, color: "rgba(223,255,82,.14)", label: "ROUND-TRIP INTERVAL" };
   const decimalTick = (text, label, active = false) => {
@@ -55,7 +55,7 @@ export function problemTrace(value) {
       label: "Parsing boundaries",
       title: "Insert the exact arithmetic midpoints",
       why: "Round-to-nearest parsing changes result at the midpoint to each neighbor. These computed boundaries—not a symmetric decorative box—define the selected value's preimage.",
-      registers: { lower: "(previous + selected) / 2", upper: "(selected + next) / 2", tie_rule: "to even" },
+      registers: { lower: "halfway to previous", upper: "halfway to next", boundary_markers: "excluded for this value" },
       visual: { scene: scene({ interval: true }) },
     },
     {

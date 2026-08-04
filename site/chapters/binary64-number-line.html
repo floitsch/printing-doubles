@@ -25,10 +25,13 @@
           <p class="eyebrow">1.1 · Representation</p>
           <h2>Three fields select one exact value</h2>
           <p class="lead">A finite binary64 datum consists of a sign, an eleven-bit exponent field, and a 52-bit fraction field. For normal values, those fields denote one integer significand multiplied by one power of two.</p>
+          <binary64-fields data-value="0.3"></binary64-fields>
+          <p>The strip shows the bits of the binary64 value obtained by parsing <code>0.3</code>. The sign occupies one bit. The stored exponent occupies the next eleven and is biased by 1023, so the bit pattern 1021 denotes the exponent −2. The remaining 52 bits store the fractional part of the significand. A normal value has an additional leading 1 that is understood rather than stored.</p>
           <div class="equation">v = (−1)<sup>s</sup> · (2<sup>52</sup> + fraction) · 2<sup>E−1023−52</sup>.</div>
           <p>The apparently fractional quantity is therefore an integer on a scaled grid. Holding the exponent field <em>E</em> fixed and increasing the fraction by one moves to the next grid point. The distance between adjacent values in that region is</p>
           <div class="equation">ulp = 2<sup>E−1023−52</sup>.</div>
-          <p>This distance is commonly called one <em>unit in the last place</em>, or one ulp. It is a local unit: its real magnitude changes with the exponent. The conversion chapters use an integer significand and an explicit power of two because that form makes both the exact value and its local spacing available without floating-point arithmetic.</p>
+          <div class="aside"><p><strong>One ulp is one local step.</strong> Near 1, adjacent binary64 values in the upper binade differ by 2<sup>−52</sup>, so that distance is one ulp there. Moving the fraction field by one moves the value by one ulp. “Half an ulp” means half of this local gap; it is not one fixed real number throughout the format.</p></div>
+          <p>The conversion chapters use an integer significand and an explicit power of two because that form makes both the exact value and its local spacing available without floating-point arithmetic. When a later chapter uses a <em>decimal</em> ulp, it means the analogous gap between adjacent decimal results at the chosen precision—for example, 0.00001 between five-digit values near 0.33333.</p>
         </section>
 
         <section id="binades">

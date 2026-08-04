@@ -19,9 +19,12 @@ function decimalPower(exponent) {
 }
 
 function decimalDecade(value, rational) {
+  const magnitude = rational.numerator < 0n
+    ? { numerator: -rational.numerator, denominator: rational.denominator }
+    : rational;
   let exponent = Math.floor(Math.log10(Math.abs(value)));
-  while (compareRational(rational, decimalPower(exponent)) < 0) exponent--;
-  while (compareRational(rational, decimalPower(exponent + 1)) >= 0) exponent++;
+  while (compareRational(magnitude, decimalPower(exponent)) < 0) exponent--;
+  while (compareRational(magnitude, decimalPower(exponent + 1)) >= 0) exponent++;
   return exponent;
 }
 

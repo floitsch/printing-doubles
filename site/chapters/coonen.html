@@ -40,15 +40,15 @@
           <p class="eyebrow">3.2 · The earlier baseline</p>
           <h2>Correct rounding by complete expansion</h2>
           <p>A conceptually direct conversion embeds every binary64 input in a fixed-point buffer wide enough for the entire exponent range, converts the integer and fraction portions exactly, and rounds the resulting decimal buffer. This is dependable, but it performs work proportional to the full expansion rather than the requested output.</p>
-          <p>Coonen’s dissertation gives concrete storage for its Pascal correctly-rounded implementation of double conversion: a 1,400-bit packed-BCD buffer and a 1,000-bit binary buffer. Those two data buffers alone total 300 bytes, before code and temporaries. The figure is historically useful, not a modern whole-program memory measurement.</p>
-          <p>The economical alternative observes that fixed-precision output does not require all intervening digits. If the value can be moved into the integer interval [10<sup>N−1</sup>, 10<sup>N</sup>) with sufficiently small error, a single integer rounding determines the complete output field.</p>
-          <div class="equation">x · 10<sup>N−LOGX−1</sup> → N-digit integer.</div>
+          <p>The economical alternative starts from the requested number of digits. If five digits are required, the useful target is an integer between 10,000 and 99,999. Once the binary value has been moved into that range, one rounding operation determines all five output digits.</p>
+          <p>For example, multiplying 0.33333… by 100,000 produces 33,333.33…. Rounding that value to an integer gives the five-digit coefficient 33,333; moving the decimal point back gives 0.33333. As a second example, 123.456 needs only one factor of ten to enter the four-digit range: 1,234.56 rounds to 1,235, which is reported as 1.235 × 10<sup>2</sup>.</p>
+          <div class="aside"><p><strong>The general rule.</strong> First identify the decimal decade containing <em>x</em>. Call its exponent <code>LOGX</code>: 123.456 lies in decade 2 because it is between 10<sup>2</sup> and 10<sup>3</sup>. To obtain <em>N</em> integer digits, move the decimal point by <em>N</em> − <code>LOGX</code> − 1 places. The resulting magnitude should lie in [10<sup>N−1</sup>, 10<sup>N</sup>).</p></div>
         </section>
 
         <section id="algorithm-b">
           <p class="eyebrow">3.3 · The main procedure</p>
           <h2>Algorithm B in five transformations</h2>
-          <p>The original procedure has steps B0 through B8. The pseudocode below groups adjacent bookkeeping steps while retaining the correction loop and its invariant.</p>
+          <p>The original procedure has steps B0 through B8. It first asks “which decimal decade contains the input?” and then asks “how many decimal places move that decade into the requested integer range?” The pseudocode groups adjacent bookkeeping steps while retaining the correction loop and its invariant.</p>
           <ol class="pseudo" id="coonen-code">
             <li data-line="1">extend x; save an unmodified copy</li>
             <li data-line="2">LOGX ← a lower estimate of floor(log10(abs(x)))</li>
@@ -56,6 +56,7 @@
             <li data-line="4">round the scaled x to an integer in the requested mode</li>
             <li data-line="5">correct the decade if necessary; emit N digits and LOGX</li>
           </ol>
+          <p>For one third with <em>N</em> = 5, <code>LOGX</code> is −1. The scale is therefore 5 − (−1) − 1 = 5, so the procedure multiplies by 10<sup>5</sup> and rounds 33,333.33… to 33,333. The coefficient and the remembered decade −1 together mean 3.3333 × 10<sup>−1</sup>.</p>
           <p>If the logarithm estimate is correct, scaling places the magnitude in the desired integer decade. If Algorithm L underestimated by one, the scaled value is approximately ten times too large. The test against 10<sup>N</sup> detects that case, increments <code>LOGX</code>, restores the saved input, and repeats the scaling. Coonen proves that the branch is taken at most once.</p>
           <p>The opposite test, against 10<sup>N−1</sup>, handles a rarer effect in double conversion: an input only slightly above a power of ten can be nudged below the lower limit by the error in a rounded scale factor. Replacing the result by the lower limit reduces an error already within the established bound.</p>
         </section>
@@ -98,16 +99,24 @@
             </tbody>
           </table>
           <h3>Algorithm L: an underestimate is cheaper than a logarithm</h3>
-          <p>Write a normalized value as 2<sup>e</sup>·1.<em>f</em>. On the interval 1≤1.<em>f</em>&lt;2, the fraction 0.<em>f</em> is a lower approximation to log<sub>2</sub>(1.<em>f</em>). Coonen therefore treats the exponent and leading fraction bits as a fixed-point approximation to log<sub>2</sub>(x), multiplies it by a truncated hexadecimal approximation of log<sub>10</sub>(2), and takes the floor. The construction biases every approximation downward.</p>
+          <p>A library logarithm would be excessive here. Algorithm B does not need a finely rounded value of log<sub>10</sub>(x); it needs only the integer identifying the decimal decade, and it can cheaply detect one particular error. Algorithm L is therefore designed to return either the correct decade or the preceding decade, never a later one.</p>
+          <p>Begin by normalizing the input as 2<sup>e</sup>·(1 + <em>f</em>), where 0 ≤ <em>f</em> &lt; 1. The exponent <em>e</em> gives the integer part of the binary logarithm. The fraction <em>f</em> is also a convenient lower estimate of the remaining logarithm because <em>f</em> ≤ log<sub>2</sub>(1 + <em>f</em>) over this interval.</p>
+          <p>Consider 12 = 2<sup>3</sup>·1.5. Here <em>e</em> = 3 and <em>f</em> = 0.5, so 3.5 is used in place of log<sub>2</sub>(12) ≈ 3.585. Multiplication by log<sub>10</sub>(2) gives approximately 1.05; taking the floor returns decade 1, correctly placing 12 between 10 and 100.</p>
+          <p>The deliberately low estimate can miss at a decimal power. For 10 = 2<sup>3</sup>·1.25, the preliminary value is 3.25. After conversion to a decimal logarithm it is about 0.978, whose floor is 0 rather than 1. Algorithm B then scales 10 as though it belonged to the preceding decade, obtains an integer that is ten times too large, and corrects the decade once.</p>
+          <p>The implementation does not perform these calculations with real logarithms. It takes leading exponent and fraction bits as a fixed-point integer, multiplies by a hexadecimal constant slightly below log<sub>10</sub>(2), and discards the fractional result. The downward choices are the proof: they make an overestimate impossible.</p>
           <h3>Algorithm S: preserve the fact that low bits existed</h3>
-          <p>Chopping the extended multiplication loses low bits, but the final rounding still needs to know whether any were nonzero. Algorithm S uses the floating-point inexact flag as an aggregate OR of those discarded bits and sets the retained least-significant bit when necessary. This is an early use of what later presentations usually call a sticky bit.</p>
+          <p>Scaling produces more product bits than the extended format retains. Simply chopping them would make a product with a nonzero tail indistinguishable from an exact product. The final rounding step sometimes needs precisely that distinction.</p>
+          <p>Suppose the unabridged product begins <code>1.0100 001…</code>, while only the first four fractional bits are retained. Chopping yields <code>1.0100</code>, but the discarded suffix contains a 1. Algorithm S observes the inexact flag and forces the retained least-significant bit to 1, producing <code>1.0101</code>. If that bit was already 1, it remains 1.</p>
+          <p>This operation is not the final rounding of the decimal result. It records one proposition—“some discarded bit was nonzero”—inside the retained value. Later literature normally calls this accumulated information a <em>sticky bit</em>.</p>
           <h3>Algorithms P and Q: powers are part of the proof</h3>
-          <p>For a 64-bit extended significand, 10<sup>0</sup> through 10<sup>27</sup> are exact because 5<sup>27</sup> fits in 64 bits whereas 5<sup>28</sup> does not. Larger powers require rounded table entries. Their error signs and multiplication count determine Algorithm B’s error bound; the table is not merely a performance cache.</p>
+          <p>A power of ten factors as 10<sup>k</sup> = 2<sup>k</sup>·5<sup>k</sup>. The power of two changes only the exponent, so exact representability depends on whether the integer 5<sup>k</sup> fits in the significand. With 64 significand bits, 5<sup>27</sup> fits and 5<sup>28</sup> does not. Thus powers through 10<sup>27</sup> can be formed exactly; larger powers need rounded constants.</p>
+          <p>Algorithms P and Q combine a small exact power with one or more table values. The table entries have specified rounding directions, and Q uses no more than three multiplications to cover the double range through 10<sup>340</sup>. Their error signs and multiplication count determine Algorithm B’s error bound. The table is therefore part of the numerical argument, not merely a cache added for speed.</p>
         </section>
 
         <section id="accuracy">
           <p class="eyebrow">3.7 · What Coonen proves</p>
           <h2>Recovery without universal correct rounding</h2>
+          <p>At a fixed decimal precision, one decimal ulp is one step between adjacent possible results. Around the five-digit result 0.33333, that step is 0.00001. An error of 0.019 decimal ulp is therefore 0.019 of that local step, not an absolute error of 0.019.</p>
           <p>With exact powers of ten, B has only the final expected rounding. Outside that central range, the rounded scale factor contributes additional error. For full 17-digit double output, Coonen bounds that additional binary-to-decimal error at 0.019 decimal ulp in round-to-nearest mode and 0.054 decimal ulp in a directed mode.</p>
           <p>Those figures are not themselves the recovery theorem. Recovery follows by combining the binary-to-decimal bound, the decimal-to-binary bound of Algorithm D, and the relative density of the two formats. For double precision, the resulting total is bounded at approximately 0.97 binary ulp—strictly below the one-ulp separation needed to prevent one binary value from crossing to a neighbor during the round trip.</p>
           <p>The margin is narrow. That is why the precision of extended intermediates, the direction of every rounded table entry, and sticky information from discarded bits are correctness conditions rather than optional optimizations.</p>
@@ -116,12 +125,12 @@
         <section id="status">
           <p class="eyebrow">3.8 · Evidence and implementation status</p>
           <h2>What is executable now, and what remains</h2>
-          <p>The public implementation currently contains an exact-rational control for Algorithm B, tests for ordinary fixed-precision output and the one-retry decade correction, and an execution trace generated from that implementation. It does not yet claim to reproduce the dissertation’s 64-bit extended rounding behavior.</p>
+          <p>The public implementation currently contains an exact-rational control for Algorithm B, tests for ordinary fixed-precision output and the one-retry decade correction, and an execution trace generated from that implementation. It does not yet claim to reproduce the dissertation’s 64-bit extended rounding behavior. These are foundation tests, not yet the difficult-input corpus required for a correctness claim.</p>
           <div class="implementation-ledger">
-            <p><strong>Verified from scan</strong><span>Algorithm B’s contract and steps B0–B8, dissertation pages 7.15–7.16; the wide-buffer figures on page 7.14.</span></p>
+            <p><strong>Verified from scan</strong><span>Algorithm B’s contract and steps B0–B8, dissertation pages 7.15–7.16.</span></p>
             <p><strong>Implemented</strong><span>Exact scale-factor control for B, all four rounding directions, trace events, and differential-ready coefficient/exponent output.</span></p>
-            <p><strong>Next in this chapter</strong><span>Bit-accurate Algorithm L; a parameterized extended-format simulator for S; verified Q table constants; recovery and monotonicity corpora.</span></p>
-            <p><strong>Not yet published as measurement</strong><span>Modern code size, table size, stack use, and ESP32 timing. These remain in the memory research ledger until reproduced with pinned toolchains.</span></p>
+            <p><strong>Correctness gate</strong><span>The extended-format implementation must agree with an independent exact oracle on transition-adjacent values, powers of two and ten, subnormals, midpoint cases, carry cases, and a large deterministic sample across all exponent fields.</span></p>
+            <p><strong>Next in this chapter</strong><span>Bit-accurate Algorithm L; a parameterized extended-format simulator for S; verified Q table constants; then recovery and monotonicity corpora.</span></p>
           </div>
           <p>The OCR transcription remains local because it is scan-derived and contains known recognition errors in mathematical constants. It is not distributed with the public site; a private copy is available from the maintainer on request. Chapter prose is checked against the photographed pages, and table constants will not enter executable code until compared character by character with the scan.</p>
         </section>

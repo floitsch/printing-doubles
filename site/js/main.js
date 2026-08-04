@@ -1,3 +1,4 @@
+import "./bit-fields.js";
 import { NumberLineExplorer } from "./explorer.js";
 import { problemTrace } from "./problem-trace.js";
 
@@ -11,6 +12,7 @@ const explorer = new NumberLineExplorer(canvas, {
   bits: document.querySelector("#bit-value"),
   exact: document.querySelector("#exact-value"),
   inspector: document.querySelector("#tick-inspector"),
+  bitFields: document.querySelector("#explorer-bit-fields"),
   zoomRange,
 });
 

@@ -12,7 +12,9 @@ let that reader answer four questions:
 1. What output contract does this algorithm solve?
 2. What mathematical object does it carry while it runs?
 3. Why can it stop, and why is the result correct?
-4. What does it cost in arithmetic, tables, code, stack, and exceptional paths?
+4. What does it cost in arithmetic, tables, and exceptional paths? Large,
+   algorithmically important storage differences may be described qualitatively;
+   device-specific size measurements are maintained as a separate study.
 
 The text introduces notation only when a visual or execution immediately uses
 it. Formal details remain available rather than being replaced by metaphors.
@@ -57,7 +59,8 @@ paper abstract: less compressed than the original research, but no less exact.
    scaling all make fixed-width integer scaling sufficient, but remove different
    work from the critical path.
 8. **Choosing an implementation.** Correctness evidence, formatter contract,
-   CPU, table policy, code/flash/stack size, and license.
+   CPU, table policy, and license. The independent embedded-size study supplies
+   code/flash/stack results after its toolchains and measurement method stabilize.
 
 ## Three implementation layers
 
@@ -71,10 +74,9 @@ serve different purposes.
   exponent, emitted text, status/fallback, and table-policy identifier.
 - Preserve upstream license and attribution. Do not copy code whose license is
   unclear.
-- Compile separately with desktop `-O2`, size-oriented `-Os`, and the available
-  Xtensa/RISC-V ESP toolchain.
-- Record `.text`, read-only data, writable data, static table bytes, maximum
-  output buffer, and measured stack where the toolchain permits.
+- Desktop wrappers belong to the correctness and trace work. Cross-compilation,
+  object-size accounting, table-policy comparisons, stack measurements, and
+  device timing belong to `research/size-and-esp32.md`, not to the page build.
 
 ### 2. Executable specification layer
 
@@ -113,6 +115,9 @@ Test groups:
 - halfway decimal cases and carry chains (`9…9`);
 - all binary32 values where practical;
 - stratified and randomized binary64 bit patterns;
+- upstream hard-case corpora and all algorithm-specific fallback or correction
+  cases;
+- an independent parse/format check for every advertised recovery contract;
 - known hard-case corpora from upstream projects;
 - cross-algorithm agreement on the selected contract;
 - parse-back verification using more than one independent parser.
@@ -330,14 +335,25 @@ gap, publish an audit note rather than presenting the method as correct.
 ## Definition of done for an algorithm chapter
 
 - The output contract is explicit.
-- The executable spec and optimized/reference implementation agree on the full
-  test corpus.
+- The readable executable specification and the optimized/reference
+  implementation both agree with an independent exact oracle on the full test
+  corpus. Agreement only between two implementations with shared arithmetic is
+  insufficient.
+- The corpus includes special values, exponent transitions, values adjacent to
+  powers of two and ten, subnormal boundaries, midpoint/tie cases, carry chains,
+  upstream hard cases, and a large deterministic sample spanning every binary64
+  exponent field. Exhaustive binary32 testing is used where the contract can be
+  instantiated for binary32.
+- A chapter calls an implementation correct only after the contract-specific
+  corpus passes. Earlier executable controls are labeled as controls or partial
+  implementations, not as correctness evidence for the completed algorithm.
 - Every displayed trace comes from the instrumented implementation.
 - Pseudocode line highlighting is synchronized with semantic events.
 - At least one ordinary input, one boundary/tie case, and one algorithm-specific
   hard path are available in the player.
-- Arithmetic/table/code/stack costs are either measured reproducibly or clearly
-  marked as reported figures.
+- Algorithmically material table or fallback differences may be stated with a
+  source. Device code size, stack, and timing remain in the independent embedded
+  study until measured reproducibly.
 - Correctness and performance evidence are cited separately.
 - The chapter works with keyboard controls, narrow screens, reduced motion, and
   without loading third-party scripts.

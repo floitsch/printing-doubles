@@ -35,7 +35,7 @@ export class NumberLineExplorer {
   bindEvents() {
     this.canvas.addEventListener("wheel", (event) => {
       event.preventDefault();
-      this.setZoom(this.zoom + (event.deltaY < 0 ? 5 : -5));
+      this.setZoomAt(this.zoom + (event.deltaY < 0 ? 5 : -5), this.normalizedX(event.clientX));
     }, { passive: false });
     this.canvas.addEventListener("pointerdown", (event) => {
       this.canvas.setPointerCapture(event.pointerId);
@@ -44,7 +44,12 @@ export class NumberLineExplorer {
       if (this.pointers.size === 1) {
         this.drag = { x: event.clientX, pan: this.pan };
       } else if (this.pointers.size === 2) {
-        this.pinch = { distance: pointerDistance(this.pointers), zoom: this.zoom };
+        const position = this.pointerCenter();
+        this.pinch = {
+          distance: pointerDistance(this.pointers),
+          zoom: this.zoom,
+          anchor: this.coordinateAt(position),
+        };
         this.drag = null;
       }
     });
@@ -52,7 +57,13 @@ export class NumberLineExplorer {
       if (this.pointers.has(event.pointerId)) this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (this.pointers.size === 2 && this.pinch) {
         const distance = pointerDistance(this.pointers);
-        if (distance > 0 && this.pinch.distance > 0) this.setZoom(this.pinch.zoom + 24 * Math.log2(distance / this.pinch.distance));
+        if (distance > 0 && this.pinch.distance > 0) {
+          this.setZoomAt(
+            this.pinch.zoom + 24 * Math.log2(distance / this.pinch.distance),
+            this.pointerCenter(),
+            this.pinch.anchor,
+          );
+        }
         return;
       }
       if (!this.drag) {
@@ -99,6 +110,32 @@ export class NumberLineExplorer {
     this.draw();
   }
 
+  normalizedX(clientX) {
+    const rect = this.canvas.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }
+
+  pointerCenter() {
+    const pointers = [...this.pointers.values()];
+    const clientX = pointers.reduce((sum, pointer) => sum + pointer.x, 0) / pointers.length;
+    return this.normalizedX(clientX);
+  }
+
+  coordinateAt(position) {
+    return this.pan + (position * 2 - 1) * this.span();
+  }
+
+  setZoomAt(zoom, position, anchor) {
+    const previousPan = this.pan;
+    const previousSpan = this.span();
+    this.zoom = Math.max(0, Math.min(100, zoom));
+    this.pan = anchor === undefined
+      ? anchoredPan(previousPan, previousSpan, this.span(), position)
+      : anchor - (position * 2 - 1) * this.span();
+    if (this.elements.zoomRange) this.elements.zoomRange.value = String(this.zoom);
+    this.draw();
+  }
+
   resetView() {
     this.pan = 0;
     this.setZoom(72);
@@ -118,6 +155,7 @@ export class NumberLineExplorer {
     this.elements.printed.textContent = value.toString();
     this.elements.bits.textContent = bitHex(this.center);
     this.elements.exact.textContent = exactForm(this.center);
+    if (this.elements.bitFields?.setValue) this.elements.bitFields.setValue(value);
     if (this.elements.inspector) this.elements.inspector.textContent = `Selected double ${value.toString()} · bits ${bitHex(this.center)}. Hover or tap a tick or midpoint; press P or N to select a neighbor.`;
     this.draw();
     return true;
@@ -141,8 +179,8 @@ export class NumberLineExplorer {
       domain: [left, right],
       bands: [{ from: this.lowerBoundary, to: this.upperBoundary, top: .125, bottom: .88, color: "rgba(223,255,82,.13)", label: intervalPixels > 140 ? "ROUND-TRIP INTERVAL" : undefined }],
       markers: [
-        { x: this.lowerBoundary, from: .12, to: .89, color: "#dfff52", dash: [3, 5], inspect: { kind: "boundary", role: "lower midpoint", value: exactDecimalOfRational(this.interval.lower), included: this.interval.closed } },
-        { x: this.upperBoundary, from: .12, to: .89, color: "#dfff52", dash: [3, 5], inspect: { kind: "boundary", role: "upper midpoint", value: exactDecimalOfRational(this.interval.upper), included: this.interval.closed } },
+        { x: this.lowerBoundary, from: .12, to: .89, color: "#dfff52", dash: [3, 5], endpoint: this.interval.closed ? "included" : "excluded", endpointLabel: intervalPixels > 100 ? (this.interval.closed ? "included" : "excluded") : undefined, endpointLabelDx: -8, endpointAlign: "right", inspect: { kind: "boundary", role: "lower midpoint", value: exactDecimalOfRational(this.interval.lower), included: this.interval.closed } },
+        { x: this.upperBoundary, from: .12, to: .89, color: "#dfff52", dash: [3, 5], endpoint: this.interval.closed ? "included" : "excluded", endpointLabel: intervalPixels > 100 ? (this.interval.closed ? "included" : "excluded") : undefined, endpointLabelDx: 8, endpointAlign: "left", inspect: { kind: "boundary", role: "upper midpoint", value: exactDecimalOfRational(this.interval.upper), included: this.interval.closed } },
         { x: 0, from: .08, to: .92, color: "rgba(255,255,255,.35)", dash: [2, 7] },
       ],
       lanes: [
@@ -151,26 +189,16 @@ export class NumberLineExplorer {
       ],
       brackets,
       captions: spacingChanges ? [{ x: 0, y: .09, align: "center", color: "#dfff52", text: "EXPONENT TRANSITION · BINARY SPACING DOUBLES" }] : [],
-      footer: isEvenSignificand(this.center) ? "EVEN SIGNIFICAND · BOUNDARIES INCLUDED" : "ODD SIGNIFICAND · BOUNDARIES EXCLUDED",
+      footer: isEvenSignificand(this.center) ? "BOTH MIDPOINT BOUNDARIES ARE INCLUDED" : "BOTH MIDPOINT BOUNDARIES ARE EXCLUDED",
     });
   }
 
   binaryTicks(left, right) {
     const ticks = [];
     if (right - left <= 180) {
-      const points = [{ decoded: this.center, coordinate: 0, index: 0, value: this.value }];
-      for (const { value, index: i } of neighboringDoubles(this.value, "up")) {
-        const coordinate = binaryCoordinate(decodeDouble(value), this.center, this.unitExp);
-        if (coordinate > right + 2) break;
-        points.push({ decoded: decodeDouble(value), coordinate, index: i, value });
-      }
-      for (const { value, index: i } of neighboringDoubles(this.value, "down")) {
-        const coordinate = binaryCoordinate(decodeDouble(value), this.center, this.unitExp);
-        if (coordinate < left - 2) break;
-        points.push({ decoded: decodeDouble(value), coordinate, index: -i, value });
-      }
+      const points = this.visibleBinaryPoints(left - 2, right + 2);
       for (const point of points) {
-        const major = point.index === 0;
+        const major = sameNumber(point.value, this.value);
         const zero = point.value === 0 || Object.is(point.value, -0);
         ticks.push({
           x: point.coordinate,
@@ -181,7 +209,7 @@ export class NumberLineExplorer {
           label: zero ? "0" : undefined,
           topLabel: major ? "selected double" : undefined,
           textColor: major ? "#f4f0e8" : "#8eb3ff",
-          inspect: { kind: "double", role: major ? "selected double" : point.index < 0 ? "previous double" : "next double", value: point.value, selected: major },
+          inspect: { kind: "double", role: major ? "selected double" : point.coordinate < 0 ? "double below the selection" : "double above the selection", value: point.value, selected: major },
         });
       }
     } else {
@@ -193,6 +221,47 @@ export class NumberLineExplorer {
       }
     }
     return ticks;
+  }
+
+  visibleBinaryPoints(left, right) {
+    const referenceStep = 2 ** this.unitExp;
+    let cursor = this.value + left * referenceStep;
+    if (!Number.isFinite(cursor)) cursor = left < 0 ? -Number.MAX_VALUE : Number.MAX_VALUE;
+
+    // There is no negative finite neighbor below the least positive subnormal
+    // in the scene we use to introduce underflow: its sole predecessor is zero.
+    const stopAtPositiveZero = this.value === Number.MIN_VALUE;
+    const stopAtNegativeZero = this.value === -Number.MIN_VALUE;
+    if (stopAtPositiveZero && cursor <= 0) cursor = 0;
+    if (stopAtNegativeZero && cursor >= 0) cursor = -0;
+
+    let coordinate = binaryCoordinate(decodeDouble(cursor), this.center, this.unitExp);
+    for (let guard = 0; coordinate < left && guard < 2048; guard++) {
+      const next = nextUp(cursor);
+      if (!Number.isFinite(next) || sameNumber(next, cursor)) break;
+      cursor = next;
+      coordinate = binaryCoordinate(decodeDouble(cursor), this.center, this.unitExp);
+    }
+    for (let guard = 0; coordinate > left && guard < 2048; guard++) {
+      if (stopAtPositiveZero && cursor === 0) break;
+      const previous = nextDown(cursor);
+      if (!Number.isFinite(previous) || sameNumber(previous, cursor)) break;
+      const previousCoordinate = binaryCoordinate(decodeDouble(previous), this.center, this.unitExp);
+      if (previousCoordinate < left) break;
+      cursor = previous;
+      coordinate = previousCoordinate;
+    }
+
+    const points = [];
+    for (let guard = 0; coordinate <= right && guard < 1024; guard++) {
+      points.push({ decoded: decodeDouble(cursor), coordinate, value: cursor });
+      if ((stopAtNegativeZero && Object.is(cursor, -0)) || cursor === Number.MAX_VALUE) break;
+      const next = nextUp(cursor);
+      if (!Number.isFinite(next) || sameNumber(next, cursor)) break;
+      cursor = next;
+      coordinate = binaryCoordinate(decodeDouble(cursor), this.center, this.unitExp);
+    }
+    return points;
   }
 
   decimalExponent(span) {
@@ -207,10 +276,13 @@ export class NumberLineExplorer {
     const ticks = [];
     const exponent = this.decimalExponent(span);
     const centerIndex = floorAtDecimalScale(this.center, exponent);
-    const start = centerIndex - 80n;
+    const centerCoordinate = decimalCoordinate(centerIndex, exponent, this.center, this.unitExp);
+    const coordinateStep = decimalCoordinate(centerIndex + 1n, exponent, this.center, this.unitExp) - centerCoordinate;
+    const firstOffset = Math.floor((left - centerCoordinate) / coordinateStep) - 3;
+    const lastOffset = Math.ceil((right - centerCoordinate) / coordinateStep) + 3;
 
-    for (let offset = 0n; offset <= 160n; offset++) {
-      const coefficient = start + offset;
+    for (let offset = firstOffset; offset <= lastOffset && offset < firstOffset + 500; offset++) {
+      const coefficient = centerIndex + BigInt(offset);
       const coordinate = decimalCoordinate(coefficient, exponent, this.center, this.unitExp);
       if (coordinate < left - span * .1 || coordinate > right + span * .1) continue;
       const major = coefficient % 10n === 0n;
@@ -245,7 +317,7 @@ export class NumberLineExplorer {
     if (!hit) return;
     const item = hit.inspect;
     if (item.kind === "boundary") {
-      this.elements.inspector.textContent = `${item.role} · ${item.value} · endpoint ${item.included ? "included (selected significand is even)" : "excluded (selected significand is odd)"}`;
+      this.elements.inspector.textContent = `${item.role} · ${item.value} · this endpoint is ${item.included ? "included" : "excluded"} for the selected double`;
     } else if (item.kind === "double") {
       const decoded = decodeDouble(item.value);
       this.elements.inspector.textContent = `${item.role} · ${exactDecimal(item.value)} · bits ${bitHex(decoded)}${item.selected || item.value === 0 ? "" : " · tap or click to select"}`;
@@ -284,6 +356,15 @@ function changingSuffix(coefficient) {
 function pointerDistance(pointers) {
   const [first, second] = [...pointers.values()];
   return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function sameNumber(left, right) {
+  return Object.is(left, right) || (left === 0 && right === 0);
+}
+
+export function anchoredPan(pan, oldSpan, newSpan, position) {
+  const anchor = pan + (position * 2 - 1) * oldSpan;
+  return anchor - (position * 2 - 1) * newSpan;
 }
 
 export function neighboringDoubles(value, direction, limit = 109) {

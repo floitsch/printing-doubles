@@ -100,6 +100,7 @@
           <div><span>IEEE 754 bits</span><output id="bit-value">3fd3333333333333</output></div>
           <div><span>Exact form</span><output id="exact-value">5404319552844595 × 2⁻⁵⁴</output></div>
         </div>
+        <binary64-fields id="explorer-bit-fields" data-value="0.3"></binary64-fields>
       </div>
     </section>
 
@@ -112,12 +113,12 @@
       <div class="section-body problem-body">
         <p class="lede">The exact value stored for <code>0.3</code> is the finite decimal below. Printing it is correct, but it answers a question that most default formatters were not asked.</p>
         <output class="monster" aria-label="The exact decimal value stored for double 0.3">0.299999999999999988897769753748434595763683319091796875</output>
-        <p>Assume that a decimal parser rounds to the nearest binary64 value, breaking an exact tie toward the value with an even significand. The selected double then owns an interval of real numbers. Its lower boundary is the midpoint between the selected double and the previous double; its upper boundary is the midpoint between the selected double and the next double. Every decimal strictly inside that interval parses to the selected bits.</p>
+        <p>Assume that a decimal parser rounds to the nearest binary64 value. The selected double then owns an interval of real numbers. Its lower boundary is halfway to the previous double; its upper boundary is halfway to the next double. Every decimal strictly inside that interval parses to the selected bits. A value exactly on a boundary needs an additional tie rule; the instrument simply marks whether that boundary belongs to the selected double.</p>
         <div class="interval-figure">
           <trace-player class="trace-player problem-player" data-title="Construct the output problem · input 0.3"><script id="problem-trace-data" type="application/json">[]</script></trace-player>
           <div class="interval-definitions">
             <p><strong>Previous and next double</strong> are the adjacent representable binary64 values. There is no other double between either one and the selected value.</p>
-            <p><strong>Lower and upper midpoint</strong> are the parsing boundaries halfway to those neighbors. Endpoint inclusion is decided by ties-to-even.</p>
+            <p><strong>Lower and upper midpoint</strong> are the parsing boundaries halfway to those neighbors. An open marker says “excluded”; a filled marker says “included.”</p>
             <p><strong>Round-trip interval</strong> is the complete set of real values that parse to the selected double. A printer may choose any suitable decimal point in it.</p>
           </div>
         </div>
@@ -191,22 +192,8 @@
       </div>
     </section>
 
-    <section class="memory section-grid" id="memory" aria-labelledby="memory-title">
-      <div class="section-number">06</div>
-      <div class="section-heading"><p class="eyebrow">Microcontroller lens</p><h2 id="memory-title">Speed is not the only budget</h2><p>For an ESP32, flash tables and code size can matter more than a few nanoseconds measured on a desktop CPU.</p></div>
-      <div class="section-body">
-        <div class="memory-cards">
-          <article><span>≈1.4 KiB</span><h3>Grisu3 cache</h3><p>87 cached powers × 16 bytes, before fallback code.</p></article>
-          <article><span>9,872 B</span><h3>Ryū full tables</h3><p>The paper’s binary64 lookup tables; implementations may trade time for smaller tables.</p></article>
-          <article><span>584 B</span><h3>Dragonbox compact cache</h3><p>Reported static cache storage for binary64, versus 9,904 bytes for its full policy.</p></article>
-          <article><span>measure it</span><h3>Total firmware cost</h3><p>Templates, digit formatting, fallback paths, and compiler dead-code elimination change the real result.</p></article>
-        </div>
-        <p class="research-caveat"><strong>Research note:</strong> these are cache/table figures from papers or implementation documentation—not comparable whole-program measurements. Reproducible object-size experiments are being kept outside the public claims until the ESP32 toolchain results are stable.</p>
-      </div>
-    </section>
-
     <section class="sources section-grid" id="sources" aria-labelledby="sources-title">
-      <div class="section-number">07</div>
+      <div class="section-number">06</div>
       <div class="section-heading"><p class="eyebrow">Read the evidence</p><h2 id="sources-title">Primary sources first</h2></div>
       <div class="section-body source-list">
         <a id="source-coonen" href="./chapters/coonen.html"><span>1984 · local OCR preservation</span><strong>Jerome T. Coonen — Accurate Yet Economical Binary–Decimal Conversions</strong><em>A machine-readable transcription is preserved locally while equation-by-equation verification proceeds. It is not distributed with the public site; a private copy is available from the maintainer on request.</em></a>

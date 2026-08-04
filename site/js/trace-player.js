@@ -6,7 +6,6 @@ class TracePlayer extends HTMLElement {
     if (!data) return;
     this.steps = JSON.parse(data.textContent);
     this.index = 0;
-    this.playing = false;
     this.innerHTML = `
       <div class="trace-head"><strong>${this.dataset.title || "Execution microscope"}</strong><span class="trace-progress"></span></div>
       <div class="trace-stage">
@@ -15,7 +14,6 @@ class TracePlayer extends HTMLElement {
       </div>
       <div class="trace-controls">
         <button type="button" data-action="previous">← Previous</button>
-        <button type="button" data-action="play">Play</button>
         <input type="range" min="0" max="${this.steps.length - 1}" value="0" aria-label="Trace step">
         <button type="button" data-action="next">Next →</button>
       </div>`;
@@ -23,7 +21,6 @@ class TracePlayer extends HTMLElement {
     this.numberLine = new NumberLineView(this.canvas);
     this.querySelector('[data-action="previous"]').onclick = () => this.show(this.index - 1);
     this.querySelector('[data-action="next"]').onclick = () => this.show(this.index + 1);
-    this.querySelector('[data-action="play"]').onclick = () => this.togglePlay();
     this.querySelector('input[type="range"]').oninput = (event) => this.show(Number(event.target.value));
     this.show(0);
   }
@@ -44,19 +41,6 @@ class TracePlayer extends HTMLElement {
       for (const line of document.querySelectorAll(`${selector} [data-line]`)) line.classList.toggle("active", Number(line.dataset.line) === step.line);
     }
     this.renderVisual();
-  }
-
-  togglePlay() {
-    this.playing = !this.playing;
-    const button = this.querySelector('[data-action="play"]');
-    button.textContent = this.playing ? "Pause" : "Play";
-    clearInterval(this.timer);
-    if (!this.playing) return;
-    if (this.index === this.steps.length - 1) this.show(0);
-    this.timer = setInterval(() => {
-      if (this.index === this.steps.length - 1) this.togglePlay();
-      else this.show(this.index + 1);
-    }, 1800);
   }
 
   renderVisual() {
