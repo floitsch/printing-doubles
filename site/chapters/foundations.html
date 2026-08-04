@@ -12,17 +12,17 @@
   <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
   <main>
     <section class="chapter-hero">
-      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part I · Specification</p>
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part I · Floating-point foundations and specification</p>
       <h1>Two grids and one rounding interval</h1>
       <p class="chapter-deck">Before an optimized printer can be understood, the required result must be stated without reference to an implementation. This chapter develops that specification and turns it into an executable, exact oracle.</p>
-      <div class="chapter-meta"><span>Chapter 1</span><span>Exact arithmetic</span><span>Independent oracle</span></div>
+      <div class="chapter-meta"><span>Chapter 2</span><span>Exact arithmetic</span><span>Independent oracle</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#representation">Binary64 as an integer</a><a href="#exact">The naive exact printer</a><a href="#contracts">Output contracts</a><a href="#interval">Rounding intervals</a><a href="#oracle">An exact oracle</a><a href="#trace">Execution microscope</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 2</strong><a href="#representation">Binary64 as an integer</a><a href="#exact">The naive exact printer</a><a href="#contracts">Output contracts</a><a href="#interval">Rounding intervals</a><a href="#oracle">An exact oracle</a><a href="#trace">Execution microscope</a></aside>
       <article class="chapter">
         <section id="representation">
-          <p class="eyebrow">1.1 · Representation</p>
+          <p class="eyebrow">2.1 · Representation</p>
           <h2>A double is already an exact number</h2>
           <p class="lead">A binary floating-point value is not an imprecise cloud around a real number. Once its bits have been fixed, it denotes one exact rational number.</p>
           <p>For the finite, nonzero values considered first, it is convenient to decode binary64 into an integer significand <em>f</em> and an integer exponent <em>e</em>:</p>
@@ -35,7 +35,7 @@
         </section>
 
         <section id="exact">
-          <p class="eyebrow">1.2 · Baseline</p>
+          <p class="eyebrow">2.2 · Baseline</p>
           <h2>The naive exact printer</h2>
           <p>If <em>e</em> is nonnegative, exact printing is only an integer shift: <code>f &lt;&lt; e</code>. If <em>e = −n</em> is negative, the identity</p>
           <div class="equation">f · 2<sup>−n</sup> = f · 5<sup>n</sup> / 10<sup>n</sup></div>
@@ -47,7 +47,7 @@
         </section>
 
         <section id="contracts">
-          <p class="eyebrow">1.3 · Problem statement</p>
+          <p class="eyebrow">2.3 · Problem statement</p>
           <h2>Several conversions, not one</h2>
           <p>The phrase “convert a double to a string” leaves the output contract unspecified. Historically important algorithms address different contracts, and a performance comparison is meaningful only after the contract has been fixed.</p>
           <table>
@@ -65,20 +65,20 @@
         </section>
 
         <section id="interval">
-          <p class="eyebrow">1.4 · Geometry of parsing</p>
+          <p class="eyebrow">2.4 · Geometry of parsing</p>
           <h2>Replace the value with its preimage</h2>
           <p>Let <em>v⁻</em> and <em>v⁺</em> be the adjacent binary64 values below and above a finite value <em>v</em>. Under round-to-nearest parsing, the transition between <em>v⁻</em> and <em>v</em> occurs at their arithmetic midpoint; the transition between <em>v</em> and <em>v⁺</em> occurs at the corresponding upper midpoint:</p>
           <div class="equation">m⁻ = (v⁻ + v) / 2, &nbsp;&nbsp; m⁺ = (v + v⁺) / 2.</div>
           <p>Every real number strictly between <em>m⁻</em> and <em>m⁺</em> parses to <em>v</em>. The treatment of the endpoints follows the ties-to-even rule. If the least significant bit of <em>v</em>’s significand is zero, <em>v</em> is the even neighbor at both boundaries and the interval is closed. If that bit is one, the neighboring values win the ties and the interval is open.</p>
           <div class="equation">I(v) = [m⁻,m⁺] when f is even; &nbsp;&nbsp; I(v) = (m⁻,m⁺) when f is odd.</div>
-          <p>The distances to the two boundaries are usually equal. At an exact power of two, however, the predecessor belongs to a binade with half the spacing. The lower boundary is then closer than the upper boundary. Correct printers therefore carry two margins or construct both endpoints; assuming a symmetric interval fails precisely at a structurally important class of inputs.</p>
+          <p>The distances to the two boundaries are usually equal. As established in <a href="./binary64-number-line.html#transition">the preceding chapter</a>, an exact power of two has a closer predecessor, and therefore a closer lower midpoint. Correct printers carry distinct margins, construct both endpoints, or enter an equivalent specialized case.</p>
           <p>The shortest-conversion problem can now be stated without mentioning digits or code:</p>
           <div class="aside"><p>Find the coarsest decimal grid containing a point in <em>I(v)</em>. Among the points of that grid inside the interval, choose the point closest to <em>v</em>, and apply the specified decimal tie rule if necessary.</p></div>
           <p>A decimal with coefficient <em>d</em> and exponent <em>k</em> is the rational <em>d · 10ᵏ</em>. Changing <em>k</em> changes the spacing of the decimal grid. Thus the picture in the explorer is not an analogy added after the algorithm: it is the problem itself.</p>
         </section>
 
         <section id="oracle">
-          <p class="eyebrow">1.5 · Executable specification</p>
+          <p class="eyebrow">2.5 · Executable specification</p>
           <h2>An independent exact oracle</h2>
           <p>Optimized printers use fixed-width approximations, carefully bounded products, and specialized candidate arguments. Their tests should not decide correctness by repeating the same logic in a slower syntax. This project therefore includes a separate oracle whose only arithmetic objects are exact BigInt rationals.</p>
           <ol class="pseudo" id="oracle-code">
@@ -95,7 +95,7 @@
         </section>
 
         <section id="trace">
-          <p class="eyebrow">1.6 · Worked execution</p>
+          <p class="eyebrow">2.6 · Worked execution</p>
           <h2>Follow the specification for 0.3</h2>
           <p>The microscope below is populated by the executable oracle. Moving through the steps highlights the corresponding pseudocode line and reconfigures the same layered number-line renderer used by the free explorer. Later chapters will replace the grid-search events with their own internal operations while retaining this common geometric reference.</p>
           <trace-player class="trace-player" data-title="Exact shortest oracle · input 0.3" data-code="#oracle-code"><script id="oracle-trace-data" type="application/json">[]</script></trace-player>
@@ -103,13 +103,13 @@
         </section>
 
         <section id="limits">
-          <p class="eyebrow">1.7 · Scope</p>
+          <p class="eyebrow">2.7 · Scope</p>
           <h2>What the oracle does not claim</h2>
           <p>The BigInt search is a specification and a test instrument. It is not offered as a fast production formatter. It currently treats the finite nonzero path; signed zero, infinities, and NaNs are formatting policies rather than shortest-decimal questions and are tested separately by production wrappers. Text layout—when to use fixed or scientific notation—is also separate from the selection of a decimal coefficient and exponent.</p>
           <p>This separation will recur throughout the book. Several modern libraries call their core operation “binary to decimal” because it returns an integer coefficient and a decimal exponent. Turning that pair into characters can cost as much as, or more than, the numerical conversion. Comparisons later in the book will state explicitly which part is measured.</p>
         </section>
 
-        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>All chapters</strong></a><a href="./coonen.html"><span>Next</span><strong>Coonen →</strong></a></nav>
+        <nav class="chapter-links"><a href="./binary64-number-line.html"><span>Previous</span><strong>The binary64 number line</strong></a><a href="./coonen.html"><span>Next</span><strong>Coonen →</strong></a></nav>
       </article>
     </div>
   </main>

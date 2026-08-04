@@ -5,7 +5,6 @@ import {
   decimalCoordinate,
   exactForm,
   floorAtDecimalScale,
-  formatDecimal,
   isEvenSignificand,
   midpointCoordinate,
   nextDown,
@@ -98,6 +97,13 @@ export class NumberLineExplorer {
     const left = this.pan - span;
     const right = this.pan + span;
     const intervalPixels = (this.upperBoundary - this.lowerBoundary) / (right - left) * width;
+    const lowerSpacing = Math.abs(binaryCoordinate(this.previous, this.center, this.unitExp));
+    const upperSpacing = Math.abs(binaryCoordinate(this.following, this.center, this.unitExp));
+    const spacingChanges = Math.abs(lowerSpacing - upperSpacing) > Number.EPSILON;
+    const brackets = spacingChanges ? [
+      { from: -lowerSpacing, to: 0, y: .51, color: "#8eb3ff", label: `spacing = 2^${this.unitExp + Math.round(Math.log2(lowerSpacing))}` },
+      { from: 0, to: upperSpacing, y: .51, color: "#8eb3ff", label: `spacing = 2^${this.unitExp + Math.round(Math.log2(upperSpacing))}` },
+    ] : [];
     this.numberLine.setScene({
       domain: [left, right],
       bands: [{ from: this.lowerBoundary, to: this.upperBoundary, top: .125, bottom: .88, color: "rgba(223,255,82,.13)", label: intervalPixels > 140 ? "ROUND-TRIP INTERVAL" : undefined }],
@@ -107,9 +113,11 @@ export class NumberLineExplorer {
         { x: 0, from: .08, to: .92, color: "rgba(255,255,255,.35)", dash: [2, 7] },
       ],
       lanes: [
-        { y: .39, color: "#8eb3ff", label: `BINARY64 · ONE UNIT = 2^${this.unitExp}`, ticks: this.binaryTicks(left, right) },
-        { y: .68, color: "#ff9b8e", label: this.decimalLabel(span), ticks: this.decimalTicks(left, right, span, width) },
+        { y: .35, color: "#8eb3ff", label: `BINARY64 · REFERENCE UNIT = 2^${this.unitExp}`, ticks: this.binaryTicks(left, right) },
+        { y: .72, color: "#ff9b8e", label: this.decimalLabel(span), ticks: this.decimalTicks(left, right, span, width) },
       ],
+      brackets,
+      captions: spacingChanges ? [{ x: 0, y: .09, align: "center", color: "#dfff52", text: "EXPONENT TRANSITION · BINARY SPACING DOUBLES" }] : [],
       footer: isEvenSignificand(this.center) ? "EVEN SIGNIFICAND · BOUNDARIES INCLUDED" : "ODD SIGNIFICAND · BOUNDARIES EXCLUDED",
     });
   }
@@ -162,7 +170,7 @@ export class NumberLineExplorer {
   }
 
   decimalLabel(span) {
-    return `DECIMAL GRID · STEP = 10^${this.decimalExponent(span)}`;
+    return `DECIMAL CANDIDATES · STEP = 10^${this.decimalExponent(span)} · LABELS SHOW CHANGING SUFFIX`;
   }
 
   decimalTicks(left, right, span, width) {
@@ -177,10 +185,20 @@ export class NumberLineExplorer {
       if (coordinate < left - span * .1 || coordinate > right + span * .1) continue;
       const major = coefficient % 10n === 0n;
       const medium = coefficient % 5n === 0n;
+      const decimalRank = Math.min(3, countFactorsOfTen(coefficient));
       const inInterval = coordinate >= this.lowerBoundary && coordinate <= this.upperBoundary;
-      const heightTick = inInterval ? 54 : major ? 35 : medium ? 25 : 16;
-      const showLabel = major && width / (right - left) * Math.abs(decimalCoordinate(coefficient + 10n, exponent, this.center, this.unitExp) - coordinate) > 85;
-      ticks.push({ x: coordinate, active: inInterval, color: inInterval ? "#ef4b35" : "#ff9b8e", width: inInterval ? 2.5 : 1, height: heightTick, label: showLabel ? formatDecimal(coefficient, exponent) : undefined });
+      const heightTick = 15 + (medium ? 9 : 0) + (major ? 10 : 0) + decimalRank * 5;
+      const labelSpacing = width / (right - left) * Math.abs(decimalCoordinate(coefficient + 10n, exponent, this.center, this.unitExp) - coordinate);
+      const showLabel = major && labelSpacing > 62;
+      ticks.push({
+        x: coordinate,
+        active: inInterval,
+        color: inInterval ? "#ef4b35" : "#ff9b8e",
+        width: inInterval ? 2.5 : 1,
+        height: heightTick,
+        dot: inInterval ? 3 : undefined,
+        label: showLabel ? changingSuffix(coefficient) : undefined,
+      });
     }
 
     const printed = parseDecimal(this.value.toString());
@@ -197,4 +215,18 @@ function countFactorsOfTwo(value) {
   let count = 0;
   while (value % 2 === 0) { value /= 2; count++; }
   return count;
+}
+
+function countFactorsOfTen(value) {
+  if (value === 0n) return 3;
+  let count = 0;
+  while (value % 10n === 0n) { value /= 10n; count++; }
+  return count;
+}
+
+function changingSuffix(coefficient) {
+  const negative = coefficient < 0n;
+  const digits = (negative ? -coefficient : coefficient).toString();
+  const suffix = digits.slice(-3).padStart(3, "0");
+  return `${negative ? "−" : ""}${digits.length > 3 ? "…" : ""}${suffix}`;
 }

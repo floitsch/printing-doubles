@@ -46,6 +46,18 @@ test("coordinates place neighbors and midpoint boundaries correctly", () => {
   assert.equal(midpointCoordinate(center, upper, center, exponent), 0.5);
 });
 
+test("coordinates preserve asymmetric spacing at a power-of-two transition", () => {
+  const center = decodeDouble(1);
+  const exponent = unitExponent(1);
+  const lower = decodeDouble(nextDown(1));
+  const upper = decodeDouble(nextUp(1));
+  assert.equal(exponent, -52);
+  assert.equal(binaryCoordinate(lower, center, exponent), -0.5);
+  assert.equal(binaryCoordinate(upper, center, exponent), 1);
+  assert.equal(midpointCoordinate(lower, center, center, exponent), -0.25);
+  assert.equal(midpointCoordinate(center, upper, center, exponent), 0.5);
+});
+
 test("decimal coordinates are exact enough to distinguish 0.3 from its stored value", () => {
   const center = decodeDouble(0.3);
   const exponent = unitExponent(0.3);

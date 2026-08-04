@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="An interactive history of algorithms that print IEEE 754 doubles as decimal strings.">
   <meta name="theme-color" content="#f4f0e8">
-  <title>Printing doubles — the integer between two worlds</title>
+  <title>Printing doubles — when binary floating point becomes decimal text</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./js/main.js"></script>
 </head>
@@ -17,8 +17,9 @@
       <strong>Printing doubles</strong>
     </a>
     <nav aria-label="Main navigation">
-      <a href="#problem">The problem</a>
+      <a href="#introduction">Introduction</a>
       <a href="#explorer">Explorer</a>
+      <a href="#problem">The problem</a>
       <a href="./chapters/index.html">Chapters</a>
       <a href="#frontier">Now</a>
       <a href="#sources">Sources</a>
@@ -28,9 +29,9 @@
   <main id="main">
     <section class="hero" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">One value · two number systems</p>
-        <h1 id="hero-title">The integer<br>between two worlds</h1>
-        <p class="standfirst">A <code>double</code> is a point on a binary grid. Its printed form is a point on a decimal grid. The useful answer is usually the shortest decimal that lands back on the same binary point.</p>
+        <p class="eyebrow">Binary floating point → decimal text</p>
+        <h1 id="hero-title">When doubles<br>become decimal</h1>
+        <p class="standfirst">A visual and executable account of the algorithms that render IEEE 754 binary64 values as decimal strings: from exact expansion and rounding intervals to the shortest text that recovers the original bits.</p>
         <a class="button" href="#explorer">Put 0.3 under the microscope <span aria-hidden="true">↓</span></a>
       </div>
       <div class="hero-figure" aria-hidden="true">
@@ -47,22 +48,20 @@
       </div>
     </section>
 
-    <section class="problem section-grid" id="problem" aria-labelledby="problem-title">
+    <section class="introduction section-grid" id="introduction" aria-labelledby="introduction-title">
       <div class="section-number">01</div>
       <div class="section-heading">
-        <p class="eyebrow">The problem</p>
-        <h2 id="problem-title">Not “what is the exact decimal?”</h2>
+        <p class="eyebrow">Introduction</p>
+        <h2 id="introduction-title">Printing is a numerical conversion</h2>
       </div>
-      <div class="section-body intro-columns">
-        <div>
-          <p class="lede">The exact value stored for <code>0.3</code> is not 0.3. It is the 52-digit fraction below. Printing all of it is honest—and almost never helpful.</p>
-          <output class="monster" aria-label="The exact decimal value stored for double 0.3">0.299999999999999988897769753748434595763683319091796875</output>
+      <div class="section-body introduction-body">
+        <p class="lede">A program does not store the characters “0.3” in a <code>double</code>. It stores one point selected from a finite binary grid. Producing source text, JSON, a log message, or a debugger value requires a second numerical operation: choosing a point from a decimal grid.</p>
+        <div class="intro-notes">
+          <article><h3>The grids do not coincide</h3><p>Binary fractions have powers of two in their denominators; finite decimals have powers of two and five. Most familiar decimal fractions therefore lie between two binary64 values.</p></article>
+          <article><h3>The original spelling is gone</h3><p>The literals <code>0.3</code>, <code>0.30</code>, and a sufficiently long expansion can produce the same 64 bits. A formatter receives those bits, not the author’s notation.</p></article>
+          <article><h3>The output has a contract</h3><p>Exact expansion, fixed precision, correct rounding, recovery, and shortest recovery are distinct problems. The algorithms in this book do not all solve the same one.</p></article>
         </div>
-        <div class="three-rules" aria-label="The three goals of shortest conversion">
-          <article><span>1</span><h3>Round trip</h3><p>Reading the text must recover the exact original bits.</p></article>
-          <article><span>2</span><h3>Be shortest</h3><p>No decimal with fewer significant digits may do the same.</p></article>
-          <article><span>3</span><h3>Be closest</h3><p>Among equally short answers, choose the one nearest the value.</p></article>
-        </div>
+        <p>The first task is therefore to see the two grids together. The instrument below places them on one exact coordinate system. It will recur throughout the algorithm chapters, where its highlighted intervals and candidates are driven by executable traces rather than hand-authored animation.</p>
       </div>
     </section>
 
@@ -71,7 +70,7 @@
       <div class="section-heading">
         <p class="eyebrow">Interactive number line</p>
         <h2 id="explorer-title">Two grids, overlaid</h2>
-        <p>Blue ticks are representable doubles. Red ticks are decimal candidates at the current scale. The lit interval contains every real number that rounds to the selected double.</p>
+        <p>Blue ticks are representable doubles. Red ticks are decimal candidates at the current scale. Tick height marks a coarser sub-grid; the lit interval contains every real number that rounds to the selected double.</p>
       </div>
       <div class="explorer-app section-body">
         <form class="explorer-controls" id="number-form">
@@ -94,6 +93,7 @@
           <div class="canvas-legend" aria-hidden="true"><span><i class="key binary"></i> binary64</span><span><i class="key decimal"></i> decimal</span><span><i class="key interval"></i> round-trip interval</span></div>
           <p class="canvas-instructions">Scroll to zoom · drag to pan · double-click to reset</p>
         </div>
+        <p class="tick-key"><strong>How to read the ticks.</strong> On the decimal line, every fifth and tenth candidate is longer; sparse labels show only the changing final digits. On the binary line, inspect <button type="button" class="text-button" data-example="1">1</button> to see the spacing double as the exponent changes.</p>
         <div class="inspection" aria-live="polite">
           <div><span>Printed by your browser</span><output id="printed-value">0.3</output></div>
           <div><span>IEEE 754 bits</span><output id="bit-value">3fd3333333333333</output></div>
@@ -102,28 +102,30 @@
       </div>
     </section>
 
-    <section class="interval-explainer section-grid" aria-labelledby="interval-title">
+    <section class="problem section-grid" id="problem" aria-labelledby="problem-title">
       <div class="section-number">03</div>
       <div class="section-heading">
-        <p class="eyebrow">The central trick</p>
-        <h2 id="interval-title">Stop thinking about a point</h2>
+        <p class="eyebrow">The actual problem</p>
+        <h2 id="problem-title">Which decimal should be printed?</h2>
       </div>
-      <div class="section-body interval-layout">
-        <div class="interval-diagram" role="img" aria-label="The interval between the midpoints to neighboring doubles, containing several decimal candidates">
-          <div class="neighbor left"><b>v−</b><i></i></div>
-          <div class="boundary left"><b>m−</b><i></i></div>
-          <div class="selected"><b>v</b><i></i></div>
-          <div class="boundary right"><b>m+</b><i></i></div>
-          <div class="neighbor right"><b>v+</b><i></i></div>
-          <div class="safe-zone"><span>every decimal here reads back to <b>v</b></span></div>
-          <div class="candidate c1"><i></i><span>long</span></div>
-          <div class="candidate c2"><i></i><span>shortest</span></div>
-          <div class="candidate c3"><i></i><span>also short</span></div>
+      <div class="section-body problem-body">
+        <p class="lede">The exact value stored for <code>0.3</code> is the finite decimal below. Printing it is correct, but it answers a question that most default formatters were not asked.</p>
+        <output class="monster" aria-label="The exact decimal value stored for double 0.3">0.299999999999999988897769753748434595763683319091796875</output>
+        <p>Assume that a decimal parser rounds to the nearest binary64 value, breaking an exact tie toward the value with an even significand. The selected double then owns an interval of real numbers. Its lower boundary is the midpoint between the selected double and the previous double; its upper boundary is the midpoint between the selected double and the next double. Every decimal strictly inside that interval parses to the selected bits.</p>
+        <div class="interval-figure">
+          <canvas id="interval-number-line" width="1100" height="390" role="img" aria-label="Exact number line showing the previous double, lower midpoint, selected double, upper midpoint, and next double, with decimal candidates inside the round-trip interval."></canvas>
+          <div class="interval-definitions">
+            <p><strong>Previous and next double</strong> are the adjacent representable binary64 values. There is no other double between either one and the selected value.</p>
+            <p><strong>Lower and upper midpoint</strong> are the parsing boundaries halfway to those neighbors. Endpoint inclusion is decided by ties-to-even.</p>
+            <p><strong>Round-trip interval</strong> is the complete set of real values that parse to the selected double. A printer may choose any suitable decimal point in it.</p>
+          </div>
         </div>
-        <div class="callout">
-          <p>A printer does not need the full expansion of <em>v</em>. It needs one decimal inside the interval bounded by the midpoints to the neighboring doubles.</p>
-          <p>Shortest algorithms ask a geometric question: <strong>what is the coarsest decimal grid that still puts a point inside?</strong></p>
+        <div class="three-rules" aria-label="The three goals of shortest conversion">
+          <article><span>1</span><h3>Round trip</h3><p>Reading the text must recover the exact original bits.</p></article>
+          <article><span>2</span><h3>Use the fewest digits</h3><p>No decimal with fewer significant digits may satisfy the same recovery requirement.</p></article>
+          <article><span>3</span><h3>Choose the nearest</h3><p>Among equally short answers, choose the decimal nearest the stored value, with a stated tie rule.</p></article>
         </div>
+        <div class="callout"><p>The shortest problem is geometric: find the coarsest decimal grid that still places a point inside the round-trip interval. Later algorithms differ chiefly in how they represent that interval, how they scale it, and how much arithmetic is required to prove that a candidate lies inside.</p></div>
       </div>
     </section>
 
@@ -152,7 +154,7 @@
         </article>
         <article class="era featured" data-era="2010">
           <div class="era-year">2010</div>
-          <div class="era-copy"><p class="eyebrow">Loitsch · Grisu</p><h3>A tiny floating point built from integers</h3><p>Grisu replaces bignums with a 64-bit “diy-fp” and a cache of powers of ten. Grisu3 proves when its approximate interval is safe: roughly 99.4% of random doubles take the fast path; the rest fall back. That hybrid was a major practical speedup.</p><p class="author-note">This site is maintained by Grisu’s author.</p><a href="./chapters/grisu.html">Open the chapter</a></div>
+          <div class="era-copy"><p class="eyebrow">Loitsch · Grisu</p><h3>A tiny floating point built from integers</h3><p>Grisu replaces bignums with a 64-bit “diy-fp” and a cache of powers of ten. Grisu3 proves when its approximate interval is safe: roughly 99.4% of random doubles take the fast path; the rest fall back. That hybrid was a major practical speedup.</p><a href="./chapters/grisu.html">Open the chapter</a></div>
           <div class="algorithm-sketch grisu-sketch" aria-hidden="true"><div class="true-interval"></div><div class="safe-interval"></div><i class="candidate-dot"></i><span>safe?</span><b>yes</b></div>
         </article>
         <article class="era" data-era="2016">

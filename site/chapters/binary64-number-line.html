@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A visual introduction to the binary64 number line, binades, exponent transitions, and subnormal values.">
+  <title>The shape of the binary64 number line · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/floating-grid.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part I · Floating-point foundations</p>
+      <h1>The shape of the binary64 number line</h1>
+      <p class="chapter-deck">Binary64 values form a regular grid only while the exponent remains fixed. This chapter develops the changing spacing, the exceptional midpoint geometry at powers of two, and the gradual transition to subnormal values.</p>
+      <div class="chapter-meta"><span>Chapter 1</span><span>Binades</span><span>Subnormal values</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#fields">The three fields</a><a href="#binades">Binades and spacing</a><a href="#transition">Exponent transitions</a><a href="#subnormal">Gradual underflow</a><a href="#consequences">Consequences</a></aside>
+      <article class="chapter">
+        <section id="fields">
+          <p class="eyebrow">1.1 · Representation</p>
+          <h2>Three fields select one exact value</h2>
+          <p class="lead">A finite binary64 datum consists of a sign, an eleven-bit exponent field, and a 52-bit fraction field. For normal values, those fields denote one integer significand multiplied by one power of two.</p>
+          <div class="equation">v = (−1)<sup>s</sup> · (2<sup>52</sup> + fraction) · 2<sup>E−1023−52</sup>.</div>
+          <p>The apparently fractional quantity is therefore an integer on a scaled grid. Holding the exponent field <em>E</em> fixed and increasing the fraction by one moves to the next grid point. The distance between adjacent values in that region is</p>
+          <div class="equation">ulp = 2<sup>E−1023−52</sup>.</div>
+          <p>This distance is commonly called one <em>unit in the last place</em>, or one ulp. It is a local unit: its real magnitude changes with the exponent. The conversion chapters use an integer significand and an explicit power of two because that form makes both the exact value and its local spacing available without floating-point arithmetic.</p>
+        </section>
+
+        <section id="binades">
+          <p class="eyebrow">1.2 · Constant-spacing regions</p>
+          <h2>A binade is one regular part of the grid</h2>
+          <p>For a fixed integer <em>e</em>, the positive normal values in the half-open interval [2<sup>e</sup>, 2<sup>e+1</sup>) have the same exponent and the same spacing, 2<sup>e−52</sup>. This interval is called a <em>binade</em>. Each normal binade contains 2<sup>52</sup> distinct values, so relative precision remains essentially constant while absolute spacing grows with magnitude.</p>
+          <p>Crossing from one binade to the next increments the exponent and resets the fraction field. The first gap in the new binade is twice a gap in the preceding binade. Conversely, moving downward across a positive power of two enters a grid with twice as many points per unit of the real line.</p>
+          <div class="aside"><p><strong>Reading the figures.</strong> A tick denotes a representable binary64 value. Tick positions use exact differences from the selected value. A bracket denotes the real distance between adjacent ticks; it is not a count of bit patterns.</p></div>
+        </section>
+
+        <section id="transition">
+          <p class="eyebrow">1.3 · The boundary at 1</p>
+          <h2>The spacing changes at an exact power of two</h2>
+          <p>The value 1 is the first point in the binade [1,2). Its successor is 1 + 2<sup>−52</sup>. Its predecessor belongs to [½,1) and is 1 − 2<sup>−53</sup>. Thus the predecessor is only half as far from 1 as the successor. The computed figure makes the two local units visible.</p>
+          <figure class="chapter-figure">
+            <canvas id="binade-canvas" width="1000" height="390" role="img" aria-label="Binary64 values around one, showing spacing of two to the minus 53 below one and two to the minus 52 above one."></canvas>
+            <figcaption>Exact-power transitions occur throughout the normal range. The same geometry appears around 2<sup>e</sup> after rescaling.</figcaption>
+          </figure>
+          <p>The unequal gaps also make the two parsing midpoints unequal in their distance from 1. The lower midpoint lies 2<sup>−54</sup> below 1; the upper midpoint lies 2<sup>−53</sup> above it. A shortest printer that represents its acceptable interval by one symmetric radius would therefore be wrong at these inputs. Algorithms either construct both endpoints, carry distinct lower and upper margins, or enter a specialized shorter-interval case.</p>
+        </section>
+
+        <section id="subnormal">
+          <p class="eyebrow">1.4 · The lower end</p>
+          <h2>Subnormal values preserve a final fixed spacing</h2>
+          <p>If the exponent field is zero, binary64 omits the implicit leading one. A positive subnormal with fraction field <em>f</em> denotes</p>
+          <div class="equation">v = f · 2<sup>−1074</sup>, &nbsp;&nbsp; 1 ≤ f &lt; 2<sup>52</sup>.</div>
+          <p>The positive subnormals therefore form a uniformly spaced continuation from zero. The smallest positive value is 2<sup>−1074</sup>; the next is twice that value; and so forth. After 2<sup>52</sup>−1 subnormal points, the smallest normal value 2<sup>−1022</sup> continues with the same spacing. This mechanism is called <em>gradual underflow</em>.</p>
+          <figure class="chapter-figure">
+            <canvas id="subnormal-canvas" width="1000" height="340" role="img" aria-label="Zero and the first six positive subnormal binary64 values at uniform spacing of two to the minus 1074."></canvas>
+            <figcaption>The first few positive subnormals. The same spacing continues through the smallest normal value; the drawing shows the beginning, not all 2<sup>52</sup> steps.</figcaption>
+          </figure>
+          <p>Subnormals have fewer significant nonzero bits than normal values near the same scale. They do not, however, require a different real-number interpretation: they remain exact integer multiples of a power of two. Many implementations normalize the significand internally and then reuse the main conversion path. A chapter will call out subnormal handling only when it changes the algorithm rather than merely its decoding step.</p>
+        </section>
+
+        <section id="consequences">
+          <p class="eyebrow">1.5 · What later chapters may assume</p>
+          <h2>One grid, with two structural qualifications</h2>
+          <p>For most inputs, neighboring values are equally spaced and the acceptable round-trip interval is symmetric. At a power-of-two transition the lower and upper spacing differ. Near zero, the exponent no longer decreases and the subnormal significand supplies gradual underflow. These are properties of binary64 itself, independent of any printing algorithm.</p>
+          <p>The next chapter places a decimal grid over this binary one and defines exact expansion, fixed-precision output, recovery, shortest recovery, and the midpoint interval used to specify them.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>All chapters</strong></a><a href="./foundations.html"><span>Next</span><strong>Two grids and one interval →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · floating-point foundations</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>
