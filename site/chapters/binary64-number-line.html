@@ -19,7 +19,7 @@
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#model">Values and operations</a><a href="#fields">The three fields</a><a href="#normal">Normal values</a><a href="#binades">Precision and ulps</a><a href="#transition">Exponent transitions</a><a href="#subnormal">Subnormal values</a><a href="#rounding">Rounded operations</a><a href="#special">Zeros, infinities, NaNs</a><a href="#consequences">What follows</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 1</strong><a href="#model">Values and operations</a><a href="#normal">Normal values</a><a href="#fields">The three fields</a><a href="#binades">Precision and ulps</a><a href="#transition">Exponent transitions</a><a href="#subnormal">Subnormal values</a><a href="#rounding">Rounded operations</a><a href="#special">Zeros, infinities, NaNs</a><a href="#consequences">What follows</a></aside>
       <article class="chapter">
         <section id="model">
           <p class="eyebrow">1.1 · Scope and model</p>
@@ -31,26 +31,8 @@
           <div class="aside"><p><strong>Language qualification.</strong> IEEE 754 names the format <em>binary64</em>. C, C++, Java, JavaScript, and many other environments commonly expose it as <code>double</code> or <code>Number</code>, but language and ABI rules determine the precise type mapping.</p></div>
         </section>
 
-        <section id="fields">
-          <p class="eyebrow">1.2 · Storage</p>
-          <h2>Three fields classify and select a value</h2>
-          <p>A binary64 datum contains one sign bit, an eleven-bit exponent field, and a 52-bit fraction field. The exponent field first classifies the datum: values from 1 through 2046 denote normal finite numbers; zero denotes zeros and subnormals; 2047 denotes infinities and NaNs.</p>
-          <binary64-fields data-value="0.3"></binary64-fields>
-          <p>The strip shows the bits obtained by parsing <code>0.3</code>. The exponent/fraction boundary happens to align with a hexadecimal boundary because the sign and exponent together occupy twelve bits. The sign/exponent boundary does not: the first hexadecimal digit contains the sign and three exponent bits.</p>
-          <table>
-            <thead><tr><th>Exponent field</th><th>Fraction field</th><th>Class</th></tr></thead>
-            <tbody>
-              <tr><td>1 … 2046</td><td>any</td><td>normal finite value; an implicit leading 1 is present</td></tr>
-              <tr><td>0</td><td>zero</td><td>signed zero</td></tr>
-              <tr><td>0</td><td>nonzero</td><td>subnormal finite value; no implicit leading 1</td></tr>
-              <tr><td>2047</td><td>zero</td><td>signed infinity</td></tr>
-              <tr><td>2047</td><td>nonzero</td><td>NaN</td></tr>
-            </tbody>
-          </table>
-        </section>
-
         <section id="normal">
-          <p class="eyebrow">1.3 · Normal finite values</p>
+          <p class="eyebrow">1.2 · Normal finite values</p>
           <h2>One guaranteed bit buys one extra bit of precision</h2>
           <p>Before deciding what to store, put every nonzero binary value into scientific notation. Move the binary point until exactly one digit remains to its left. That digit cannot be 0—otherwise the number would still begin with zeros—so it is always 1.</p>
           <div class="normalization-demo" aria-label="Two binary values normalized so that their leading digit is one">
@@ -60,9 +42,9 @@
           </div>
           <p>Normal binary64 values use exactly this normalized form. Because the first significand bit is known in advance, writing it into every value would waste a storage bit. Binary64 stores only the 52 bits after the point and restores the leading 1 while decoding. Read as an integer, every normal significand therefore has exactly 53 binary digits and its first digit is always 1. The omitted leading digit is the extra precision bit.</p>
           <div class="hidden-bit-demo" aria-label="The guaranteed leading one is omitted while the following 52 bits are stored">
-            <div class="precision-bits"><span>53 precision bits used by the value</span><code><b>1</b><i>0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011</i></code></div>
+            <div class="precision-bits"><span>53 precision bits used by the value</span><code><b>1</b><i>0011 1100 0000 1000 0011 0001 0010 0110 1110 1001 0111 1000 1101</i></code></div>
             <div class="hidden-bit-note"><b>known to be 1</b><span>do not store it</span></div>
-            <div class="stored-bits"><span>52 bits written in the fraction field</span><code>0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011 0011</code></div>
+            <div class="stored-bits"><span>52 bits written in the fraction field</span><code>0011 1100 0000 1000 0011 0001 0010 0110 1110 1001 0111 1000 1101</code></div>
           </div>
 
           <h3>Two significand conventions describe the same value</h3>
@@ -83,6 +65,24 @@
           <p>For binary64(<code>0.3</code>), the exponent field contains 1021. The fractional convention therefore attaches 2<sup>−2</sup>. The integer convention uses the 53-bit significand 5404319552844595 and attaches 2<sup>−54</sup> instead. They denote the same exact value:</p>
           <div class="math-fact"><strong>Integer reading of binary64(0.3)</strong><code>5404319552844595 × 2<sup>−54</sup></code><span>The −54 is the unbiased field exponent −2, adjusted by −52 because the significand is treated as an integer.</span></div>
           <p>which is exactly <code>0.299999999999999988897769753748434595763683319091796875</code>. The source decimal and stored binary value are close, but they are different rational numbers.</p>
+        </section>
+
+        <section id="fields">
+          <p class="eyebrow">1.3 · Storage</p>
+          <h2>Three fields classify and select a value</h2>
+          <p>Now the storage layout has a reason. A binary64 datum needs one sign bit, eleven bits to select a scale and classify special cases, and 52 bits for the portion of a normal significand that is not already known. Enter a number below to see the fields that result when JavaScript parses it as binary64.</p>
+          <binary64-fields data-value="1.2345" data-editable></binary64-fields>
+          <p>The initial value, <code>1.2345</code>, has deliberately nonrepeating hexadecimal digits, so their left-to-right order remains visible. The exponent/fraction boundary happens to align with a hexadecimal boundary because the sign and exponent together occupy twelve bits. The sign/exponent boundary does not: the first hexadecimal digit contains the sign and three exponent bits.</p>
+          <table>
+            <thead><tr><th>Exponent field</th><th>Fraction field</th><th>Class</th></tr></thead>
+            <tbody>
+              <tr><td>1 … 2046</td><td>any</td><td>normal finite value; an implicit leading 1 is present</td></tr>
+              <tr><td>0</td><td>zero</td><td>signed zero</td></tr>
+              <tr><td>0</td><td>nonzero</td><td>subnormal finite value; no implicit leading 1</td></tr>
+              <tr><td>2047</td><td>zero</td><td>signed infinity</td></tr>
+              <tr><td>2047</td><td>nonzero</td><td>NaN</td></tr>
+            </tbody>
+          </table>
         </section>
 
         <section id="binades">

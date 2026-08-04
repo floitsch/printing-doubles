@@ -124,6 +124,9 @@ code, output { font-family: var(--mono); }
 .bit-field-fraction { background: #e5f5a8; }
 .bit-field span, .bit-fields-hex > span { display: block; margin-bottom: 9px; font: 600 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .bit-field code { display: block; overflow: hidden; font: 500 clamp(12px, 1.35vw, 17px) var(--mono); white-space: nowrap; text-overflow: ellipsis; }
+.bit-field .bit-lines { overflow: visible; white-space: normal; text-overflow: clip; }
+.bit-lines i { display: block; font-style: normal; white-space: nowrap; }
+.bit-lines i + i { margin-top: 5px; }
 .bit-field small { display: block; margin-top: 9px; color: #42505a; font: 10px/1.4 var(--mono); }
 .bit-fields-hex { display: grid; grid-template-columns: 110px auto 1fr; gap: 15px; align-items: baseline; margin: 0; padding: 12px 16px; border: 1px solid currentColor; border-top: 0; font-size: 12px; }
 .bit-fields-hex > span { margin: 0; }
@@ -132,6 +135,14 @@ code, output { font-family: var(--mono); }
 .explorer .bit-fields { color: #f4f0e8; border-color: rgba(255,255,255,.3); }
 .explorer .bit-fields-hex { color: #f4f0e8; border-color: rgba(255,255,255,.3); }
 .explorer .bit-fields-hex small { color: #b8c3ca; }
+.bit-fields-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: end; margin: 30px 0 12px; padding: 18px; border: 1px solid var(--line); background: var(--paper-deep); }
+.bit-fields-form > label { grid-column: 1 / -1; color: var(--muted); font: 600 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.bit-fields-form > div { display: flex; min-width: 0; border-bottom: 1px solid var(--ink); }
+.bit-fields-form input { min-width: 0; flex: 1; padding: 8px 3px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 clamp(18px, 3vw, 29px)/1.2 var(--mono); }
+.bit-fields-form input[aria-invalid="true"] { color: var(--red); }
+.bit-fields-form button { margin: 2px 0 5px 12px; padding: 8px 12px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; font: 600 9px var(--mono); text-transform: uppercase; }
+.bit-fields-form button:hover { border-color: var(--red); background: var(--red); }
+.bit-fields-form > small { min-height: 1.4em; color: var(--red); font: 10px/1.4 var(--mono); }
 
 .problem-body > p:not(.lede) { max-width: 900px; }
 .problem-body .monster { margin-bottom: 50px; }
@@ -332,6 +343,9 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .bit-field + .bit-field { border-top: 3px solid var(--paper); border-left: 0; }
   .bit-fields-hex { display: block; }
   .bit-fields-hex code, .bit-fields-hex small { display: block; margin-top: 8px; }
+  .bit-fields-form { display: block; }
+  .bit-fields-form > div { margin-top: 10px; }
+  .bit-fields-form > small { display: block; margin-top: 8px; }
   .source-list a { display: block; }
   .source-list span, .source-list strong, .source-list em { display: block; margin-bottom: 10px; }
   footer { display: block; }
