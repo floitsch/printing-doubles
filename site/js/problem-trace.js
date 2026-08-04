@@ -62,8 +62,8 @@ export function problemTrace(value) {
     {
       label: "Parsing boundaries",
       title: "Insert the exact arithmetic midpoints",
-      why: `At either midpoint, round-to-nearest has an exact tie. Ties-to-even chooses the adjacent value whose integer significand is even. The selected significand is ${center.significand}, which is ${interval.closed ? "even" : "odd"}, so both endpoints are ${endpoint} for binary64(${value}).`,
-      registers: { lower_midpoint: exactDecimalOfRational(interval.lower), upper_midpoint: exactDecimalOfRational(interval.upper), selected_significand: `${center.significand} (${interval.closed ? "even" : "odd"})`, endpoints: endpoint },
+      why: `At either midpoint, round-to-nearest has an exact tie. Ties-to-even chooses the adjacent value whose stored significand ends in a 0 bit. The selected double ends in a ${interval.closed ? "0" : "1"} bit, so its two midpoint boundaries are ${endpoint}.`,
+      registers: { lower_midpoint: exactDecimalOfRational(interval.lower), upper_midpoint: exactDecimalOfRational(interval.upper), last_significand_bit: interval.closed ? "0 (even)" : "1 (odd)", endpoints: endpoint },
       visual: { scene: scene({ interval: true }) },
     },
     {

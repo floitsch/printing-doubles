@@ -136,7 +136,7 @@
       <div class="section-number">04</div>
       <div class="section-heading">
         <p class="eyebrow">A forty-year relay race</p>
-        <h2 id="timeline-title">The dragons, and what they changed</h2>
+        <h2 id="timeline-title">How the representation changed</h2>
         <p>This is not one single benchmark. Early work solved several related output contracts: fixed precision, correct rounding, recovery, and shortest round trip.</p>
       </div>
       <div class="section-body timeline-list">
@@ -157,7 +157,7 @@
         </article>
         <article class="era featured" data-era="2010">
           <div class="era-year">2010</div>
-          <div class="era-copy"><p class="eyebrow">Loitsch · Grisu</p><h3>A tiny floating point built from integers</h3><p>Grisu replaces bignums with a 64-bit “diy-fp” and a cache of powers of ten. Grisu3 proves when its approximate interval is safe: roughly 99.4% of random doubles take the fast path; the rest fall back. That hybrid was a major practical speedup.</p><a href="./chapters/grisu.html">Open the chapter</a></div>
+          <div class="era-copy"><p class="eyebrow">Loitsch · Grisu</p><h3>A tiny floating point built from integers</h3><p>Grisu replaces bignums with a 64-bit “diy-fp” and a cache of powers of ten. Grisu3 accepts only when its approximate interval proves the shortest, closest result; the 2010 paper reported success for about 99.5% of its tested binary64 inputs, with an exact fallback handling the rest.</p><a href="./chapters/grisu.html">Open the chapter</a></div>
           <div class="algorithm-sketch grisu-sketch" aria-hidden="true"><div class="true-interval"></div><div class="safe-interval"></div><i class="candidate-dot"></i><span>safe?</span><b>yes</b></div>
         </article>
         <article class="era" data-era="2016">

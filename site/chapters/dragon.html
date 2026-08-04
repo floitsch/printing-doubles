@@ -19,7 +19,7 @@
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 4</strong><a href="#contract">The contract</a><a href="#division">Long division</a><a href="#margins">R, S, M−, M+</a><a href="#scaling">Decimal scale</a><a href="#loop">Digit loop</a><a href="#execution">Worked execution</a><a href="#edges">Asymmetry and endpoints</a><a href="#correctness">Why it works</a><a href="#descendants">Exact descendants</a><a href="#status">Evidence status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 4</strong><a href="#contract">The contract</a><a href="#division">Why generate digits?</a><a href="#margins">Room to stop</a><a href="#scaling">Integer representation</a><a href="#loop">Digit loop</a><a href="#execution">Worked execution</a><a href="#edges">Shared structural cases</a><a href="#correctness">Why it works</a><a href="#descendants">Exact descendants</a><a href="#status">Evidence status</a></aside>
       <article class="chapter">
         <section id="contract">
           <p class="eyebrow">4.1 · Output contract</p>
@@ -39,27 +39,32 @@
 
         <section id="division">
           <p class="eyebrow">4.2 · The familiar recurrence</p>
-          <h2>Integer division exposes one decimal digit</h2>
-          <p>Suppose a positive fraction is represented exactly as <em>R/S</em>, with 0 ≤ <em>R</em> &lt; <em>S</em>. The usual decimal-expansion recurrence multiplies the remainder by ten, divides by <em>S</em>, and retains the new remainder:</p>
+          <h2>Generate only the digits that settle the answer</h2>
+          <p>Dragon needs a decimal candidate inside the parsing interval, but it does not know in advance how many digits that requires. Its strategy is to reveal the decimal expansion from left to right. After each new digit it asks whether the prefix is already accurate enough to recover the input. If not, it reveals one more digit.</p>
+          <p>The mechanism for revealing a digit is ordinary long division. Suppose the unprinted part is represented exactly as <em>R/S</em>, with 0 ≤ <em>R</em> &lt; <em>S</em>. Multiplying the remainder by ten moves the next decimal place into the integer part. Dividing by <em>S</em> separates that digit from what remains:</p>
           <div class="equation">10R = qS + r, &nbsp;&nbsp; 0 ≤ q ≤ 9, &nbsp;&nbsp; 0 ≤ r &lt; S.</div>
-          <p>The quotient <em>q</em> is the next decimal digit. Replacing <em>R</em> by <em>r</em> repeats the operation. For 1/3, <em>R</em> = 1 and <em>S</em> = 3: 10 = 3·3 + 1, so the first digit is 3 and the remainder returns to 1. The recurrence can print 0.3333… indefinitely.</p>
+          <p>The quotient <em>q</em> is the next decimal digit and <em>r</em> is the still-unprinted fraction. For 1/3, 10 = 3·3 + 1. The quotient supplies a 3, while the remainder returns to 1; repeating the operation therefore supplies another 3 each time.</p>
           <p>That is exactly the problem. Long division knows the digits of the exact value, but shortest output often ends before the exact expansion ends. Binary64(1/3) is not the real number 1/3, and its shortest recovering decimal is <code>0.3333333333333333</code>. A stopping rule must be derived from binary64’s finite spacing, not from the decimal remainder becoming zero.</p>
         </section>
 
         <section id="margins">
           <p class="eyebrow">4.3 · The central representation</p>
-          <h2>One remainder, one denominator, and two margins</h2>
-          <p>Let the selected value be <em>v</em>, with lower and upper parsing boundaries <em>m⁻</em> and <em>m⁺</em>. Dragon scales these three exact rationals to a common integer denominator <em>S</em>. The selected value is represented by <em>R/S</em>; its distances to the boundaries are represented by two integer margins:</p>
-          <div class="equation">M⁻/S = v − m⁻, &nbsp;&nbsp; M⁺/S = m⁺ − v.</div>
-          <p>The margins answer the question that ordinary long division cannot. After a digit has been extracted, the remainder measures the distance from the truncated decimal candidate. If that distance is within <em>M⁻</em>, truncation is already inside the parsing interval. The distance to the adjacent upper candidate is <em>S − R</em>; if that is within <em>M⁺</em>, rounding upward is inside.</p>
+          <h2>Measure how much error the parser will forgive</h2>
+          <p>Return first to the number line, before choosing any integer representation. The selected double <em>v</em> lies between a lower and an upper parsing boundary. A decimal candidate need not equal <em>v</em>; it only needs to remain between those boundaries.</p>
+          <figure class="chapter-figure"><canvas id="dragon-margin-canvas" width="1000" height="390" aria-label="Selected double between its lower and upper parsing boundaries, with the two permitted error margins marked."></canvas><figcaption>The lower and upper margins are simply the room available on either side of the selected value. Dragon carries both because the room need not be equal.</figcaption></figure>
+          <p>After some digits have been emitted, truncating the remaining expansion gives the decimal candidate immediately below <em>v</em>. The unprinted remainder is exactly the distance from that lower candidate to <em>v</em>. If this distance fits within the room to the lower boundary, the truncated candidate recovers the input. The adjacent decimal at the same precision lies one decimal step above it; if its distance back to <em>v</em> fits within the upper room, that candidate recovers the input.</p>
+          <p>These two distances are the stopping information missing from ordinary long division. Dragon calls their integer representations <em>M⁻</em> and <em>M⁺</em>. The minus and plus signs refer to the lower and upper side of <em>v</em>; they are not arithmetic operations performed by the loop.</p>
           <div class="aside"><p><strong>The names remain attached to roles.</strong> <em>R</em> is the exact unprinted remainder, <em>S</em> is its denominator, and <em>M⁻</em>/<em>M⁺</em> are the permitted lower/upper errors in the same integer units. Their numerical values change as digits are emitted, but these meanings do not.</p></div>
         </section>
 
         <section id="scaling">
           <p class="eyebrow">4.4 · Locate the leading digit</p>
-          <h2>Scale all four integers without rounding</h2>
-          <p>Before digit generation, Dragon determines the scientific exponent <em>k</em> for which the scaled value <em>v·10<sup>−k</sup></em> lies in [1,10). The value and both margins receive exactly the same power-of-ten scale. In the executable version, rational comparisons correct the initial exponent estimate; no floating-point logarithm participates in correctness.</p>
-          <p>After a common denominator has been chosen, the algorithm has four integers <em>R</em>, <em>S</em>, <em>M⁻</em>, and <em>M⁺</em>. They may be large, but every later operation is elementary: integer comparison, addition or subtraction, multiplication by ten, and a division whose quotient is known to be one decimal digit.</p>
+          <h2>Only now turn the geometry into integers</h2>
+          <p>The preceding stopping argument did not require scaling. Scaling is the implementation step that lets Dragon perform every comparison exactly with integers.</p>
+          <p>First, Dragon determines the scientific exponent <em>k</em> for which <em>v·10<sup>−k</sup></em> lies in [1,10). This places the leading decimal digit in the integer part. The value and both boundaries receive exactly the same power-of-ten scale, so no point moves relative to the others. In the executable version, rational comparisons correct the initial exponent estimate; a floating-point logarithm is never trusted as the final decision.</p>
+          <p>Next, it chooses one common denominator <em>S</em>. The selected value becomes <em>R/S</em>. Its distance to the lower boundary becomes <em>M⁻/S</em>, and its distance to the upper boundary becomes <em>M⁺/S</em>:</p>
+          <div class="equation">M⁻/S = v − lower boundary, &nbsp;&nbsp; M⁺/S = upper boundary − v.</div>
+          <p>The four integers may be large, but every later operation is elementary: comparison, addition or subtraction, multiplication by ten, and a division whose quotient is known to be one decimal digit.</p>
           <ol class="pseudo" id="dragon-code">
             <li data-line="1">construct the exact center and its lower and upper midpoint boundaries</li>
             <li data-line="2">choose decimal exponent k; scale center and margins to integers R, S, M−, M+</li>
@@ -73,7 +78,9 @@
         <section id="loop">
           <p class="eyebrow">4.5 · The stopping tests</p>
           <h2>Test the two possible last digits separately</h2>
-          <p>After integer division extracts a digit, write <em>r</em> for the new remainder. The decimal ending in that digit is the lower candidate. Increasing the last digit by one gives the adjacent upper candidate.</p>
+          <p>At any chosen number of digits, only two adjacent decimals can be nearest to the exact value. The first is obtained by keeping the digits generated so far and discarding the remainder. The second is one unit higher in the final decimal place.</p>
+          <p>After integer division extracts a digit, write <em>r</em> for the new remainder. This is the distance from the lower candidate up to the exact value, expressed in the common integer units. The complete decimal step has size <em>S</em>, so <em>S − r</em> is the distance from the exact value up to the upper candidate.</p>
+          <p>Dragon now compares those distances with the room available on the corresponding side. If the lower distance is smaller than the lower margin, the lower candidate is inside. If the upper distance is smaller than the upper margin, the upper candidate is inside. In the compact notation used by implementations:</p>
           <div class="equation">lower candidate is admissible when r &lt; M⁻;<br>upper candidate is admissible when S − r &lt; M⁺.</div>
           <p>The inequalities become non-strict when the corresponding midpoint endpoint belongs to the selected binary64 value. For round-to-nearest, ties-to-even, both endpoints are included when the selected integer significand is even and excluded when it is odd.</p>
           <table>
@@ -91,17 +98,17 @@
         <section id="execution">
           <p class="eyebrow">4.6 · Executable digit generation</p>
           <h2>Follow Dragon for binary64(1/3)</h2>
-          <p>The player is generated from the exact BigInt implementation used by the tests. Each digit step displays the full integer division, both candidate decimals, and both margin tests. Repeated 3s are not prewritten animation frames: every remainder and decision comes from the running algorithm.</p>
+          <p>The player is generated from the exact BigInt implementation used by the tests. The upper lane retains every digit already generated. The lower lane magnifies the current decimal cell so that its admissible interval remains visible even during the early steps, when the decimal prefix is still far from the selected double. Repeated 3s are not prewritten animation frames: every remainder and decision comes from the running algorithm.</p>
           <trace-player class="trace-player" data-title="Exact Dragon · input binary64(1/3)" data-code="#dragon-code"><script id="dragon-trace-data" type="application/json">[]</script></trace-player>
           <p>For the first fifteen digits, neither adjacent decimal lies inside the parsing interval. At digit sixteen, <code>0.3333333333333333</code> enters through the lower side. The loop stops although the exact binary64 expansion still has many nonzero digits.</p>
         </section>
 
         <section id="edges">
           <p class="eyebrow">4.7 · Structural cases</p>
-          <h2>Unequal gaps and endpoint ownership are data</h2>
-          <p>At most normal values, the predecessor and successor gaps are equal, so <em>M⁻ = M⁺</em>. At a positive power of two, the predecessor is closer and <em>M⁻</em> is half <em>M⁺</em>. Steele and White explicitly adjust the integer representation for this case rather than dividing one margin into a non-integer quantity.</p>
-          <p>The original paper states its information-preservation interval with strict boundaries. This chapter’s binary64 specialization incorporates the parser rule developed in Chapter 2: an even selected significand owns its midpoint endpoints, while an odd one does not. The executable tests include values on both sides of powers of two, the normal/subnormal transition, and the ends of the finite range.</p>
-          <p>Signed zero, infinities, and NaNs are classified before the Dragon loop. Negative finite values use the positive magnitude path and attach the sign to the resulting coefficient.</p>
+          <h2>Some complications belong to the number format, not to Dragon</h2>
+          <p>Equal spacing is the ordinary case, but an exponent transition can place the predecessor twice as close as the successor. Endpoint ownership comes from the parser’s ties-to-even rule. These facts affect every shortest conversion algorithm; Dragon merely records them as two separate margins and strict or non-strict comparisons.</p>
+          <trace-player class="trace-player" data-title="Algorithm-independent binary64 cases"><script id="dragon-structure-data" type="application/json">[]</script></trace-player>
+          <p>The remaining special inputs are best separated from the digit loop. Signed zero, infinities, and NaNs are classified before conversion. Negative finite values use the positive magnitude path and receive a sign afterward. Subnormals still participate in the same interval construction; the binary64 primer explains why their effective precision changes near zero. The executable corpus covers the normal/subnormal transition and both ends of the finite range.</p>
         </section>
 
         <section id="correctness">
@@ -121,7 +128,7 @@
           <p class="eyebrow">4.9 · Keeping exactness, removing work</p>
           <h2>Dragon became a baseline, not a final implementation shape</h2>
           <p>David Gay’s <code>dtoa</code> retained the exact stopping logic while adding common-case floating-point estimates, cached powers, and carefully limited big-integer work. Burger and Dybvig reorganized scaling and digit generation to make exact free- and fixed-format conversion substantially faster. Their <a href="https://legacy.cs.indiana.edu/~dyb/pubs/FP-Printing-PLDI96.pdf">1996 paper</a> also gives a more direct correctness development of the free-format loop.</p>
-          <p>These descendants deserve separate executable treatments. The present chapter establishes the shared conceptual object: a remainder and two exact margins that advance together. Grisu will later retain the same geometry while replacing unbounded integers with a small approximate floating-point representation and a proof that decides whether the approximation is safe.</p>
+          <p>These descendants remain in the Dragon family because they improve the exact machinery without replacing its central interval argument. They still deserve separate executable subsections within that family. The present draft establishes their shared conceptual object: a remainder and two exact margins that advance together. Grisu retains the same geometry while replacing unbounded integers with a small approximate floating-point representation and a proof that decides whether the approximation is safe.</p>
         </section>
 
         <section id="status">

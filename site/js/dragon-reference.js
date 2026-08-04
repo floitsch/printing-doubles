@@ -196,13 +196,14 @@ export function dragonTrace(value) {
       registers: {
         division: `${state.before} = ${state.digit} × ${state.denominator} + ${state.remainder}`,
         emitted_prefix: state.prefix,
+        prefix_history: result.states.slice(0, state.index).map((item) => item.digit).join(" → "),
         lower_candidate: state.lowerText,
         upper_candidate: state.upperText,
         lower_test: `${state.remainder} ${state.low ? "is" : "is not"} within lower margin ${state.lowerMargin}`,
         upper_test: `${state.denominator - state.remainder} ${state.high ? "is" : "is not"} within upper margin ${state.upperMargin}`,
         decision: state.decision,
       },
-      visual: { scene: digitScene(state, interval.closed) },
+      visual: { scene: digitScene(state, interval.closed, result.states) },
     });
   }
   return steps;
@@ -237,6 +238,71 @@ function intervalScene(closed) {
   };
 }
 
+export function dragonMarginScene() {
+  return {
+    domain: [-.78, .78],
+    background: "#192632",
+    bands: [{ from: -.5, to: .5, top: .14, bottom: .84, color: "rgba(223,255,82,.14)", label: "EVERY DECIMAL IN THIS INTERVAL RECOVERS THE SELECTED DOUBLE" }],
+    markers: [
+      { x: -.5, from: .13, to: .86, color: "#dfff52", dash: [3, 5], label: "lower boundary", labelY: .92 },
+      { x: .5, from: .13, to: .86, color: "#dfff52", dash: [3, 5], label: "upper boundary", labelY: .92 },
+    ],
+    lanes: [{ y: .5, color: "#8eb3ff", label: "THE SELECTED DOUBLE AND ITS PARSING INTERVAL", ticks: [
+      { x: 0, color: "#1565ff", width: 3, height: 58, dot: 5, topLabel: "selected value" },
+    ] }],
+    brackets: [
+      { from: -.5, to: 0, y: .71, color: "#ff9b8e", label: "lower margin" },
+      { from: 0, to: .5, y: .71, color: "#ff9b8e", label: "upper margin" },
+    ],
+    footer: "THE MARGINS MEASURE PERMITTED ERROR; THEY ARE NOT YET AN INTEGER REPRESENTATION",
+  };
+}
+
+export function dragonStructuralTrace() {
+  const scene = (previous, following, lower, upper, closed, footer) => ({
+    domain: [-1.25, 1.25],
+    background: "#192632",
+    bands: [{ from: lower, to: upper, top: .15, bottom: .83, color: "rgba(223,255,82,.14)", label: "PARSING INTERVAL" }],
+    markers: [
+      { x: lower, from: .14, to: .85, color: "#dfff52", dash: [3, 5], endpoint: closed ? "included" : "excluded", endpointLabel: closed ? "included" : "excluded", endpointLabelDx: -8, endpointAlign: "right" },
+      { x: upper, from: .14, to: .85, color: "#dfff52", dash: [3, 5], endpoint: closed ? "included" : "excluded", endpointLabel: closed ? "included" : "excluded", endpointLabelDx: 8, endpointAlign: "left" },
+    ],
+    lanes: [{ y: .58, color: "#8eb3ff", label: "ADJACENT BINARY64 VALUES", ticks: [
+      { x: previous, height: 28, topLabel: "previous" },
+      { x: 0, color: "#1565ff", width: 3, height: 56, dot: 5, topLabel: "selected" },
+      { x: following, height: 28, topLabel: "next" },
+    ] }],
+    brackets: [
+      { from: lower, to: 0, y: .76, color: "#ff9b8e", label: "lower margin" },
+      { from: 0, to: upper, y: .76, color: "#ff9b8e", label: "upper margin" },
+    ],
+    footer,
+  });
+  return [
+    {
+      label: "Ordinary spacing",
+      title: "Most values have equal room on both sides",
+      why: "Within a binade, adjacent binary64 values are equally spaced. Both parsing boundaries are therefore half a binary step from the selected value, and Dragon begins with equal lower and upper margins.",
+      registers: { predecessor_gap: "1 binary step", successor_gap: "1 binary step", margins: "equal" },
+      visual: { scene: scene(-1, 1, -.5, .5, false, "ORDINARY CASE · EQUAL GAPS PRODUCE EQUAL MARGINS") },
+    },
+    {
+      label: "Exponent transition",
+      title: "At a power of two, the lower side is closer",
+      why: "Immediately below a positive power of two, binary64 spacing is half the spacing immediately above it. The lower parsing boundary is therefore half as far from the selected value as the upper boundary. Separate margins preserve this asymmetry without changing the digit loop.",
+      registers: { previous_gap: "1/2 step", next_gap: "1 step", margins: "lower = 1/2 upper" },
+      visual: { scene: scene(-.5, 1, -.25, .5, true, "EXPONENT TRANSITION · THE LOWER MARGIN IS HALF AS LARGE") },
+    },
+    {
+      label: "Endpoint ownership",
+      title: "The last significand bit decides exact midpoint ties",
+      why: "If the selected significand ends in 0, it is the even choice at either midpoint and both endpoints are included. If it ends in 1, both endpoints belong to the adjacent even values and are excluded. Interior candidates are unaffected.",
+      registers: { displayed_case: "last significand bit = 0", lower_endpoint: "included", upper_endpoint: "included" },
+      visual: { scene: scene(-1, 1, -.5, .5, true, "TIES TO EVEN · FILLED ENDPOINTS BELONG TO THIS SELECTED VALUE") },
+    },
+  ];
+}
+
 function normalizedScene(result) {
   const center = ratio(result.scaled.numerator, result.scaled.denominator);
   const lower = ratio(result.scaled.numerator - result.initialLowerMargin, result.scaled.denominator);
@@ -254,25 +320,35 @@ function normalizedScene(result) {
   };
 }
 
-function digitScene(state, closed) {
+function digitScene(state, closed, states) {
   const center = ratio(state.remainder, state.denominator);
   const lower = center - ratio(state.lowerMargin, state.denominator);
   const upper = center + ratio(state.upperMargin, state.denominator);
   const left = Math.min(-.12, lower - .05);
   const right = Math.max(1.12, upper + .05);
   return {
-    domain: [left, right],
+    domain: [.25, states.length + 3.5],
     background: "#192632",
-    bands: [{ from: lower, to: upper, top: .16, bottom: .82, color: "rgba(223,255,82,.15)", label: "ADMISSIBLE INTERVAL IN THIS DIGIT CELL" }],
-    markers: [
-      { x: lower, from: .15, to: .84, color: "#dfff52", dash: [3, 5], endpoint: closed ? "included" : "excluded" },
-      { x: upper, from: .15, to: .84, color: "#dfff52", dash: [3, 5], endpoint: closed ? "included" : "excluded" },
+    lanes: [
+      { y: .3, color: "#8eb3ff", label: "DIGITS KEPT SO FAR · EACH STEP RETAINS THE EARLIER DIGITS", ticks: [
+        ...states.slice(0, state.index).map((item) => ({
+          x: item.index,
+          color: item.index === state.index ? "#dfff52" : "#8eb3ff",
+          width: item.index === state.index ? 3 : 1,
+          height: item.index === state.index ? 38 : 22,
+          dot: item.index === state.index ? 4 : undefined,
+          label: String(item.digit),
+        })),
+        { x: states.length + 2, color: "#1565ff", width: 3, height: 46, dot: 4, topLabel: "selected double" },
+      ] },
+      { y: .7, domain: [left, right], margin: 55, color: "#ff9b8e", label: `MAGNIFIED DECIMAL CELL AFTER ${state.index} DIGIT${state.index === 1 ? "" : "S"}`, bands: [
+        { from: lower, to: upper, above: 54, below: 54, color: "rgba(223,255,82,.15)", border: "#dfff52", label: "ADMISSIBLE INTERVAL" },
+      ], ticks: [
+        { x: 0, color: state.low ? "#ef4b35" : "#ff9b8e", width: state.low ? 3 : 1, height: state.low ? 48 : 30, dot: state.low ? 4 : undefined, topLabel: state.lowerText },
+        { x: center, color: "#8eb3ff", width: 2, height: 62, dot: 4, topLabel: "selected value" },
+        { x: 1, color: state.high ? "#ef4b35" : "#ff9b8e", width: state.high ? 3 : 1, height: state.high ? 48 : 30, dot: state.high ? 4 : undefined, topLabel: state.upperText },
+      ] },
     ],
-    lanes: [{ y: .58, color: "#ff9b8e", label: `PREFIX ${state.prefix} · CURRENT DECIMAL CELL`, ticks: [
-      { x: 0, color: state.low ? "#ef4b35" : "#ff9b8e", width: state.low ? 3 : 1, height: state.low ? 55 : 32, dot: state.low ? 4 : undefined, topLabel: state.lowerText },
-      { x: center, color: "#8eb3ff", width: 2, height: 72, dot: 4, topLabel: "exact remainder" },
-      { x: 1, color: state.high ? "#ef4b35" : "#ff9b8e", width: state.high ? 3 : 1, height: state.high ? 55 : 32, dot: state.high ? 4 : undefined, topLabel: state.upperText },
-    ] }],
-    footer: state.low || state.high ? state.decision.toUpperCase() : "NEITHER CANDIDATE RECOVERS · GENERATE ANOTHER DIGIT",
+    footer: state.low || state.high ? state.decision.toUpperCase() : `PREFIX ${state.prefix} IS STILL TOO COARSE · GENERATE ANOTHER DIGIT`,
   };
 }

@@ -106,6 +106,9 @@ export function coonenBTrace(value, digits) {
   const original = Math.abs(value);
   const decadeStart = 10 ** result.scientificExponent;
   const decadeEnd = decadeStart * 10;
+  const binaryExponent = Math.floor(Math.log2(original));
+  const binaryStart = 2 ** binaryExponent;
+  const binaryEnd = binaryStart * 2;
   const sourceDomain = [original * .9, original * 1.1];
   const scaledDomain = sourceDomain.map((point) => point * 10 ** result.scale);
   const schematicError = (scaledDomain[1] - scaledDomain[0]) * .035;
@@ -134,19 +137,22 @@ export function coonenBTrace(value, digits) {
       line: 2,
       label: "B2 · Decimal decade",
       title: "Identify the decimal decade",
-      why: "LOGX identifies the position of the leading decimal digit. The estimate is allowed to be one decade too low because the later range check detects and corrects exactly that error.",
+      why: `The same value lies in the binary range [2^${binaryExponent}, 2^${binaryExponent + 1}) and the decimal range [10^${result.scientificExponent}, 10^${result.scientificExponent + 1}). LOGX records the latter exponent, ${result.scientificExponent}. The estimate may initially select the preceding decimal range because a later check detects and corrects that one error.`,
       registers: { input: value.toPrecision(17), LOGX: result.scientificExponent, decade: `[${decadeStart}, ${decadeEnd})`, estimate_for_this_input: "correct" },
-      visual: { scene: baseScene([{ y: .58, domain: [decadeStart, decadeEnd], margin: 55, color: "#8eb3ff", label: "SELECTED DECIMAL DECADE", ticks: [{ x: decadeStart, height: 35, topLabel: `10^${result.scientificExponent}` }, { x: original, color: "#dfff52", width: 3, height: 55, dot: 5, topLabel: "x" }, { x: decadeEnd, height: 35, topLabel: `10^${result.scientificExponent + 1}` }] }], "LOGX fixes the scientific exponent") },
+      visual: { scene: baseScene([
+        { y: .35, domain: [binaryStart, binaryEnd], margin: 55, color: "#8eb3ff", label: "BINARY RANGE", ticks: [{ x: binaryStart, height: 28, topLabel: `2^${binaryExponent}` }, { x: original, color: "#dfff52", width: 3, height: 48, dot: 5, topLabel: value.toPrecision(6) }, { x: binaryEnd, height: 28, topLabel: `2^${binaryExponent + 1}` }] },
+        { y: .72, domain: [decadeStart, decadeEnd], margin: 55, color: "#ff9b8e", label: "DECIMAL RANGE", ticks: [{ x: decadeStart, height: 28, topLabel: String(decadeStart) }, { x: original, color: "#dfff52", width: 3, height: 48, dot: 5, topLabel: value.toPrecision(6) }, { x: decadeEnd, height: 28, topLabel: String(decadeEnd) }] },
+      ], "LOGX NAMES THE DECIMAL RANGE THAT CONTAINS THE VALUE") },
     },
     {
       line: 3,
       label: "B3–B4 · Scale",
-      title: `Move the desired ${digits} digits left of the point`,
-      why: "SCALE = N − LOGX − 1. Multiplication by the corresponding power of ten maps the source value to the N-digit integer range. In the historical finite-precision path, approximation of that power can begin the error budget at this step.",
-      registers: { input: value.toPrecision(17), factor: `10^${result.scale}`, exact_scaled_value: exactScaledText, exact_control_error: "0", historical_path: "bounded scale-factor error may already be present" },
+      title: `Put ${digits} significant digits in the integer part`,
+      why: `Multiplying by 10^${result.scale} moves binary64(${value.toPrecision(17)}) to ${scaledDisplay}. The exact control shown here keeps that rational value. Coonen's finite-precision implementation can differ for two reasons: a required power of ten or reciprocal may already be rounded, and the multiplication rounds its product again. For this particular factor, 10^${result.scale} is exact; only the product needs rounding.`,
+      registers: { input: value.toPrecision(17), factor: `10^${result.scale}`, exact_scaled_value: exactScaledText, exact_control_error: "0", finite_precision_path: `exact factor here; multiplication may round` },
       visual: { scene: baseScene([
         { y: .35, domain: sourceDomain, margin: 55, color: "#8eb3ff", label: "BEFORE SCALING", ticks: [{ x: original, width: 3, height: 42, dot: 4, topLabel: value.toPrecision(8) }] },
-        { y: .7, domain: scaledDomain, margin: 55, color: "#ff9b8e", label: `AFTER MULTIPLICATION BY 10^${result.scale}`, bands: [{ from: scaledValue - schematicError, to: scaledValue + schematicError, color: "rgba(223,255,82,.17)", border: "#dfff52", label: "SCHEMATIC ERROR BUDGET" }], ticks: [{ x: scaledValue, width: 3, height: 42, dot: 4, topLabel: scaledValue.toFixed(6) }] },
+        { y: .7, domain: scaledDomain, margin: 55, color: "#ff9b8e", label: `AFTER MULTIPLICATION BY 10^${result.scale}`, bands: [{ from: scaledValue - schematicError, to: scaledValue + schematicError, color: "rgba(223,255,82,.17)", border: "#dfff52", label: "SCHEMATIC FINITE-PRECISION RANGE" }], ticks: [{ x: scaledValue, width: 3, height: 42, dot: 4, topLabel: scaledValue.toFixed(6) }] },
       ], `${value.toPrecision(17)} × 10^${result.scale} = ${scaledDisplay}`) },
     },
     {
