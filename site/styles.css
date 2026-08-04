@@ -143,6 +143,17 @@ code, output { font-family: var(--mono); }
 .bit-fields-form button { margin: 2px 0 5px 12px; padding: 8px 12px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; font: 600 9px var(--mono); text-transform: uppercase; }
 .bit-fields-form button:hover { border-color: var(--red); background: var(--red); }
 .bit-fields-form > small { min-height: 1.4em; color: var(--red); font: 10px/1.4 var(--mono); }
+.bit-fields-values { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(0, 2fr); border: 1px solid var(--ink); border-top: 0; }
+.bit-fields-values p { min-width: 0; margin: 0; padding: 18px; }
+.bit-fields-values p + p { border-left: 1px solid var(--line); }
+.bit-fields-values span { display: block; margin-bottom: 10px; color: var(--muted); font: 600 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.bit-fields-values output { display: flex; flex-wrap: wrap; gap: 7px 10px; align-items: baseline; color: var(--ink); font: 500 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+.bit-fields-values output > code { overflow-wrap: anywhere; }
+.bit-fields-values output b { color: var(--red); font-weight: 500; }
+.bit-fields-values small { display: block; margin-top: 9px; color: var(--muted); font: 11px/1.5 var(--sans); }
+.bit-fields-values details { min-width: 0; max-width: 100%; }
+.bit-fields-values summary { color: var(--red); cursor: pointer; font: 500 11px/1.5 var(--mono); }
+.bit-fields-values details code { display: block; margin-top: 10px; overflow-wrap: anywhere; }
 
 .problem-body > p:not(.lede) { max-width: 900px; }
 .problem-body .monster { margin-bottom: 50px; }
@@ -346,6 +357,8 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
   .bit-fields-form { display: block; }
   .bit-fields-form > div { margin-top: 10px; }
   .bit-fields-form > small { display: block; margin-top: 8px; }
+  .bit-fields-values { grid-template-columns: 1fr; }
+  .bit-fields-values p + p { border-top: 1px solid var(--line); border-left: 0; }
   .source-list a { display: block; }
   .source-list span, .source-list strong, .source-list em { display: block; margin-bottom: 10px; }
   footer { display: block; }

@@ -1,4 +1,5 @@
-import { bitsOf } from "./float.js";
+import { bitsOf, decodeDouble, exactForm } from "./float.js";
+import { exactDecimal } from "./oracle.js";
 
 export class Binary64Fields extends HTMLElement {
   connectedCallback() {
@@ -51,6 +52,7 @@ export class Binary64Fields extends HTMLElement {
       : storedExponent === 0x7ff
         ? "payload or special-value marker"
         : "the decoded significand begins with the implicit 1";
+    const values = this.hasAttribute("data-editable") ? decodedValues(value) : "";
     const controls = this.hasAttribute("data-editable") ? `
       <form class="bit-fields-form">
         <label for="${this.inputId}">Choose a number to represent</label>
@@ -64,7 +66,8 @@ export class Binary64Fields extends HTMLElement {
         <div class="bit-field bit-field-exponent"><span>Exponent · 11 bits</span><code>${groupBits(exponent)}</code><small>${exponentMeaning}</small></div>
         <div class="bit-field bit-field-fraction"><span>Fraction · 52 stored bits</span><code class="bit-lines"><i>${groupBits(fraction.slice(0, 28))}</i><i>${groupBits(fraction.slice(28))}</i></code><small>${fractionMeaning}</small></div>
       </div>
-      <p class="bit-fields-hex"><span>Hexadecimal</span><code>${hex.slice(0, 3)} | ${hex.slice(3)}</code><small>The exponent/fraction boundary aligns after three hex digits; the sign/exponent boundary lies inside the first digit.</small></p>`;
+      <p class="bit-fields-hex"><span>Hexadecimal</span><code>${hex.slice(0, 3)} | ${hex.slice(3)}</code><small>The exponent/fraction boundary aligns after three hex digits; the sign/exponent boundary lies inside the first digit.</small></p>
+      ${values}`;
     const input = this.querySelector(".bit-fields-input");
     if (input) input.value = inputText;
   }
@@ -84,6 +87,29 @@ function groupBits(bits) {
 function displayNumber(value) {
   if (Object.is(value, -0)) return "-0";
   return String(value);
+}
+
+function decodedValues(value) {
+  const decoded = decodeDouble(value);
+  if (decoded.special === "infinity") {
+    return `<div class="bit-fields-values"><p><span>Integer significand · decimal</span><output>not used</output></p><p><span>Exact represented value</span><output>${decoded.negative ? "−Infinity" : "+Infinity"}</output><small>Infinity is a special value, not an integer significand multiplied by a power of two.</small></p></div>`;
+  }
+  if (decoded.special === "nan") {
+    return `<div class="bit-fields-values"><p><span>Integer significand · decimal</span><output>not used</output></p><p><span>Exact represented value</span><output>NaN</output><small>A NaN encoding does not represent a numerical value.</small></p></div>`;
+  }
+  if (decoded.special === "zero") {
+    return `<div class="bit-fields-values"><p><span>Integer significand · decimal</span><output>0</output></p><p><span>Exact represented value</span><output>${decoded.negative ? "−0" : "+0"}</output><small>The sign bit distinguishes the two zero encodings.</small></p></div>`;
+  }
+
+  const magnitude = decoded.significand < 0n ? -decoded.significand : decoded.significand;
+  const decimal = exactDecimal(value);
+  const decimalValue = decimal.length <= 180
+    ? `<code>${decimal}</code>`
+    : `<details><summary>Show the full exact decimal expansion (${decimal.length} characters)</summary><code>${decimal}</code></details>`;
+  return `<div class="bit-fields-values">
+    <p><span>Integer significand · decimal</span><output>${magnitude}</output><small>The sign remains in its own field; these are the significant bits read as a base-10 integer.</small></p>
+    <p><span>Exact represented value</span><output><code>${exactForm(decoded)}</code><b>=</b>${decimalValue}</output><small>This is the value selected by the 64 bits, which need not equal the decimal text that was entered.</small></p>
+  </div>`;
 }
 
 if (!customElements.get("binary64-fields")) customElements.define("binary64-fields", Binary64Fields);
