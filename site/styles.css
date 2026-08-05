@@ -282,7 +282,7 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter-links span { display: block; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
 .chapter-links strong { font: 600 22px var(--serif); }
 
-schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab, errol-pair-lab, errol-prefix-lab, coonen-scale-lab { display: block; }
+schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab, errol-pair-lab, errol-prefix-lab, coonen-scale-lab, dragon-remainder-lab { display: block; }
 .algorithm-lab { margin: 46px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .algorithm-lab-head { display: flex; justify-content: space-between; gap: 30px; align-items: start; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .algorithm-lab-head > div:first-child { min-width: 0; }
@@ -527,6 +527,28 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 .coonen-rounded-mark text { fill: var(--red-pale); font: 500 10px var(--mono); }
 .coonen-retry-note { fill: var(--red-pale); font: 500 9px var(--mono); }
 
+.dragon-remainder-svg { min-height: 390px; }
+.dragon-tape-line { stroke: rgba(255,255,255,.25); stroke-width: 1.5; }
+.dragon-digit { stroke: var(--blue-pale); stroke-width: 1.5; }
+.dragon-digit.active { stroke: var(--acid); stroke-width: 3; }
+.dragon-digit-label { fill: #91a6d2; font: 9px var(--mono); }
+.dragon-digit-label.active { fill: var(--acid); font-weight: 500; }
+.dragon-cell { fill: rgba(142,179,255,.035); stroke: rgba(255,255,255,.25); }
+.dragon-margin-band { cursor: pointer; outline: none; }
+.dragon-margin-band rect { fill: rgba(223,255,82,.19); stroke: var(--acid); stroke-width: 1.5; }
+.dragon-candidate, .dragon-cell-value { cursor: pointer; outline: none; }
+.dragon-candidate line { stroke: currentColor; stroke-width: 2; stroke-dasharray: 4 3; }
+.dragon-candidate circle { fill: var(--dark); stroke: currentColor; stroke-width: 2.5; }
+.dragon-candidate text { fill: currentColor; font: 9px var(--mono); }
+.dragon-candidate.outside { color: #87949e; }
+.dragon-candidate.inside { color: var(--red-pale); }
+.dragon-candidate.inside circle { fill: var(--red); stroke: white; }
+.dragon-cell-value line { stroke: var(--blue-pale); stroke-width: 2; }
+.dragon-cell-value circle { fill: var(--blue-pale); stroke: white; stroke-width: 2; }
+.dragon-scale-note { fill: #7f8e98; font: 8px var(--mono); }
+.dragon-conclusion { fill: #9aa7b0; font: 500 9px var(--mono); }
+.dragon-conclusion.done { fill: var(--acid); }
+
 .trace-player { margin: 45px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .trace-head { display: flex; justify-content: space-between; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .trace-head strong { font: 500 10px var(--mono); text-transform: uppercase; }
@@ -652,6 +674,7 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .coonen-arrow { min-height: 80px; border-block: 1px solid rgba(255,255,255,.14); border-inline: 0; }
   .coonen-arrow b { transform: rotate(90deg); }
   .coonen-window-svg { min-height: 330px; }
+  .dragon-remainder-svg { min-height: 470px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

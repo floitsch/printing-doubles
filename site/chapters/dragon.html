@@ -101,8 +101,8 @@
         <section id="execution">
           <p class="eyebrow">4.6 · Executable digit generation</p>
           <h2>Follow Dragon for binary64(1/3)</h2>
-          <p>The player is generated from the exact BigInt implementation used by the tests. The upper lane retains every digit already generated. The lower lane magnifies the current decimal cell so that its admissible interval remains visible even during the early steps, when the decimal prefix is still far from the selected double. Repeated 3s are not prewritten animation frames: every remainder and decision comes from the running algorithm.</p>
-          <trace-player class="trace-player" data-title="Exact Dragon · input binary64(1/3)" data-code="#dragon-code"><script id="dragon-trace-data" type="application/json">[]</script></trace-player>
+          <p>The instrument is generated from the exact BigInt implementation used by the tests. The upper lane retains every digit already generated. The lower lane magnifies the current decimal cell, keeping the selected value, both adjacent decimals, and the carried interval in one stable geometry. Repeated 3s are computed states, not prewritten frames.</p>
+          <dragon-remainder-lab></dragon-remainder-lab>
           <p>For the first fifteen digits, neither adjacent decimal lies inside the parsing interval. At digit sixteen, <code>0.3333333333333333</code> enters through the lower side. The loop stops although the exact binary64 expansion still has many nonzero digits.</p>
         </section>
 
@@ -110,7 +110,7 @@
           <p class="eyebrow">4.7 · Structural cases</p>
           <h2>Some complications belong to the number format, not to Dragon</h2>
           <p>Equal spacing is the ordinary case, but an exponent transition can place the predecessor twice as close as the successor. Endpoint ownership comes from the parser’s ties-to-even rule. These facts affect every shortest conversion algorithm; Dragon merely records them as two separate margins and strict or non-strict comparisons.</p>
-          <trace-player class="trace-player" data-title="Algorithm-independent binary64 cases"><script id="dragon-structure-data" type="application/json">[]</script></trace-player>
+          <p>The <a href="./binary64-number-line.html#transition">binary64 primer’s exponent-transition instrument</a> shows the closer predecessor directly, and the <a href="./foundations.html#parsing">parsing-geometry chapter</a> shows how endpoint ownership changes under ties-to-even. They are format facts rather than extra Dragon steps, so they are not replayed here as an algorithm trace.</p>
           <p>The remaining special inputs are best separated from the digit loop. Signed zero, infinities, and NaNs are classified before conversion. Negative finite values use the positive magnitude path and receive a sign afterward. Subnormals still participate in the same interval construction; the binary64 primer explains why their effective precision changes near zero. The executable corpus covers the normal/subnormal transition and both ends of the finite range.</p>
         </section>
 

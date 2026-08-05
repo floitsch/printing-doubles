@@ -92,6 +92,11 @@ the explanation.
   which one rounding produces the whole field. Its main instrument keeps the
   source, shift, target window, rounding, saved exponent, and possible single
   decade retry visible at the same time.
+- **Dragon:** the emitted prefix persists while one current decimal cell is
+  repeatedly enlarged. Inside that cell, the exact remainder locates the value
+  and two independently carried margins define the admissible band. Its main
+  instrument therefore combines a prefix history with a stable 0-to-1 cell,
+  rather than moving through unrelated register snapshots.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its
