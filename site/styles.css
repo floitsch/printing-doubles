@@ -282,7 +282,7 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter-links span { display: block; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
 .chapter-links strong { font: 600 22px var(--serif); }
 
-schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route { display: block; }
+schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab { display: block; }
 .algorithm-lab { margin: 46px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .algorithm-lab-head { display: flex; justify-content: space-between; gap: 30px; align-items: start; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .algorithm-lab-head > div:first-child { min-width: 0; }
@@ -419,6 +419,48 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 .route-subtitle { fill: #9facb5; font: 9px var(--mono); }
 .route-node.active .route-subtitle { fill: #d3dbdf; }
 
+.diyfp-svg { min-height: 445px; }
+.diyfp-band { cursor: pointer; outline: none; }
+.diyfp-band rect { stroke: rgba(255,255,255,.28); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.diyfp-source { fill: rgba(142,179,255,.22); }
+.diyfp-working { fill: rgba(223,255,82,.32); }
+.diyfp-cache { fill: rgba(255,155,142,.22); }
+.diyfp-retained { fill: var(--acid); }
+.diyfp-discarded { fill: rgba(142,179,255,.1); }
+.diyfp-band-label { fill: #f4f0e8; font: 500 10px var(--mono); }
+.diyfp-band-label.end { text-anchor: end; }
+.diyfp-band-label.dark { fill: var(--ink); }
+.diyfp-multiply-arrow { fill: none; stroke: #a8b4bc; stroke-width: 1.5; }
+.diyfp-rounding-arrow { fill: none; stroke: var(--red-pale); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.diyfp-rounding-label { fill: var(--red-pale); font: 9px var(--mono); }
+
+.proof-control { padding-bottom: 16px; }
+.grisu-proof-svg { min-height: 430px; }
+.grisu-approach-line { stroke: rgba(255,255,255,.3); stroke-width: 2; }
+.grisu-progress { fill: var(--blue-pale); stroke: white; stroke-width: 2; }
+.grisu-progress.reached { fill: var(--acid); }
+.grisu-prefix-label { fill: #f4f0e8; font: 500 11px var(--mono); }
+.grisu-outer, .grisu-safe, .grisu-center, .grisu-proof-candidate { cursor: pointer; outline: none; }
+.grisu-outer-band { fill: rgba(142,179,255,.12); stroke: var(--blue-pale); stroke-width: 1.5; }
+.grisu-band-label { fill: #b9c8e8; font: 500 9px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.grisu-safe-band { fill: rgba(223,255,82,.18); stroke: var(--acid); stroke-width: 1.5; }
+.grisu-safe-label { fill: var(--acid); font: 500 10px var(--mono); }
+.grisu-center-band { fill: var(--red-pale); stroke: white; stroke-width: 1; }
+.grisu-proof-candidate { color: #f4f0e8; }
+.grisu-proof-candidate line { stroke: currentColor; stroke-width: 2; stroke-dasharray: 4 4; }
+.grisu-proof-candidate circle { fill: var(--dark); stroke: currentColor; stroke-width: 3; }
+.grisu-proof-candidate text { fill: currentColor; font: 500 10px var(--mono); }
+.grisu-proof-candidate.accepted { color: var(--acid); }
+.grisu-proof-candidate.accepted circle { fill: var(--acid); stroke: white; }
+.grisu-proof-candidate.rejected { color: var(--red-pale); }
+.grisu-proof-candidate.rejected circle { fill: var(--red); stroke: white; }
+.grisu-offscreen-arrow { fill: none; stroke: var(--red-pale); stroke-width: 2; }
+.grisu-offscreen-label { fill: var(--red-pale); font: 10px var(--mono); }
+.grisu-scale-note { fill: #7f8e98; font: 8px var(--mono); }
+.grisu-proof-conclusion { fill: #9eabb4; font: 500 10px var(--mono); letter-spacing: .04em; }
+.grisu-proof-conclusion.accepted { fill: var(--acid); }
+.grisu-proof-conclusion.rejected { fill: var(--red-pale); }
+
 .trace-player { margin: 45px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .trace-head { display: flex; justify-content: space-between; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .trace-head strong { font: 500 10px var(--mono); text-transform: uppercase; }
@@ -507,6 +549,7 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .source-list span, .source-list strong, .source-list em { display: block; margin-bottom: 10px; }
   footer { display: block; }
   .chapter-hero { padding-inline: 20px; }
+  .chapter-hero h1 { font-size: clamp(48px, 14vw, 58px); overflow-wrap: anywhere; }
   .chapter-layout { display: block; padding: 70px 20px; }
   .chapter-toc { position: static; margin-bottom: 70px; }
   .math-fact { display: block; }
@@ -534,6 +577,8 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .lab-inspector code { grid-column: 1; }
   .route-policies { grid-template-columns: 1fr; }
   .route-svg { min-height: 690px; }
+  .diyfp-svg { min-height: 570px; }
+  .grisu-proof-svg { min-height: 520px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

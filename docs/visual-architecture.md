@@ -58,6 +58,37 @@ Shared code should be limited to genuine primitives:
 
 There will be no universal “algorithm player” component.
 
+## Chapter-specific visual theses
+
+Before implementing an algorithm chapter, reduce it to the pictures that would
+still distinguish the algorithm if the surrounding prose were removed. These
+are not decorative summaries; they determine the instruments and the order of
+the explanation.
+
+- **Schubfach:** a parsing interval is a drawer; two adjacent decimal grids
+  place only a bounded set of points in it. The principal instrument therefore
+  moves the drawer over coarse and fine grids, followed by an exact candidate
+  laboratory.
+- **Ryū:** decimal cells form ten-to-one groups. Coarsening the grid removes one
+  digit at a time until the next group would be empty. Its main instrument is a
+  resolution control, supported by separate guard-bit and product-window
+  diagrams.
+- **Dragonbox:** the candidate geometry is inherited. The new idea is the route
+  by which one cached product supplies a coarse test and, after failure, a
+  one-digit refinement. Its main diagram is a dependency graph whose active
+  path changes with the input and policies.
+- **Grisu:** approximate coordinates create uncertainty fringes. A decimal
+  approaches from the upper side and may be returned only after it enters a
+  smaller safe interval and remains closest throughout the center's uncertainty
+  range. Its main instrument is a proof microscope; a separate workbench shows
+  the 53-to-64-bit widening and retained product window.
+
+The same exercise must be completed before rebuilding each remaining chapter.
+It is acceptable for an algorithm to have two complementary pictures when its
+arithmetic representation and its selection theorem are genuinely different
+ideas. Reusing the trace player is not an acceptable substitute for identifying
+the visual thesis.
+
 ## When to reconsider a framework
 
 Re-evaluate this decision if at least one of the following becomes true:
