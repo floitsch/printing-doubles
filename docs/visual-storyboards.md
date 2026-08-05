@@ -670,10 +670,12 @@ the approximation preserves every decimal-candidate and endpoint decision.
    has a visibly larger numerator or denominator and a smaller error bar.
 2. A machine-word ceiling stops the ladder; the best admissible rung is chosen.
 3. The chosen approximation scales a parsing interval and candidate grid.
-4. Most candidate marks remain on the same side of their thresholds.
-5. One deliberately magnified threshold shows a tiny ratio error moving a mark
-   across an open or closed endpoint.
-6. A proof bridge is drawn between the ratio error bound and all decision
+4. The chosen ratio and exact scale appear indistinguishable at the ordinary
+   scale, so their complete gap is magnified into a separate microscope.
+5. A synthetic threshold is placed inside that gap. It is not a counterexample;
+   it represents the comparison rationals that the missing separation theorem
+   must exclude.
+6. A proof bridge is drawn between the approximation result and all decision
    thresholds, but one span is missing.
 7. Known paper defects attach to the corresponding spans rather than appearing
    as a disconnected list of editorial corrections.

@@ -1,6 +1,6 @@
 # Toothless continued-fraction draft: correctness audit
 
-Audit date: 2026-08-04
+Audit date: 2026-08-05
 
 Materials inspected:
 
@@ -30,6 +30,10 @@ Continued    : 2100100/2100100 (0 skipped). 0 errors.
 The figure requires interpretation. The first 100,100 cases come from `tests.txt` and have expected digit strings. For the two million generated cases, `ensureAgreement` runs Toothless first and uses its output as the reference for the other algorithms; it checks only that Toothless parses back to the input. Therefore the zero-error line does not independently prove shortestness or closestness for those generated values. The 1,200 disagreements are differences somewhere among the algorithms and are not classified by the harness.
 
 I added a temporary native wrapper and compared 9,996 deterministic finite positive binary64 bit patterns directly with this site's exact rational interval oracle. There were zero disagreements. Named and transition values in the existing 100,100-case file also passed. This is good regression evidence, not an exhaustive proof.
+
+The public chapter now includes an independent exact-arithmetic reconstruction of the continued-fraction ladder. Browser and Node tests check that its convergents reconstruct the selected rational targets, that every displayed numerator and denominator respects the chosen word ceiling, and that increasing the ceiling never worsens the selected approximation for the study targets. This validates the instrument's arithmetic; it does not certify the unpublished cache or close any of the proof obligations below.
+
+The decision-threshold microscope deliberately places a synthetic threshold inside the magnified gap between the chosen ratio and the exact target. It is not a discovered binary64 counterexample. Its purpose is to make the required separation theorem visible: correctness needs a proof that no rational comparison arising from the conversion can occupy that gap.
 
 ## Blocking proof issues
 

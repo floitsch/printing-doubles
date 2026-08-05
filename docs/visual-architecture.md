@@ -128,6 +128,14 @@ the explanation.
   and prepared small multiples. Hover, focus, and tap explain source-specific
   conditions, but the route, widths, estimate, repair, and answer remain
   persistent.
+- **Toothless:** an exact continued-fraction ladder approaches a normalized
+  decimal scale until a simultaneous numerator-and-denominator word ceiling
+  rejects the next rung. A separately magnified cache gap contains a synthetic
+  decision threshold, while a persistent proof bridge distinguishes established,
+  conditional, missing, incorrect, and defective obligations. The threshold is
+  explicitly illustrative—not a claimed binary64 counterexample. A second exact
+  diagram isolates the one-unit lower-boundary defect at the smallest normal
+  value.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its
