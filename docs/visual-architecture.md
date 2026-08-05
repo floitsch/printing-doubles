@@ -87,6 +87,11 @@ the explanation.
   ends the common prefix. Its main instrument is this crop-and-zoom strip. A
   residual microscope separately shows `hi + lo` as a sub-ulp displacement
   that would disappear if the fields were immediately added as binary64.
+- **Coonen:** a caller chooses the field width first. Decimal scaling maps both
+  very small and very large inputs into the same N-digit integer window, after
+  which one rounding produces the whole field. Its main instrument keeps the
+  source, shift, target window, rounding, saved exponent, and possible single
+  decade retry visible at the same time.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its

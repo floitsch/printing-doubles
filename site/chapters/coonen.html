@@ -64,8 +64,9 @@
         <section id="execution">
           <p class="eyebrow">3.4 · Executable control</p>
           <h2>Move four significant digits into an integer</h2>
-          <p>In decimal notation the operation is merely a movement of the point. The trace first shows a small value that must move six places to the left, then a large value that must move two places to the right. Both arrive at the same four-digit integer. It then repeats the small example as a binary64 operation, where constructing the scale factor and multiplying by it may introduce error.</p>
-          <trace-player class="trace-player" data-title="Coonen scaling · four requested digits" data-code="#coonen-code"><script id="coonen-trace-data" type="application/json">[]</script></trace-player>
+          <p>In decimal notation the operation is merely a movement of the point. The instrument keeps the complete transformation visible: a small value moves six places to the right, while a large value moves two places to the left. Both arrive at the same four-digit coefficient. The marker in the target window is computed from the exact binary64 rational, so the gap between the familiar input spelling and the stored value is not hidden.</p>
+          <coonen-scale-lab></coonen-scale-lab>
+          <p>Use the carry-correction preset to distinguish scaling from rounding. The value 9.999 belongs to decade 10<sup>0</sup>, but its three-digit scaled value 999.9 rounds to 1000. That coefficient no longer fits the three-digit window. Algorithm B increments the saved decade, restores the unscaled input, and performs one second pass, producing 100 × 10<sup>−1</sup> = 10.0 at the requested precision.</p>
         </section>
 
         <section id="reciprocal">
