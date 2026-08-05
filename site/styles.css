@@ -267,6 +267,9 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter table { width: 100%; border-collapse: collapse; margin: 35px 0; font-size: 13px; }
 .chapter th, .chapter td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .chapter th { font: 500 9px var(--mono); text-transform: uppercase; }
+.table-scroll { max-width: 100%; overflow-x: auto; scrollbar-color: var(--red) #ded8cd; }
+.table-scroll table { min-width: 440px; }
+.table-scroll:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 .equation { margin: 38px 0; padding: 24px; border-block: 1px solid var(--line); overflow-x: auto; text-align: center; font: 500 clamp(17px, 2vw, 24px) var(--mono); white-space: nowrap; }
 .interval-cases { display: grid; gap: 10px; white-space: normal; }
 .foundation-grid-applet { margin: 38px -120px 42px -200px; padding: 24px; background: var(--dark); color: #f4f0e8; }

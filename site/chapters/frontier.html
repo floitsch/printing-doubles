@@ -14,7 +14,7 @@
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part IV · Moving frontier</p>
       <h1>The current frontier: arithmetic is no longer the whole formatter</h1>
       <p class="chapter-deck">Recent implementations retain the interval geometry developed by Ryū and Schubfach, but reduce wide products, branches, divisions, table traffic, and digit-writing costs. Their evidence is uneven and changes quickly. This chapter pins sources and separates algorithms with published proofs from work-in-progress implementations and benchmark claims.</p>
-      <div class="chapter-meta"><span>Chapter 10</span><span>Snapshot 2026-08-04</span><span>Żmij</span><span>Tejú Jaguá</span><span>xjb</span><span>Unrounded scaling</span></div>
+      <div class="chapter-meta"><span>Chapter 10</span><span>Snapshot 2026-08-05</span><span>Żmij</span><span>Tejú Jaguá</span><span>xjb</span><span>Unrounded scaling</span></div>
     </section>
 
     <div class="chapter-layout">
@@ -79,7 +79,7 @@
         <section id="relations">
           <p class="eyebrow">10.6 · The frontier is converging</p>
           <h2>The same interval facts are being scheduled differently</h2>
-          <table>
+          <div class="table-scroll" role="region" aria-label="Comparison of current frontier algorithms" tabindex="0"><table>
             <thead><tr><th>Work</th><th>Selection lineage</th><th>Primary optimization focus</th><th>Current evidence caveat</th></tr></thead>
             <tbody>
               <tr><td>Żmij</td><td>Schubfach, yy, xjb, Dragonbox</td><td>One scale multiplication, branch reduction, digit output, SIMD.</td><td>Fast-moving implementation; performance is platform-specific.</td></tr>
@@ -87,7 +87,7 @@
               <tr><td>xjb</td><td>Schubfach</td><td>10<sup>−k−1</sup> scale, low dependency, SIMD BCD output, compact tables.</td><td>Preprint has a documented pseudocode error; big-endian incomplete.</td></tr>
               <tr><td>Unrounded scaling</td><td>Grisu2/Schubfach synthesis</td><td>One exact high-bits-plus-sticky scaling primitive shared by print and parse.</td><td>Very recent proof and implementation; integration remains in motion.</td></tr>
             </tbody>
-          </table>
+          </table></div>
           <p>For understanding candidate geometry, the Ryū, Schubfach, and Dragonbox applets remain the appropriate instruments. The frontier algorithms do not introduce a new parsing interval; they change which scaled facts are computed, how many products produce them, and how quickly the resulting integer becomes characters.</p>
         </section>
 
@@ -113,6 +113,6 @@
       </article>
     </div>
   </main>
-  <footer><p><strong>Printing doubles</strong> · frontier evidence snapshot, 2026-08-04</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+  <footer><p><strong>Printing doubles</strong> · frontier evidence snapshot, 2026-08-05</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
 </body>
 </html>
