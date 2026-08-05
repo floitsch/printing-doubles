@@ -696,6 +696,66 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 .sticky-lamp.on strong { border-color: var(--acid); background: var(--acid); color: var(--ink); box-shadow: 0 0 14px rgba(223,255,82,.4); }
 .uscale-verdict .agreement.yes strong { color: var(--acid); }
 
+.descendant-switch { display: flex; gap: 8px; padding: 18px 24px 0; }
+.descendant-switch button { padding: 9px 13px; border: 1px solid rgba(255,255,255,.3); background: transparent; color: white; cursor: pointer; font: 500 9px var(--mono); text-transform: uppercase; }
+.descendant-switch button.active { border-color: var(--acid); background: var(--acid); color: var(--ink); }
+.descendant-invariant { display: grid; grid-template-columns: 130px 1fr 1.3fr; gap: 18px; align-items: center; padding: 15px 24px; border-block: 1px solid rgba(255,255,255,.15); background: rgba(223,255,82,.08); }
+.descendant-invariant span { color: var(--acid); font: 9px var(--mono); text-transform: uppercase; }
+.descendant-invariant strong { color: white; font: 500 15px var(--mono); overflow-wrap: anywhere; }
+.descendant-invariant small { color: #acb8c0; font-size: 11px; }
+.work-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: rgba(255,255,255,.16); }
+.work-comparison section { min-width: 0; padding: 22px 20px 24px; background: #101a22; }
+.work-comparison header span, .work-comparison header strong { display: block; }
+.work-comparison header span { color: var(--red-pale); font: 9px var(--mono); text-transform: uppercase; }
+.work-comparison header strong { margin: 6px 0 17px; color: white; font: 500 13px var(--mono); }
+.work-pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+.work-block { position: relative; min-width: 0; min-height: 110px; padding: 12px 9px; border: 1px solid rgba(255,255,255,.22); background: #0b151d; color: white; cursor: pointer; text-align: left; }
+.work-block::after { position: absolute; top: 50%; right: -8px; z-index: 1; color: #788791; content: "›"; transform: translateY(-50%); }
+.work-block:last-child::after { display: none; }
+.work-block span, .work-block strong, .work-block small { display: block; }
+.work-block span { color: #8e9ba4; font: 8px var(--mono); text-transform: uppercase; }
+.work-block strong { margin-top: 8px; color: white; font: 500 11px/1.35 var(--mono); overflow-wrap: anywhere; }
+.work-block small { display: none; }
+.work-block:hover, .work-block:focus-visible { border-color: var(--blue-pale); outline: 0; background: #162635; }
+.work-block.heavy { border-color: rgba(255,155,142,.55); background: rgba(255,155,142,.09); }
+.work-block.repair { box-shadow: inset 0 3px var(--red-pale); }
+.work-block.bypass { border-color: var(--acid); background: rgba(223,255,82,.1); }
+.work-block.bypass strong { color: var(--acid); }
+.estimate-ruler, .factor-xray { padding: 22px 24px; border-top: 1px solid rgba(255,255,255,.15); }
+.estimate-ruler header, .factor-xray header { display: flex; justify-content: space-between; gap: 18px; }
+.estimate-ruler header span, .factor-xray header span { color: var(--red-pale); font: 9px var(--mono); text-transform: uppercase; }
+.estimate-ruler header strong, .factor-xray header strong { color: #b4bfc6; font: 500 10px var(--mono); }
+.estimate-cells { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(90px,1fr); margin-top: 18px; border-block: 1px solid rgba(255,255,255,.2); }
+.estimate-cells div { position: relative; min-height: 88px; padding: 14px 12px; border-left: 1px solid rgba(255,255,255,.16); background: #0d171f; }
+.estimate-cells div:last-child { border-right: 1px solid rgba(255,255,255,.16); }
+.estimate-cells span, .estimate-cells b, .estimate-cells em { display: block; }
+.estimate-cells span { color: #c3cbd0; font: 500 14px var(--mono); }
+.estimate-cells b, .estimate-cells em { margin-top: 8px; font: 8px var(--mono); text-transform: uppercase; }
+.estimate-cells b { color: var(--red-pale); }
+.estimate-cells em { color: var(--acid); font-style: normal; }
+.estimate-cells .estimated { box-shadow: inset 0 3px var(--red-pale); }
+.estimate-cells .target { background: rgba(223,255,82,.08); box-shadow: inset 0 -3px var(--acid); }
+.estimate-cells .estimated.target { box-shadow: inset 0 3px var(--red-pale), inset 0 -3px var(--acid); }
+.estimate-ruler > p { margin: 14px 0 0; color: #aeb9c1; font-size: 11px; }
+.factor-bars { margin-top: 18px; }
+.factor-bars p { display: grid; grid-template-columns: 55px 1fr 72px; gap: 12px; align-items: center; margin: 8px 0; }
+.factor-bars span { color: #87949e; font: 9px var(--mono); text-transform: uppercase; }
+.factor-bars p > i { display: block; height: 17px; background: var(--red-pale); }
+.factor-bars .after > i { background: var(--acid); }
+.factor-bars strong { color: white; font: 500 10px var(--mono); text-align: right; }
+.factor-equation { display: grid; grid-template-columns: minmax(220px,.8fr) 1.3fr; gap: 20px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.14); }
+.factor-equation code { color: var(--blue-pale); font: 500 11px var(--mono); overflow-wrap: anywhere; }
+.factor-equation span { color: #aeb9c1; font-size: 11px; }
+.quotient-xray { display: grid; grid-template-columns: 90px 130px 1fr; gap: 16px; align-items: center; padding: 19px 24px; border-top: 1px solid rgba(255,255,255,.15); background: #0c141b; }
+.quotient-xray > span { color: var(--red-pale); font: 9px var(--mono); text-transform: uppercase; }
+.quotient-xray > strong { color: white; font: 500 13px var(--mono); }
+.quotient-xray > div { display: flex; min-width: 0; overflow-x: auto; scrollbar-color: var(--acid) #17232d; }
+.quotient-xray i, .quotient-xray b { flex: 1 0 42px; padding: 9px 7px; border: 1px solid rgba(255,255,255,.18); color: #9eabb4; font: 500 9px var(--mono); font-style: normal; text-align: center; white-space: nowrap; }
+.quotient-xray b { flex-basis: 95px; color: var(--blue-pale); font-weight: 500; }
+.quotient-xray i.chosen { border-color: var(--acid); background: var(--acid); color: var(--ink); }
+.quotient-xray i.native { border-color: var(--blue-pale); color: white; }
+.quotient-xray > p { grid-column: 3; margin: -4px 0 0; color: #aeb9c1; font-size: 11px; }
+
 .trace-player { margin: 45px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .trace-head { display: flex; justify-content: space-between; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .trace-head strong { font: 500 10px var(--mono); text-transform: uppercase; }
@@ -862,6 +922,15 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .uscale-equation b { min-height: 42px; border-block: 1px solid rgba(255,255,255,.14); border-inline: 0; }
   .uscale-products, .uscale-verdict { grid-template-columns: 1fr; }
   .uscale-verdict p + p { border-top: 1px solid rgba(255,255,255,.15); border-left: 0; }
+  .descendant-invariant { grid-template-columns: 1fr; }
+  .work-comparison { grid-template-columns: 1fr; }
+  .work-pipeline { grid-template-columns: repeat(5, 112px); overflow-x: auto; padding-bottom: 8px; scrollbar-color: var(--acid) #17232d; }
+  .estimate-ruler header, .factor-xray header { display: block; }
+  .estimate-ruler header strong, .factor-xray header strong { display: block; margin-top: 7px; }
+  .estimate-cells { overflow-x: auto; scrollbar-color: var(--acid) #17232d; }
+  .factor-equation { grid-template-columns: 1fr; }
+  .quotient-xray { grid-template-columns: 1fr; }
+  .quotient-xray > p { grid-column: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

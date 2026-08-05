@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A detailed executable comparison of Gay's dtoa and Burger–Dybvig with Dragon's exact interval method.">
+  <title>Making Dragon practical: Gay and Burger–Dybvig · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../js/dragon-descendants.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a class="chapter-nav" href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
+      <h1>Making Dragon practical</h1>
+      <p class="chapter-deck">Gay and Burger–Dybvig retain Dragon’s exact remainder and margins. Their contribution is to arrive at that state without walking through hundreds of decimal scales, without carrying removable powers of two, and—on favorable inputs—without allocating arbitrary-precision integers at all.</p>
+      <div class="chapter-meta"><span>Exact descendants</span><span>Gay · 1990</span><span>Burger &amp; Dybvig · 1996</span><span>Native + browser verification</span></div>
+    </section>
+
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Dragon descendants</strong><a href="#same-problem">What changes?</a><a href="#xray">Execution x-ray</a><a href="#estimate">Estimate the decade</a><a href="#powers">Build smaller integers</a><a href="#gay">Gay’s dtoa</a><a href="#burger">Burger–Dybvig</a><a href="#correctness">Correctness</a><a href="#evidence">Evidence</a></aside>
+      <article class="chapter">
+        <section id="same-problem">
+          <p class="eyebrow">D.1 · Same mathematical problem</p>
+          <h2>The interval does not need another picture</h2>
+          <p class="lead">Dragon has already answered the conceptual question: carry the exact distance to both parsing boundaries while generating digits, and stop when an adjacent decimal enters the interval. The next problem is computational. How much exact arithmetic must be performed before the first digit can be tested?</p>
+          <p>Consider the largest finite binary64 value. Its leading decimal digit lies in decade 10<sup>308</sup>. An iterative scaling procedure can discover that decade by repeatedly changing an exact numerator or denominator by ten. The number of crossed decades grows with the magnitude of the input. These operations occur before the digit loop, and they manipulate integers that become wider as the walk proceeds.</p>
+          <p>Neither Gay nor Burger–Dybvig changes what the digit loop proves. They change how the initial scale is found and how its exact integers are represented. Therefore the appropriate comparison is not two number lines. It is an execution x-ray in which the two paths merge at the same remainder-and-margin state.</p>
+        </section>
+
+        <section id="xray">
+          <p class="eyebrow">D.2 · Interactive comparison</p>
+          <h2>Keep the answer fixed and expose the avoided work</h2>
+          <p>Select an input and then switch between the two descendants. The upper path shows the scale distance faced by the iterative baseline. The lower path shows the one-sided estimate, its single exact repair, the applicable shortcut, and the width of the exact state after cancellation. The displayed decade count is a structural measure, not a benchmark.</p>
+          <dragon-descendants-lab></dragon-descendants-lab>
+          <p>The instrument deliberately keeps the final digit count visible. A shorter setup does not make the proof approximate: when the optimized path reaches digit generation, it has the same exact center and boundary distances as Dragon. Hover, focus, or tap a block for a source-specific condition; no essential fact is available only on hover.</p>
+        </section>
+
+        <section id="estimate">
+          <p class="eyebrow">D.3 · Replace a search by an estimate and a certificate</p>
+          <h2>The estimate may be imperfect because the correction is exact</h2>
+          <p>To generate the leading digit, the algorithm needs to choose its decimal digit window. This is normally the decade containing the value; when the parsing interval reaches the next decade—as it does for the binary64 value printed <code>1e23</code>—the shortest result can begin there instead. Computing a high-accuracy logarithm would solve a harder problem than necessary. It is sufficient to choose an estimate known to be either correct or adjacent to the required window, then test one exact inequality involving the scaled center and upper margin.</p>
+          <p>Gay normalizes the binary significand into the interval [1,2) and approximates its base-ten logarithm by a linear expression around 1.5. The binary exponent contributes a multiple of log<sub>10</sub>(2). The constants are biased so that the estimate is not below the true leading decade; the exact scaled comparison decreases it when required. For <code>9.819491617465572e139</code>, for example, the approximate result points to decade 140, while the exact comparison repairs it to 139.</p>
+          <p>Burger and Dybvig describe an even cheaper estimate. If <em>s</em> is the exponent of the highest set binary bit, then <em>s</em>·log<sub>10</sub>(2) omits only the contribution from the normalized significand. That omitted contribution is less than one decimal decade. Their constants bias the computed estimate downward, so it is either the required scale or one below it. The correction only ever moves upward. For the binary64 value denoted by <code>1e23</code>, the first estimate occupies the preceding slot and the exact upper-boundary test advances it once.</p>
+          <div class="aside"><p><strong>Two conventions occur in the sources.</strong> Gay numbers the decade containing the leading digit. Burger–Dybvig write the result as <em>0.d…</em> × 10<sup><em>k</em></sup>, so their stored <em>k</em> is one larger. The instrument translates both to the exponent of the leading digit.</p></div>
+          <p>This pattern—cheap one-sided approximation followed by a small exact certificate—is more important than the particular logarithm formula. It removes an exponent-sized loop without allowing an approximate result to decide the output.</p>
+        </section>
+
+        <section id="powers">
+          <p class="eyebrow">D.4 · Exact powers need not imply unnecessarily wide integers</p>
+          <h2>Separate factors of two from factors of five</h2>
+          <p>Decimal scaling introduces a power of ten. In binary arithmetic it is useful to write 10<sup><em>q</em></sup> as 2<sup><em>q</em></sup>·5<sup><em>q</em></sup>. Multiplication or division by a power of two changes a binary position; it does not require a general multiprecision multiplication. The power of five is the part that contributes genuinely new bits.</p>
+          <p>Suppose an exact setup produces a numerator, denominator, and two margins that all contain a factor 2<sup>40</sup>. Dividing all four integers by 2<sup>40</sup> preserves every represented ratio and every stopping comparison. Carrying those forty zero bits through each multiplication by ten would prove nothing new. Gay explicitly removes common powers of two. Burger–Dybvig’s sample C performs the corresponding exponent cancellation before constructing its bignums.</p>
+          <p>The cancellation bar in the instrument reports the actual maximum bit width of the four teaching integers before and after this operation. It does not estimate allocation time. On some positive-exponent inputs there is no shared power of two after decimal scaling; the direct estimator and power construction still remove the repeated scale walk.</p>
+        </section>
+
+        <section id="gay">
+          <p class="eyebrow">D.5 · Gay’s dtoa</p>
+          <h2>Several fast paths serve different output contracts</h2>
+          <p>Gay’s 1990 report treats both decimal parsing and printing and describes a family of practical improvements. For binary-to-decimal conversion, three distinctions matter.</p>
+          <ol>
+            <li><strong>Shortest mode remains left to right.</strong> Mode 0 uses the midpoint-aware stopping tests and allows an endpoint equality when round-to-nearest will recover the same even-significand binary value. This is why the binary64 value conventionally written <code>1e23</code> can be emitted with one digit rather than as <code>9.999999999999999e22</code>.</li>
+            <li><strong>Exact floating-point integers may bypass bignums.</strong> After removing trailing binary zero bits, some inputs have a nonnegative binary exponent. Within the source’s bounded decimal range, division by an exact power of ten and the subsequent subtractions remain exact in binary64. The <code>42</code> preset shows this route.</li>
+            <li><strong>Requested precision has an additional speculative path.</strong> When fewer than fifteen digits are requested, dtoa first performs digit generation in native floating point with an explicit error bound and falls back when the rounding decision is ambiguous. This optimization is important for <code>ecvt</code>- and <code>fcvt</code>-like modes, but it is not the general explanation of shortest mode. The x-ray therefore does not attribute it to mode 0.</li>
+          </ol>
+          <p>On the exact path, the current Netlib source uses a logarithm approximation, constructs powers with logarithmically many multiplications, removes shared binary factors, normalizes the denominator for a one-digit quotient routine, and carries separate margins for the power-of-two case. These are implementation changes around the same invariant established in the Dragon chapter.</p>
+        </section>
+
+        <section id="burger">
+          <p class="eyebrow">D.6 · Burger–Dybvig</p>
+          <h2>Construct four integers once, then make each quotient cheap</h2>
+          <p>The Burger–Dybvig development begins with the real interval and then gives an explicit integer initialization for the center <em>r/s</em> and margins <em>m</em><sup>−</sup>/<em>s</em> and <em>m</em><sup>+</sup>/<em>s</em>. Ordinary binary64 values begin with equal margins. A normal power of two receives separate lower and upper margins because its predecessor is closer. Endpoint comparisons are strict or inclusive according to the chosen input tie rule.</p>
+          <p>After the estimator and one repair, digit generation is recognizably Dragon: take the integer quotient, retain the remainder, compare that remainder with the lower margin, and compare the remaining room in the decimal cell with the upper margin. If neither candidate is admitted, multiply the remainder and both margins by ten and continue.</p>
+          <p>The sample C specializes the quotient operation. When the denominator is a power of two, extracting a digit and remainder is a shift and a mask. Otherwise it prepares the small multiples <em>S</em>, 2<em>S</em>, …, 9<em>S</em>; comparisons locate the correct multiple and one subtraction leaves the remainder. This avoids invoking a general arbitrary-precision division for an answer already known to lie between zero and nine. The instrument’s final row switches between these two pictures for the selected input.</p>
+          <p>The paper also develops fixed-format output and marks digits beyond the input’s meaningful precision with <code>#</code>. That interface is historically interesting but independent of the shortest-conversion path implemented here. It does not alter the free-format stopping proof.</p>
+        </section>
+
+        <section id="correctness">
+          <p class="eyebrow">D.7 · Why the optimized setup remains exact</p>
+          <h2>Every optimization preserves one of three facts</h2>
+          <ol>
+            <li>The scale estimator does not decide a digit. Its range theorem limits the possible error to one decade, and an exact comparison chooses between those two cases.</li>
+            <li>Multiplying all represented quantities by the same power, or canceling a factor common to all of them, preserves the center, both margins, and every stopping inequality.</li>
+            <li>The shift/mask and small-multiple quotient procedures compute the same quotient and remainder as exact integer division; they only exploit the promise that the quotient is one decimal digit.</li>
+          </ol>
+          <p>The browser’s Burger–Dybvig implementation follows the authors’ binary64 initialization, exponent-only estimator, one-step fixup, exact digit recurrence, unequal-margin case, endpoint ownership, and a modern closest-shortest tie-to-even policy. It is independent of the site’s grid-search oracle: one emits digits from a remainder, while the other searches decimal grids.</p>
+        </section>
+
+        <section id="evidence">
+          <p class="eyebrow">D.8 · Source and execution evidence</p>
+          <h2>The paper model and the production source were checked separately</h2>
+          <div class="implementation-ledger">
+            <p><strong>Browser implementation</strong><span>The Burger–Dybvig free-format specialization is tested on named boundary cases and 1,800 deterministic finite binary64 patterns against the independent exact grid oracle. The estimator is separately asserted to be correct or one low.</span></p>
+            <p><strong>Native Gay execution</strong><span>The current Netlib <code>dtoa.c</code> was compiled for IEEE little-endian binary64 and called in mode 0. Its digit string and decimal-point position matched the independent oracle on 810 named and deterministic finite nonzero patterns.</span></p>
+            <p><strong>Source identity</strong><span>Netlib <code>dtoa.c</code> SHA-256 <code>1cea6e7a…3441e16</code>; Gay report SHA-256 <code>4e59cf44…6ec03ca</code>; corrected Burger–Dybvig PDF SHA-256 <code>b5f1172e…ec6f049</code>. The reproducible wrapper and verifier are stored with this site.</span></p>
+            <p><strong>Memory boundary</strong><span>The authors’ 1996 sample C declares 325 fixed bignum entries, each with 24 64-bit digits: 62,400 bytes of digit payload before length fields and working values. This describes that sample, not an algorithmic requirement or a current dtoa build. It is a material warning for microcontrollers.</span></p>
+          </div>
+          <p>Primary materials: <a href="https://ampl.com/REFS/rounding.pdf">Gay’s 1990 report</a>, the maintained <a href="https://www.netlib.org/fp/dtoa.c">Netlib dtoa source</a>, the <a href="https://www.burgerrg.com/FP-Printing-PLDI96.pdf">corrected Burger–Dybvig paper</a>, and the authors’ <a href="https://www.burgerrg.com/fp.html">sample implementations</a>. The local commands and claim trace are recorded in the repository’s <a href="https://github.com/floitsch/printing-doubles/blob/main/docs/dragon-descendants-audit.md">audit note</a>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./dragon.html"><span>Shared exact method</span><strong>← Dragon</strong></a><a href="./grisu.html"><span>Next family</span><strong>Grisu →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · exact Dragon descendants</p><p><a href="https://github.com/floitsch/printing-doubles">Source and tests</a></p></footer>
+</body>
+</html>

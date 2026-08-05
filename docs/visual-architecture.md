@@ -120,6 +120,14 @@ the explanation.
   borrow test, and the fast path that skips the correction multiplication. The
   browser reconstructs the table and checks the optimized bits against an
   independent exact rational definition.
+- **Gay and Burger–Dybvig:** a side-by-side execution x-ray retains Dragon's
+  interval destination while making removed work visible. Decimal decades are
+  crossed on the baseline lane and replaced by a one-sided estimate plus one
+  exact check; common binary factors shrink in a width bar; the final quotient
+  view switches between an exact-integer bypass, shift-and-mask denominator,
+  and prepared small multiples. Hover, focus, and tap explain source-specific
+  conditions, but the route, widths, estimate, repair, and answer remain
+  persistent.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its

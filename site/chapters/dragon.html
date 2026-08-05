@@ -130,8 +130,8 @@
         <section id="descendants">
           <p class="eyebrow">4.9 · Keeping exactness, removing work</p>
           <h2>Dragon became a baseline, not a final implementation shape</h2>
-          <p>David Gay’s <code>dtoa</code> retained the exact stopping logic while adding common-case floating-point estimates, cached powers, and carefully limited big-integer work. Burger and Dybvig reorganized scaling and digit generation to make exact free- and fixed-format conversion substantially faster. Their <a href="https://legacy.cs.indiana.edu/~dyb/pubs/FP-Printing-PLDI96.pdf">1996 paper</a> also gives a more direct correctness development of the free-format loop.</p>
-          <p>These descendants remain in the Dragon family because they improve the exact machinery without replacing its central interval argument. They still deserve separate executable subsections within that family. The present draft establishes their shared conceptual object: a remainder and two exact margins that advance together. Grisu retains the same geometry while replacing unbounded integers with a small approximate floating-point representation and a proof that decides whether the approximation is safe.</p>
+          <p>David Gay’s <code>dtoa</code> retained the exact stopping logic while adding a one-sided decimal-exponent estimate, exact-small-integer paths, common-factor cancellation, and carefully limited big-integer work. Burger and Dybvig reorganized the same setup around a scale estimate that is correct or one low, one exact repair, and specialized one-digit quotient extraction. Their <a href="https://www.burgerrg.com/FP-Printing-PLDI96.pdf">1996 paper</a> also gives a direct correctness development of the free-format loop.</p>
+          <p>These descendants remain in the Dragon family because they improve the exact machinery without replacing its central interval argument. The separate <a href="./dragon-descendants.html">Gay and Burger–Dybvig study</a> places the baseline and optimized executions side by side: crossed decimal decades disappear, shared powers of two are canceled, favorable inputs bypass bignums, and both paths merge at the same exact digit loop. Grisu retains the same geometry while replacing unbounded integers with a small approximate floating-point representation and a proof that decides whether the approximation is safe.</p>
         </section>
 
         <section id="status">
@@ -141,12 +141,12 @@
           <div class="implementation-ledger">
             <p><strong>Implemented</strong><span>Exact boundary construction; separate lower and upper margins; decimal normalization; digit-by-digit remainder recurrence; endpoint-aware stopping; closest-candidate selection; trace events.</span></p>
             <p><strong>Current corpus</strong><span>Named ordinary and difficult cases, transition-adjacent values, subnormals, maximum finite values, carry-sensitive inputs, negative values, and 1,500 deterministic binary64 bit patterns compared with the exact grid-search oracle.</span></p>
-            <p><strong>Still required</strong><span>Exhaustive binary32 instantiation; upstream Dragon/dtoa hard cases; a pinned native Dragon4 or dtoa wrapper; readable implementations of Gay and Burger–Dybvig fast paths.</span></p>
+            <p><strong>Descendant evidence</strong><span>The Burger–Dybvig binary64 specialization is now executable and differentially tested. Current Netlib Gay dtoa mode 0 is compiled through a reproducible wrapper and compared with the independent oracle in the next study.</span></p>
             <p><strong>Claim boundary</strong><span>The current evidence supports the exact teaching specialization. It is not yet a correctness claim for any native optimized descendant.</span></p>
           </div>
         </section>
 
-        <nav class="chapter-links"><a href="./coonen.html"><span>Previous</span><strong>Coonen</strong></a><a href="./grisu.html"><span>Next</span><strong>Grisu →</strong></a></nav>
+        <nav class="chapter-links"><a href="./coonen.html"><span>Previous</span><strong>Coonen</strong></a><a href="./dragon-descendants.html"><span>Next</span><strong>Gay and Burger–Dybvig →</strong></a></nav>
       </article>
     </div>
   </main>
