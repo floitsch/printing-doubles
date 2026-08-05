@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="A detailed executable account of Ryū: common integer boundaries, powers of five, wide multiplication, decimal digit removal, and rounding.">
-  <title>Ryū: project once, then remove digits · Printing doubles</title>
+  <title>Ryū: make the decimal grid coarser until it would miss · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
   <script type="module" src="../js/ryu.js"></script>
 </head>
@@ -13,29 +13,33 @@
   <main>
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part III · Fixed-width conversion</p>
-      <h1>Ryū: project once, then remove digits</h1>
-      <p class="chapter-deck">Ryū turns the value and its two parsing boundaries into three integers on one decimal grid. It then removes decimal digits while that integer interval remains nonempty. The published implementation replaces exact scaling with one table lookup and one wide multiplication, without changing the decision being made.</p>
+      <h1>Ryū: make the decimal grid coarser until it would miss</h1>
+      <p class="chapter-deck">Ryū first places the complete parsing interval on a fine decimal integer grid. It then groups grid cells by ten, removing one decimal digit of resolution each time. The last grid that still contains an admissible integer determines the shortest result.</p>
       <div class="chapter-meta"><span>Chapter 7</span><span>PLDI 2018</span><span>Fixed width</span><span>No fallback</span><span>Executable exact specification</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 7</strong><a href="#change">The change</a><a href="#boundaries">Integer boundaries</a><a href="#scale">Decimal projection</a><a href="#pow5">Powers of five</a><a href="#wide">Wide multiplication</a><a href="#remove">Remove digits</a><a href="#round">Rounding</a><a href="#trace">Execution</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 7</strong><a href="#change">Resolution laboratory</a><a href="#boundaries">Integer boundaries</a><a href="#scale">Decimal projection</a><a href="#pow5">Powers of five</a><a href="#wide">Wide multiplication</a><a href="#remove">Remove digits</a><a href="#round">Rounding</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
         <section id="change">
           <p class="eyebrow">7.1 · The organizing change</p>
           <h2>Begin at a fine decimal grid and move outward</h2>
-          <p class="lead">Dragon emits digits from left to right. Ryū first computes enough decimal information for the complete shortest answer, then removes digits from the right.</p>
-          <p>The geometry has not changed. A decimal recovers the selected binary64 value precisely when its exact real value lies between the two parsing boundaries, with endpoint inclusion determined by the significand parity. The difference is where the work occurs. Dragon repeatedly updates a remainder and two margins. Ryū scales the lower boundary, the selected value, and the upper boundary to one decimal grid, obtaining three ordinary integers customarily called <em>v</em><sub>m</sub>, <em>v</em><sub>r</sub>, and <em>v</em><sub>p</sub>.</p>
-          <p>On this grid, shortestness becomes a division question. If the lower and upper integers still differ after division by ten, some integer remains between them on the grid whose spacing is ten times larger. One decimal digit may be removed. When the divided endpoints no longer leave an admissible integer, the current grid is the coarsest possible one and therefore determines a shortest representation.</p>
-          <div class="equation">fine interval [v<sub>m</sub>, v<sub>p</sub>] → divide by 10 while ⌊v<sub>p</sub>/10⌋ leaves room above ⌊v<sub>m</sub>/10⌋</div>
+          <p class="lead">Dragon asks for the next digit. Ryū asks a different question: can ten adjacent decimal cells be treated as one larger cell without losing every decimal that recovers the input?</p>
+          <p>The instrument below begins with more decimal resolution than the final answer needs. Move the resolution slider toward the right. The upper figure shows the exact parsing interval on the current decimal grid. The cells below show how ten positions at the current resolution become one position on the next grid.</p>
+          <ryu-lattice></ryu-lattice>
+          <p>For <code>0.3</code>, the first two coarseward moves greatly reduce the set of possible integers. The interval then contains exactly one integer ending in many zeros. Each subsequent grouping removes one of those zeros without changing the represented decimal. At the last valid grid, the integer 3 denotes 3×10<sup>−1</sup>. Move the slider one position farther: the whole-number grid contains no admissible integer.</p>
+          <p>This empty grid is the proof of shortestness. A decimal with fewer significant digits would lie on that grid or an even coarser one. Since none can enter the parsing interval, the preceding candidate cannot be shortened further.</p>
+          <p>The geometry has not changed. A decimal recovers the selected binary64 value precisely when its exact real value lies between the two parsing boundaries. What changed is the direction of work: Ryū first obtains enough decimal information, then removes resolution from the right.</p>
         </section>
 
         <section id="boundaries">
           <p class="eyebrow">7.2 · One exponent, three numerators</p>
           <h2>Two guard bits make the midpoints integral</h2>
-          <p>Let the positive finite input be <em>m</em><sub>2</sub> × 2<sup><em>e</em></sup>. Ryū subtracts two from the exponent and multiplies the significand by four. The numerical value is unchanged:</p>
+          <p>A midpoint normally sits halfway between adjacent binary values. At a power of two, the lower midpoint can be only one quarter of the upper spacing from the stored value. Carrying fractions through every later multiplication would complicate the integer program. Ryū instead changes the coordinate scale before it begins.</p>
+          <ryu-guard-bits></ryu-guard-bits>
+          <p>The upper and lower rows describe the same real positions. The lower ruler merely has four times as many coordinate units. In the stored representation, this is achieved by appending two zero bits to the significand and reducing the exponent by two. Let the positive finite input be <em>m</em><sub>2</sub> × 2<sup><em>e</em></sup>:</p>
           <div class="equation">m<sub>2</sub> × 2<sup>e</sup> = (4m<sub>2</sub>) × 2<sup>e−2</sup>.</div>
-          <p>The center numerator is now 4<em>m</em><sub>2</sub>. In the usual equally spaced case the upper midpoint has numerator 4<em>m</em><sub>2</sub>+2 and the lower midpoint has numerator 4<em>m</em><sub>2</sub>−2. At an exact power of two the predecessor is closer, so the lower numerator is 4<em>m</em><sub>2</sub>−1. The reference code expresses both cases with a one-bit value named <code>mmShift</code>.</p>
+          <p>The center numerator is now 4<em>m</em><sub>2</sub>. In the usual equally spaced case the two midpoint numerators are two units below and above it. At an exact power of two the predecessor is closer, so the lower midpoint is only one unit below. The large value of <em>m</em><sub>2</sub> is incidental; the visual fact is the small local pattern −2, 0, +2 or −1, 0, +2.</p>
           <table>
             <thead><tr><th>Quantity</th><th>Common-exponent numerator</th><th>Meaning</th></tr></thead>
             <tbody>
@@ -53,7 +57,7 @@
           <p>Suppose the common binary form is <em>M</em> × 2<sup><em>e</em><sub>2</sub></sup>. Ryū chooses a decimal exponent <em>e</em><sub>10</sub> and needs the integer part of</p>
           <div class="equation">M × 2<sup>e₂</sup> / 10<sup>e₁₀</sup>.</div>
           <p>The chosen exponent leaves roughly seventeen or eighteen decimal digits. This is fine enough to distinguish every binary64 rounding interval, but still small enough that the projected center and boundaries fit in 64 bits. The exact teaching implementation below computes the rational quotient directly. Production Ryū obtains the same significant bits with bounded integer arithmetic.</p>
-          <p>For <code>0.3</code>, the first step is 10<sup>−18</sup>. The stored binary value and its boundaries project to integers near 300000000000000000. This is deliberately much more precise than the final answer. Division by ten repeatedly changes the grid spacing from 10<sup>−18</sup> to 10<sup>−17</sup>, then 10<sup>−16</sup>, and eventually to 10<sup>−1</sup>. The last interval contains the integer 3; the next grid, whose candidates are whole numbers, contains none.</p>
+          <p>For <code>0.3</code>, the first step is 10<sup>−18</sup>. The stored binary value and its boundaries project to integers near 300000000000000000. The long integer is not intended as something the reader should memorize; it says only that the first grid distinguishes positions eighteen places after the decimal point. The resolution laboratory keeps the exponent and the surviving count visible while exact integers remain available through inspection.</p>
         </section>
 
         <section id="pow5">
@@ -69,7 +73,9 @@
         <section id="wide">
           <p class="eyebrow">7.5 · Fixed-width arithmetic</p>
           <h2>Keep the useful half of a wide product</h2>
-          <p>A binary64 significand fits in 53 bits. A cached scale occupies roughly 128 bits. Their mathematical product is wider than a machine word, but the algorithm asks only for a known window of its bits. On machines with a 64×64→128 operation, a small number of partial products supplies that window directly. Portable implementations split each operand into high and low 32-bit halves and combine the four 32×32 products with carries.</p>
+          <p>A binary64 significand fits in 53 bits. A cached scale occupies roughly 128 bits. Their mathematical product is wider than a machine word, but the algorithm asks only for a known window of its bits.</p>
+          <ryu-product-window></ryu-product-window>
+          <p>The diagram is deliberately schematic: the number of drawn columns is reduced so the product remains legible. In the real algorithm, the chosen power of five and shift place precisely the quotient bits required for the current exponent in the retained region. On machines with a 64×64→128 operation, a small number of partial products supplies that region directly. Portable implementations split each operand into high and low 32-bit halves and combine the four 32×32 products with carries.</p>
           <p>The shift count is part of the scale construction. After multiplication, shifting by that count produces the three projected integers for the lower boundary, center, and upper boundary. Ryū’s <code>mulShiftAll64</code> shares most of the work between the three values: their numerators differ by only a few units, so three unrelated wide products would discard useful structure.</p>
           <p>No binary floating-point multiplication is used. “Fixed width” does not mean “approximate and hope”; it means that the proof establishes in advance exactly which product bits can influence the quotient and retains all of them.</p>
         </section>
@@ -95,16 +101,8 @@
           <p>These booleans explain several compact-looking branches in the reference source. They carry facts about exact divisibility by powers of two and five. Without them, an implementation may still pass millions of random tests while failing on the deliberately sparse set of exact boundaries and decimal ties.</p>
         </section>
 
-        <section id="trace">
-          <p class="eyebrow">7.8 · Executable derivation</p>
-          <h2>Follow Ryū’s coarseward search for binary64(0.3)</h2>
-          <p>The trace uses the same common numerators and decimal exponent chosen by Ryū. Each projection is evaluated with exact integers, so the lower and upper labels denote the mathematical interval rather than rounded JavaScript numbers. The optimized split-power multiplication is explained above but is not used to manufacture the illustration.</p>
-          <trace-player class="trace-player" data-title="Exact Ryū specification · input binary64(0.3)" data-code="#ryu-code"><script id="ryu-trace-data" type="application/json">[]</script></trace-player>
-          <p>Most intermediate labels are intentionally abbreviated at the center. Their full integer values remain available in the execution state and tests; the visual task is to show the interval surviving on progressively coarser grids. At 10<sup>−1</sup>, the candidate 3 denotes 0.3. At 10<sup>0</sup>, there is no integer between the two scaled boundaries, so a representation with zero significant fractional digits cannot recover the input.</p>
-        </section>
-
         <section id="proof">
-          <p class="eyebrow">7.9 · Correctness structure</p>
+          <p class="eyebrow">7.8 · Correctness structure</p>
           <h2>The optimized program refines an exact integer algorithm</h2>
           <p>The proof can be separated into four claims. First, the guarded numerators describe the exact center and midpoint boundaries, including the shorter lower interval at powers of two. Second, the power-of-five multiplication and shift produce the required integer projections. Third, each successful division by ten is equivalent to moving to a coarser decimal grid that still intersects the parsing interval. Fourth, the final rounding and endpoint tests select the closest admissible integer on the first grid for which one more removal is impossible.</p>
           <p>The third claim proves shortestness: every decimal with fewer significant digits lies on a still coarser grid, and the immediately coarser grid is already empty. The fourth proves the closest part of the output contract. Parsing recovery follows because the chosen integer is retained only when it lies inside the exact rounding interval.</p>
@@ -112,7 +110,7 @@
         </section>
 
         <section id="status">
-          <p class="eyebrow">7.10 · Evidence and implementation status</p>
+          <p class="eyebrow">7.9 · Evidence and implementation status</p>
           <h2>The exact decision procedure is executable</h2>
           <div class="implementation-ledger">
             <p><strong>Implemented in the browser</strong><span>Binary64 decoding; guarded common-exponent boundaries; Ryū’s binary-exponent-dependent decimal scale; exact projection of the lower boundary, center, and upper boundary; coarseward digit removal; closest-candidate selection; open and closed endpoints; normalization and formatting.</span></p>
