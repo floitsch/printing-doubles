@@ -282,7 +282,7 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter-links span { display: block; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
 .chapter-links strong { font: 600 22px var(--serif); }
 
-schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window { display: block; }
+schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route { display: block; }
 .algorithm-lab { margin: 46px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .algorithm-lab-head { display: flex; justify-content: space-between; gap: 30px; align-items: start; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .algorithm-lab-head > div:first-child { min-width: 0; }
@@ -402,6 +402,23 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 .product-window-bracket { fill: none; stroke: var(--red-pale); stroke-width: 2; }
 .product-zone-label { fill: #8997a1; font: 9px var(--mono); }
 
+.route-policies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; border-top: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.15); }
+.route-policies label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px 18px; background: #0d171f; color: #9facb5; font: 500 9px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.route-policies select { min-width: 0; padding: 7px 25px 7px 8px; border: 1px solid rgba(255,255,255,.25); background: var(--dark); color: #f4f0e8; font: 500 9px var(--mono); }
+.route-svg { min-height: 530px; }
+.route-edge { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.route-edge.active { stroke: var(--acid); }
+.route-edge.inactive { stroke: rgba(255,255,255,.14); stroke-dasharray: 5 6; }
+.route-node { cursor: pointer; outline: none; }
+.route-node rect { fill: #101c25; stroke: rgba(255,255,255,.25); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.route-node.active rect { fill: #1b2925; stroke: var(--acid); stroke-width: 2; }
+.route-node.inactive { opacity: .47; }
+.route-index { fill: #8e9ca6; font: 500 9px var(--mono); }
+.route-node.active .route-index { fill: var(--acid); }
+.route-title { fill: #f4f0e8; font: 500 12px var(--mono); text-transform: uppercase; }
+.route-subtitle { fill: #9facb5; font: 9px var(--mono); }
+.route-node.active .route-subtitle { fill: #d3dbdf; }
+
 .trace-player { margin: 45px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .trace-head { display: flex; justify-content: space-between; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .trace-head strong { font: 500 10px var(--mono); text-transform: uppercase; }
@@ -515,6 +532,8 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .candidate-facts p + p { border-top: 1px solid rgba(255,255,255,.15); border-left: 0; }
   .lab-inspector { grid-template-columns: 1fr; }
   .lab-inspector code { grid-column: 1; }
+  .route-policies { grid-template-columns: 1fr; }
+  .route-svg { min-height: 690px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
