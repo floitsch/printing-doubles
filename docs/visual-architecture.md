@@ -107,6 +107,12 @@ the explanation.
   exact parsing interval on positions 0 through 10. Interior points retain a
   digit; the endpoints visibly end in zero and normalize to a shorter record.
   A power-of-two preset makes the unequal margins visible in the same ruler.
+- **Tejú Jaguá:** expensive generality moves into an offline generator. Its
+  configurator passes format and target-integer facts through multiprecision
+  validation into generated constants and a fixed-width C kernel. A separate
+  runtime route view distinguishes small integers, centered intervals, and
+  uncentered powers of two without pretending that build-time dependencies are
+  part of the target program.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its
