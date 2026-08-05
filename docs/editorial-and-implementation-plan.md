@@ -125,18 +125,22 @@ Test groups:
 Native performance claims are never reused as correctness evidence. Draft
 Toothless benchmark values are excluded entirely.
 
-## Shared trace player
+## Visual instruments and diagnostic traces
 
-The execution microscope has five synchronized regions:
+No single presentation widget governs the algorithm chapters. Reusable number
+lines, grids, product windows, and inspection controls remain desirable, but
+each chapter uses the interaction that matches its central idea: digit stepping
+for Dragon, grid-resolution scrubbing for Ryū, direct lattice manipulation for
+Schubfach, nested uncertainty intervals for Grisu, a precision lens for Errol,
+and a route view for Dragonbox. The complete visual exercise and redesign order
+are in [`visual-storyboards.md`](visual-storyboards.md).
 
-1. highlighted pseudocode;
-2. explanation of *why* the step exists;
-3. live values/registers, with exact and compact forms;
-4. an algorithm-specific visual canvas;
-5. previous/next/play/scrub controls and example selection.
-
-Trace data is deterministic and serializable. A failing test can be exported as
-the same trace the browser displays.
+Implementations still emit deterministic, serializable semantic state. A
+diagnostic execution microscope may synchronize highlighted pseudocode,
+explanation, live values, and a chapter-specific canvas. It is secondary and
+collapsible unless order itself is the algorithmic idea. A failing test can be
+exported as a diagnostic trace, but that trace does not prescribe the teaching
+interface.
 
 Interaction requirements and remaining work:
 
