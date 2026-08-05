@@ -102,6 +102,11 @@ the explanation.
   treats integer-to-character conversion as critical work. Its source-pinned
   x-ray forks retained product facts, then follows 10^8 groups through scalar
   or lane-parallel BCD-like conversion into bytes.
+- **xjb:** one extra decimal shift turns selection into a local last-digit
+  decision. Its microscope keeps the integer prefix fixed and overlays the
+  exact parsing interval on positions 0 through 10. Interior points retain a
+  digit; the endpoints visibly end in zero and normalize to a shorter record.
+  A power-of-two preset makes the unequal margins visible in the same ruler.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its

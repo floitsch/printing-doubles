@@ -282,7 +282,7 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter-links span { display: block; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
 .chapter-links strong { font: 600 22px var(--serif); }
 
-schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab, errol-pair-lab, errol-prefix-lab, coonen-scale-lab, dragon-remainder-lab, zmij-pipeline { display: block; }
+schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab, errol-pair-lab, errol-prefix-lab, coonen-scale-lab, dragon-remainder-lab, zmij-pipeline, xjb-microscope { display: block; }
 .algorithm-lab { margin: 46px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .algorithm-lab-head { display: flex; justify-content: space-between; gap: 30px; align-items: start; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .algorithm-lab-head > div:first-child { min-width: 0; }
@@ -572,6 +572,33 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 .zmij-split-label { margin: 15px 0; color: #8997a1; font: 9px var(--mono); text-align: center; text-transform: uppercase; }
 .zmij-emission-note { margin: 17px 0 0 !important; color: #bcc6cd !important; font-size: 11px !important; }
 
+.xjb-scroll { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-color: var(--acid) #17232d; }
+.xjb-svg { min-height: 410px; }
+.xjb-prefix { fill: white; font: 500 clamp(17px, 2.6vw, 29px) var(--mono); }
+.xjb-prefix-tail { fill: var(--red-pale); font: 500 12px var(--mono); }
+.xjb-guide { fill: none; stroke: rgba(255,255,255,.22); stroke-width: 1; }
+.xjb-interval { fill: rgba(223,255,82,.13); stroke: var(--acid); stroke-width: 2; }
+.xjb-value { stroke: var(--blue-pale); stroke-width: 2; stroke-dasharray: 5 4; }
+.xjb-value-dot { fill: var(--blue-pale); stroke: white; stroke-width: 2; }
+.xjb-value-label { fill: #d7e3ff; font: 9px var(--mono); }
+.xjb-candidate { color: #75838d; cursor: pointer; outline: none; }
+.xjb-candidate line { stroke: currentColor; stroke-width: 1.5; }
+.xjb-candidate circle { fill: var(--dark); stroke: currentColor; stroke-width: 2; }
+.xjb-candidate text { fill: currentColor; font: 500 10px var(--mono); }
+.xjb-candidate.admissible { color: var(--acid); }
+.xjb-candidate.selected { color: var(--red-pale); }
+.xjb-candidate.selected circle { fill: var(--red); stroke: white; stroke-width: 3; }
+.xjb-candidate:focus-visible circle { filter: drop-shadow(0 0 5px white); stroke: white; stroke-width: 3; }
+.xjb-selection { fill: none; stroke: var(--red-pale); stroke-width: 2; }
+.xjb-selection-label { fill: var(--red-pale); font: 500 10px var(--mono); }
+.xjb-end-label { fill: #8997a1; font: 8px var(--mono); text-transform: uppercase; }
+.xjb-decision { display: grid; grid-template-columns: 1fr 42px 1.45fr 42px 1fr; align-items: stretch; border-top: 1px solid rgba(255,255,255,.15); background: #0c141b; }
+.xjb-decision div { min-width: 0; padding: 17px 20px; }
+.xjb-decision span, .xjb-decision strong { display: block; }
+.xjb-decision span { color: #8997a1; font: 8px var(--mono); text-transform: uppercase; }
+.xjb-decision strong { margin-top: 7px; color: white; font: 500 10px/1.45 var(--mono); overflow-wrap: anywhere; }
+.xjb-decision i { display: grid; place-items: center; border-inline: 1px solid rgba(255,255,255,.13); color: var(--acid); font: 18px var(--mono); }
+
 .trace-player { margin: 45px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .trace-head { display: flex; justify-content: space-between; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .trace-head strong { font: 500 10px var(--mono); text-transform: uppercase; }
@@ -595,6 +622,19 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 
 @media (max-width: 1400px) {
   .foundation-grid-applet { margin-inline: 0; }
+}
+
+@media (min-width: 1101px) {
+  .algorithm-lab, .trace-player {
+    width: min(1120px, calc(100vw - 40px));
+    margin-right: 0;
+    margin-left: calc((530px - clamp(45px, 7vw, 100px) - min(1120px, calc(100vw - 40px))) / 2);
+  }
+  .chapter-figure {
+    width: min(1000px, calc(100vw - 40px));
+    margin-right: 0;
+    margin-left: calc((530px - clamp(45px, 7vw, 100px) - min(1000px, calc(100vw - 40px))) / 2);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -708,6 +748,9 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .zmij-groups.source .last { min-height: 38px; }
   .zmij-groups.digits { gap: 2px; }
   .zmij-groups b { min-height: 30px; font-size: 9px; }
+  .xjb-svg { width: 720px; min-height: 295px; }
+  .xjb-decision { grid-template-columns: 1fr; }
+  .xjb-decision i { min-height: 46px; border-block: 1px solid rgba(255,255,255,.13); border-inline: 0; transform: rotate(90deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
