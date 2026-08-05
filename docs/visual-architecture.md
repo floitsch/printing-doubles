@@ -113,6 +113,13 @@ the explanation.
   runtime route view distinguishes small integers, centered intervals, and
   uncentered powers of two without pretending that build-time dependencies are
   part of the target program.
+- **Fast unrounded scaling:** rounding is deferred into an integer field, a
+  half bit, and a sticky bit. One instrument makes those fields and their later
+  rounding choices tangible. A second is a literal 64-by-128 product x-ray:
+  retained top bits, shifted top bits, middle word, omitted bottom word, the
+  borrow test, and the fast path that skips the correction multiplication. The
+  browser reconstructs the table and checks the optimized bits against an
+  independent exact rational definition.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its

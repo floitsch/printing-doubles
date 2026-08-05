@@ -73,6 +73,7 @@
           <p>The subtle point is proving that rounding the cached power upward cannot carry into the retained result unnoticed. For small powers, exact divisibility or separation from integer thresholds is sufficient. For large powers, an Ivy proof analyzes the table entries and shows that the relevant middle region cannot be the dangerous all-zero pattern. A companion proof document makes these finite-domain checks executable.</p>
           <p>Shortest formatting then resembles an exact Grisu2: scale the center and interval information into a small unrounded type, produce a candidate, and trim zeros while retaining exactness information. There is no Grisu3 rejection because the scaling result itself is proved exact in the unrounded representation.</p>
           <p><strong>Pinned materials:</strong> <a href="https://research.swtch.com/fp">Floating-Point Printing and Parsing Can Be Simple And Fast</a>, <a href="https://research.swtch.com/fp-proof">Fast Unrounded Scaling: Proof by Ivy</a>, and <a href="https://github.com/rsc/fpfmt">rsc/fpfmt</a> at commit <code>ec108cbb39e2cae8e1961d79ba34bd9cc8249f80</code>, 2026-02-27.</p>
+          <p><a href="./unrounded-scaling.html">Open the exact unrounded-number, product-window, and shortest-printer study.</a></p>
         </section>
 
         <section id="relations">
@@ -103,7 +104,7 @@
           <div class="implementation-ledger">
             <p><strong>Verified for this snapshot</strong><span>Repository identity, exact revision and date, documented contract, implementation scope, published proof status, stated platform limitations, correction notices, and available test structure.</span></p>
             <p><strong>Not independently reproduced yet</strong><span>Benchmark rankings, table and linked-image byte counts, exhaustive correctness claims, SIMD equivalence, big-endian behavior, or compiler-specific generated code.</span></p>
-            <p><strong>Executable context already available</strong><span>The Schubfach and Dragonbox chapters execute the shared candidate geometry; the Ryū chapter executes coarseward digit removal. A dedicated unrounded-scaling port should be added only with the table proof checks, not as an ornamental wrapper around the oracle.</span></p>
+            <p><strong>Executable context</strong><span>The Schubfach and Dragonbox chapters execute the shared candidate geometry; the Ryū chapter executes coarseward digit removal. The dedicated unrounded-scaling chapter reconstructs the table, ports the optimized primitive and shortest printer, and compares both against independent exact specifications.</span></p>
             <p><strong>Refresh rule</strong><span>Because every pinned repository is active or recent, this evidence table must be re-audited before making comparative claims in a publication or choosing an embedded implementation.</span></p>
           </div>
         </section>
