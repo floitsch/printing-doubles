@@ -19,7 +19,7 @@
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 6</strong><a href="#family">Errol family</a><a href="#pair">Double-double</a><a href="#operations">Operations</a><a href="#interval">Narrow interval</a><a href="#digits">Digits</a><a href="#verification">Optimality</a><a href="#enumeration">Enumeration</a><a href="#traces">Executions</a><a href="#corrections">Artifact corrections</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 6</strong><a href="#family">Errol family</a><a href="#pair">Double-double</a><a href="#operations">Operations</a><a href="#interval">Narrow interval</a><a href="#digits">Digits</a><a href="#verification">Optimality</a><a href="#enumeration">Enumeration</a><a href="#laboratory">Common-prefix zoom</a><a href="#corrections">Artifact corrections</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
         <section id="family">
           <p class="eyebrow">6.1 · From a checked fast path to a corrected total algorithm</p>
@@ -40,8 +40,10 @@
         <section id="pair">
           <p class="eyebrow">6.2 · High precision from ordinary doubles</p>
           <h2>Represent x as a leading value plus a non-overlapping offset</h2>
-          <p>A double-double value is a pair ⟨<em>x</em><sub>hi</sub>, <em>x</em><sub>lo</sub>⟩ denoting their exact mathematical sum. The leading component is the nearest binary64 approximation. The offset records the residual that the leading rounding discarded.</p>
-          <div class="equation">x̃ = x<sub>hi</sub> + x<sub>lo</sub>, &nbsp; |x<sub>lo</sub>| far smaller than one ulp of x<sub>hi</sub>.</div>
+          <p>A double-double value is a pair ⟨<em>x</em><sub>hi</sub>, <em>x</em><sub>lo</sub>⟩ denoting their exact mathematical sum. The leading component is the nearest binary64 approximation. The offset records the residual that the leading rounding discarded. The pair must be read as an unevaluated sum: immediately adding the fields with ordinary binary64 arithmetic would round the residual away again.</p>
+          <p>A decimal analogy is 123.456 represented as 123.5 − 0.044. The first number gives a nearby coarse coordinate; the second says how to move from it. Binary double-double uses the same idea with a vastly smaller offset and with algorithms that reconstruct the rounding error of every operation.</p>
+          <errol-pair-lab></errol-pair-lab>
+          <div class="math-fact"><code>x̃ = x_hi + x_lo, with |x_lo| much smaller than one ulp of x_hi</code><span>The residual microscope measures the low component in ulps of the leading double. Its position is significant even when the ordinary-scale marks coincide.</span></div>
           <p>The components are maintained in a non-overlapping form: significant bits present in the leading component do not reappear in the offset. With two 53-bit significands this supplies roughly 106 useful bits, although not every operation is as accurate as one correctly rounded 106-bit hardware operation.</p>
           <p>Normalization adds the components once, then reconstructs the rounding residual. If <em>s</em> is the rounded sum, <em>x</em><sub>lo</sub>+(<em>x</em><sub>hi</sub>−<em>s</em>) recovers the portion lost by that addition under the non-overlap assumptions. The normalized pair is ⟨<em>s</em>, residual⟩.</p>
         </section>
@@ -66,7 +68,8 @@
         <section id="digits">
           <p class="eyebrow">6.5 · Common-prefix generation</p>
           <h2>Continue while both endpoint pairs have the same integer digit</h2>
-          <p>On every iteration, truncate the lower and upper double-double endpoints. If a leading component is itself an integer but its offset is negative, decrement the truncation: the represented pair is just below that integer. When the two digits agree, every number in the interval begins with that digit. Append it, subtract it from both pairs, and multiply both remainders by ten.</p>
+          <p>Imagine that the scaled lower endpoint is 3.31 and the upper endpoint is 3.38. Both lie in decimal cell 3, so every point between them begins with the digit 3. After recording that digit, subtract 3 and multiply by ten. The new interval is [3.1, 3.8], which exposes the next digit. Repeating this crop-and-enlarge operation extracts the complete common prefix.</p>
+          <p>On every iteration, Errol performs that construction with double-double endpoints. If a leading component is itself an integer but its offset is negative, decrement the truncation: the represented pair is just below that integer. When the two digits agree, append the digit, subtract it from both pairs, and multiply both remainders by ten with compensated arithmetic.</p>
           <p>When the endpoint digits differ, the common prefix is complete. The core rounds the position midway between the two remaining endpoints to obtain the final digit, breaking an exact decimal tie toward an even digit.</p>
           <ol class="pseudo" id="errol-code">
             <li data-line="1">represent each scaled endpoint as a normalized (hi, lo) pair</li>
@@ -92,15 +95,14 @@
           <p>The resulting input bit patterns are stored in a search-friendly level-order table together with corrected digit strings and exponents. The runtime function performs the table lookup first. Only a miss enters the unchecked double-double core.</p>
         </section>
 
-        <section id="traces">
-          <p class="eyebrow">6.8 · Executable arithmetic</p>
-          <h2>Follow the double-double endpoints for binary64(0.3)</h2>
-          <p>The browser implementation constructs an idealized double-double pair from each exact scaled boundary, then executes Errol’s compensated common-prefix recurrence. This isolates the pair arithmetic and digit logic from errors introduced by a particular cached power table.</p>
-          <trace-player class="trace-player" data-title="Idealized Errol core · input binary64(0.3)" data-code="#errol-code"><script id="errol-ordinary-data" type="application/json">[]</script></trace-player>
-
-          <h2>A checked correction path is exercised</h2>
-          <p>For the bit pattern below, the idealized pair core ends two decimal units above the closest shortest result. The teaching implementation detects the disagreement against the exact interval control and replaces it. This is intentionally a runtime check; the native Errol3 artifact uses its offline-generated bit-pattern table instead.</p>
-          <trace-player class="trace-player" data-title="Checked Errol teaching path · input 0x435eb281e7c86675" data-code="#errol-code"><script id="errol-correction-data" type="application/json">[]</script></trace-player>
+        <section id="laboratory">
+          <p class="eyebrow">6.8 · Executable common-prefix geometry</p>
+          <h2>Each shared digit becomes the next complete line</h2>
+          <p class="lead">The ten boxes are not a program counter. They are the current decimal partition of the scaled interval. At each depth, the endpoint markers either select one common box or demonstrate that no further digit is shared.</p>
+          <errol-prefix-lab></errol-prefix-lab>
+          <p>For 1/3, move the depth control from left to right. The endpoints repeatedly remain in cell 3. Their separation grows tenfold at every level because the selected cell is stretched to the full line. At the sixteenth level they finally occupy cells 2 and 3; that separation determines the final rounded digit.</p>
+          <p>The 0.3 example demonstrates why the residual matters at an integer. The lower endpoint is represented just below 3 and therefore truncates to 2, while the upper endpoint is just above 3 and truncates to 3. They have no common leading digit in the normalized interval, so the middle is rounded immediately to 3 and the saved exponent restores 0.3.</p>
+          <p>The checked-correction preset is deliberately about this browser model, not a claimed member of Errol3’s native table. Its idealized pair core produces <code>34562081242061270</code>; the independent exact control returns <code>34562081242061268</code>. The teaching wrapper detects and replaces the disagreement at runtime. The native algorithm’s different mechanism is described next.</p>
         </section>
 
         <section id="corrections">

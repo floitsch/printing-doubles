@@ -82,6 +82,11 @@ the explanation.
   smaller safe interval and remains closest throughout the center's uncertainty
   range. Its main instrument is a proof microscope; a separate workbench shows
   the 53-to-64-bit widening and retained product window.
+- **Errol:** both high-precision endpoints repeatedly occupy decimal digit
+  cells. A shared cell is translated to zero and enlarged tenfold; separation
+  ends the common prefix. Its main instrument is this crop-and-zoom strip. A
+  residual microscope separately shows `hi + lo` as a sub-ulp displacement
+  that would disappear if the fields were immediately added as binary64.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its
