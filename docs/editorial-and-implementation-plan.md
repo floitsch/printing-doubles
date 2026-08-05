@@ -135,6 +135,11 @@ Schubfach, nested uncertainty intervals for Grisu, a precision lens for Errol,
 and a route view for Dragonbox. The complete visual exercise and redesign order
 are in [`visual-storyboards.md`](visual-storyboards.md).
 
+The rendering and component decision is recorded in
+[`visual-architecture.md`](visual-architecture.md): native modules and Web
+Components remain the default, with SVG for sparse semantic diagrams and canvas
+for dense continuously moving number lines.
+
 Implementations still emit deterministic, serializable semantic state. A
 diagnostic execution microscope may synchronize highlighted pseudocode,
 explanation, live values, and a chapter-specific canvas. It is secondary and
