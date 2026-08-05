@@ -97,6 +97,11 @@ the explanation.
   and two independently carried margins define the admissible band. Its main
   instrument therefore combines a prefix history with a stable 0-to-1 cell,
   rather than moving through unrelated register snapshots.
+- **Żmij:** the selection theorem is inherited, while the execution shape fuses
+  one farther-scaled product with parallel derivation of the final digit and
+  treats integer-to-character conversion as critical work. Its source-pinned
+  x-ray forks retained product facts, then follows 10^8 groups through scalar
+  or lane-parallel BCD-like conversion into bytes.
 
 The same exercise must be completed before rebuilding each remaining chapter.
 It is acceptable for an algorithm to have two complementary pictures when its

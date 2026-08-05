@@ -41,6 +41,7 @@
           <p>The double path adopts xjb’s 10<sup>−k−1</sup> scaling, exposing the final decimal digit without an additional division on the critical path. The output stage uses binary-coded-decimal techniques and architecture-specific SIMD where available. This is an important change of emphasis: once candidate selection is tight, turning a 17-digit integer into bytes can dominate.</p>
           <p>The repository claims shortest, correctly rounded round trips for binary32 and binary64 and carries boundary and differential tests. Its benchmark charts name the processor, operating system, compiler, and comparison suite. The magnitude of the reported advantage differs substantially between Apple M5 and AMD EPYC systems, which is itself useful evidence that there is no architecture-independent “fastest” ordering.</p>
           <p><strong>Pinned source:</strong> <a href="https://github.com/vitaut/zmij">vitaut/zmij</a>, commit <code>8289609d8f9e6beea1f20d1a56d9f25e1d441359</code>, 2026-08-03. The snapshot includes C and C++ implementations and states that the codebase is still actively changing.</p>
+          <p><a href="./zmij.html">Open the source-pinned Żmij implementation study and pipeline x-ray.</a></p>
         </section>
 
         <section id="teju">

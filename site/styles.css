@@ -282,7 +282,7 @@ footer { display: flex; justify-content: space-between; padding: 38px 4vw; borde
 .chapter-links span { display: block; color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
 .chapter-links strong { font: 600 22px var(--serif); }
 
-schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab, errol-pair-lab, errol-prefix-lab, coonen-scale-lab, dragon-remainder-lab { display: block; }
+schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lattice, ryu-product-window, dragonbox-route, diyfp-workbench, grisu-proof-lab, errol-pair-lab, errol-prefix-lab, coonen-scale-lab, dragon-remainder-lab, zmij-pipeline { display: block; }
 .algorithm-lab { margin: 46px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .algorithm-lab-head { display: flex; justify-content: space-between; gap: 30px; align-items: start; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .algorithm-lab-head > div:first-child { min-width: 0; }
@@ -549,6 +549,29 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
 .dragon-conclusion { fill: #9aa7b0; font: 500 9px var(--mono); }
 .dragon-conclusion.done { fill: var(--acid); }
 
+.zmij-platform { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 13px 24px; border-top: 1px solid rgba(255,255,255,.15); background: #0d171f; }
+.zmij-platform label { color: #a7b3bc; font: 500 9px var(--mono); text-transform: uppercase; }
+.zmij-platform select { margin-left: 10px; padding: 7px 28px 7px 9px; border: 1px solid rgba(255,255,255,.3); background: var(--dark); color: white; font: inherit; }
+.zmij-platform p { margin: 0; color: #9facb5; font-size: 11px; }
+.zmij-pipeline { display: grid; grid-template-columns: 1.05fr 28px 1.15fr 28px 1fr 28px 1fr 28px 1.05fr; align-items: stretch; padding: 28px 24px; background: var(--dark); }
+.zmij-pipeline article { min-width: 0; padding: 16px; border: 1px solid rgba(255,255,255,.24); background: #101c25; }
+.zmij-pipeline article span, .zmij-pipeline article strong, .zmij-pipeline article small { display: block; }
+.zmij-pipeline article span { color: var(--acid); font: 9px var(--mono); }
+.zmij-pipeline article strong { margin: 8px 0; color: white; font: 500 11px/1.35 var(--mono); text-transform: uppercase; }
+.zmij-pipeline article small { color: #aeb9c1; font-size: 10px; overflow-wrap: anywhere; }
+.zmij-pipeline i { align-self: center; color: var(--acid); font: 400 18px var(--mono); text-align: center; }
+.zmij-bcd { padding: 24px; border-top: 1px solid rgba(255,255,255,.15); background: #0c141b; }
+.zmij-bcd-head { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+.zmij-bcd-head span { color: #9facb5; font: 9px var(--mono); text-transform: uppercase; }
+.zmij-bcd-head strong { color: var(--acid); font: 500 11px var(--mono); }
+.zmij-groups { display: flex; gap: 6px; }
+.zmij-groups.source span { flex: 1; padding: 12px; border: 1px solid var(--blue-pale); background: rgba(142,179,255,.12); color: white; font: 500 clamp(12px, 2vw, 18px) var(--mono); text-align: center; }
+.zmij-groups b { display: grid; flex: 1; min-width: 0; min-height: 38px; place-items: center; border: 1px solid rgba(255,255,255,.3); color: white; font: 500 13px var(--mono); }
+.zmij-groups .last { border-color: var(--red-pale); background: rgba(255,155,142,.14); color: var(--red-pale); }
+.zmij-groups.digits .zero { color: #71808a; }
+.zmij-split-label { margin: 15px 0; color: #8997a1; font: 9px var(--mono); text-align: center; text-transform: uppercase; }
+.zmij-emission-note { margin: 17px 0 0 !important; color: #bcc6cd !important; font-size: 11px !important; }
+
 .trace-player { margin: 45px calc((min(100vw, 1120px) - 760px) / -2); border: 1px solid rgba(255,255,255,.18); background: var(--dark); color: #f4f0e8; }
 .trace-head { display: flex; justify-content: space-between; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .trace-head strong { font: 500 10px var(--mono); text-transform: uppercase; }
@@ -675,6 +698,16 @@ schubfach-lemma, schubfach-candidates, round-to-odd-lab, ryu-guard-bits, ryu-lat
   .coonen-arrow b { transform: rotate(90deg); }
   .coonen-window-svg { min-height: 330px; }
   .dragon-remainder-svg { min-height: 470px; }
+  .zmij-platform { display: block; }
+  .zmij-platform p { margin-top: 12px; }
+  .zmij-pipeline { grid-template-columns: 1fr; gap: 0; }
+  .zmij-pipeline i { min-height: 38px; padding-top: 10px; transform: rotate(90deg); }
+  .zmij-bcd-head { display: block; }
+  .zmij-bcd-head strong { display: block; margin-top: 8px; overflow-wrap: anywhere; }
+  .zmij-groups.source { display: grid; grid-template-columns: 1fr; }
+  .zmij-groups.source .last { min-height: 38px; }
+  .zmij-groups.digits { gap: 2px; }
+  .zmij-groups b { min-height: 30px; font-size: 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
