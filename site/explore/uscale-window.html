@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Unrounded scaling explained with a draggable ruler of four zones per unit, then a decimal window that reads the shortest decimal straight off the ticks.">
+  <title>Unrounded scaling · Four zones, one window · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/uscale-window.css">
+  <script type="module" src="./js/uscale-window.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="usw">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Unrounded scaling / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./uscale-machine.html">compare with approach B</a></p>
+      <h1>Unrounded scaling: four zones, one window</h1>
+      <p class="chapter-deck">Russ Cox's converters never round too early. Their one primitive returns an <em>unrounded</em> number: the integer part plus two bits, just enough to round any way later. Scale the two edges of a double's rounding interval that way, and the shortest decimal can be read straight off a ruler.</p>
+      <p class="lab-pitch">First make the unrounded number something you can hold: a ruler with four kinds of places per unit. Then reuse that vocabulary for the whole shortest printer: two rulers, three arrows, one three-way decision. A six-level game at the end checks that it stuck.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Unrounded scaling</strong><a href="#zones">Four zones</a><a href="#later">Round later</a><a href="#ties">Who breaks ties</a><a href="#bridge">Bigger numbers</a><a href="#window">The decimal window</a><a href="#why">Why it works</a><a href="#traps">Two traps</a><a href="#fast">Making it fast</a><a href="#quiz">Beat the printer</a></aside>
+      <article class="chapter">
+
+        <section id="zones">
+          <p class="eyebrow">The return type</p>
+          <h2>Four kinds of places on a ruler</h2>
+          <p>Every binary-to-decimal conversion ends the same way: a scaled number such as 30000000000000004.44… has to become an integer. But <em>which</em> rounding? The shortest printer below needs three different ones on the same kind of value: a ceiling for one edge, a floor for the other, and round-to-nearest for the value itself.</p>
+          <p>Cox's answer is to not round yet. His scaling primitive returns an <b>unrounded number</b> that keeps just enough to decide any rounding later:</p>
+          <div class="equation">⟨x⟩ = ⌊4x⌋ | (4x ≠ ⌊4x⌋)</div>
+          <p>That is the integer part of x, then a <b class="usw-half-c">½ bit</b> (is the fraction at least ½?), then a <b class="usw-sticky-c">sticky bit</b> (is anything else left over?). Cox prints it as <code>n.0</code>, <code>n.0+</code>, <code>n.5</code> or <code>n.5+</code>.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>Floating-point hardware does the same. An adder keeps a few bits beyond the result (guard, round, sticky) so that it can round correctly at the very end. The sticky bit is the OR of everything shifted out past it: once a 1 has gone through, it sticks.</p>
+          </div>
+          <p>Measured against the integers, a real number can be in only four kinds of places: exactly on an integer, strictly between it and the half, exactly on the half, or strictly past the half. Drag the pin (or focus it and use the arrow keys). It snaps onto the dots so you can land on them exactly.</p>
+          <figure class="lab-figure usw-figure" id="usw-zones">
+            <div class="lab-controls">
+              <div class="lab-chips" id="usw-zones-chips" role="group" aria-label="Set the pin"></div>
+            </div>
+            <div class="usw-svgbox" id="usw-zones-svg"></div>
+            <div class="lab-controls usw-nudge-row">
+              <span>Nudge the code:</span>
+              <button type="button" class="lab-button" id="usw-nudge-minus">nudge −1</button>
+              <button type="button" class="lab-button" id="usw-nudge-reset">no nudge</button>
+              <button type="button" class="lab-button" id="usw-nudge-plus">nudge +1</button>
+            </div>
+            <div class="lab-readout usw-readout" id="usw-zones-readout" aria-live="polite"></div>
+            <figcaption>Filled dots are the exact places n.0 and n.5. The coloured bars between them are open segments: every point of a bar has the same code. Bits are shown as integer | ½ | sticky.</figcaption>
+          </figure>
+          <p>Try <b>6.25</b>. There is no quarter mark: 4 · 6.25 = 25 = <code>110|0|1</code>, so the ¼ bit lands exactly where the sticky bit goes and 6.25 reads <code>6.0+</code>, the same as 6.01 or 6.49. A unit has four <em>zones</em> (two points and two open segments), not four quarters. And <code>n.5</code> means “the ½ bit is set”, not the decimal digit 5.</p>
+          <p>The nudge buttons add ±1 to the code, which moves exactly one zone. Cox uses it as “add or subtract a tiny amount”. On an open segment that changes nothing a floor or ceiling can see. On a point it does: ⟨7.0⟩ floors to 7, but nudged down it is <code>6.5+</code> and floors to 6. That is how the printer will exclude an interval edge that falls exactly on an integer.</p>
+        </section>
+
+        <section id="later">
+          <p class="eyebrow">Rounding</p>
+          <h2>Any rounding, decided later</h2>
+          <p>With the code u = ⟨x⟩, every usual rounding is one addition and one shift. Add 0, 1, 2 or 3, then drop the two extra bits:</p>
+          <figure class="lab-figure usw-figure" id="usw-round">
+            <div class="lab-controls">
+              <div class="lab-chips" id="usw-rule-chips" role="group" aria-label="Rounding rule"></div>
+            </div>
+            <div class="usw-svgbox" id="usw-round-svg"></div>
+            <div class="usw-table-wrap"><table class="usw-grid" id="usw-grid"></table></div>
+            <figcaption>The strip under the ruler shows where each zone goes under the chosen rule. Drag the pin to change the column set; the pin's own zone is highlighted in the table.</figcaption>
+          </figure>
+          <p>Round half to even adds 1 plus the low bit of the integer part, <code>(u + 1 + ((u&gt;&gt;2)&amp;1)) &gt;&gt; 2</code>. Pick it and look at the strip: 8 catches five zones (7.5 up to 8.5) while 7 catches only three. Both 7.5 and 8.5 go to 8.</p>
+
+          <h3>Round now, and you can lose</h3>
+          <p>Why not simply round right away? Cox's example: we want 15.4 ÷ 6 = 2.566…, rounded to an integer. Round first and the fraction is gone before the division needs it. Keep the unrounded form and the division carries it along. Unrounded division is <code>(u/d) | (u&amp;1) | (u mod d ≠ 0)</code>: the sticky bit stays set, and a remainder sets it.</p>
+          <figure class="lab-figure usw-figure" id="usw-lanes">
+            <div class="lab-controls"><button type="button" class="lab-button primary" id="usw-lanes-play">Replay</button></div>
+            <div class="usw-lanes" id="usw-lanes-box"></div>
+            <figcaption>Both lanes compute 15.4 ÷ 6 and round half to even. Only the second one keeps the “+”.</figcaption>
+          </figure>
+        </section>
+
+        <section id="ties">
+          <p class="eyebrow">A bonus</p>
+          <h2>The caller picks the tie rule</h2>
+          <p>A true tie is the code <code>n.5</code>: ½ bit on, sticky bit off. Only then do the rounding rules disagree about the nearest integer, and the caller decides which one to use. Here is ⟨x · 100⟩ for a few doubles, the step behind printing them with two decimals:</p>
+          <figure class="lab-figure usw-figure" id="usw-ties">
+            <div class="lab-controls">
+              <div class="lab-chips" id="usw-tie-chips" role="group" aria-label="Value"></div>
+            </div>
+            <div class="usw-svgbox" id="usw-ties-svg"></div>
+            <div class="lab-readout usw-readout" id="usw-ties-readout" aria-live="polite"></div>
+            <figcaption>The double is converted exactly; the last line asks your own browser.</figcaption>
+          </figure>
+          <p>1.125 is exactly representable, so ⟨112.5⟩ is a real tie. C's <code>printf("%.2f")</code> and Go round half to even and print 1.12; JavaScript's <code>toFixed</code> takes the larger candidate and prints 1.13. 1.005 is different: the double closest to it is 1.00499999999999989…, so its code is ⟨100.0+⟩. That is not a tie at all, and every “nearest” rule gives 1.00. The famous <code>(1.005).toFixed(2) === "1.00"</code> is correct rounding of the stored value.</p>
+        </section>
+
+        <section id="bridge">
+          <p class="eyebrow">The primitive</p>
+          <h2>Same four zones, bigger numbers</h2>
+          <p>Cox calls the primitive <b>unrounded scaling</b>:</p>
+          <div class="equation">uscale(x, e, p) = ⟨x · 2<sup>e</sup> · 10<sup>p</sup>⟩</div>
+          <p>It takes an integer x (a double's mantissa, or a nearby value), scales it by a power of two and a power of ten, and returns the code, never a rounded integer. Printing, fixed-width printing and parsing are all a few lines around it. The integers just get long:</p>
+          <figure class="lab-figure usw-figure" id="usw-bridge">
+            <div class="lab-controls"><button type="button" class="lab-button primary" id="usw-bridge-toggle" aria-pressed="false">Show the real numbers</button></div>
+            <div class="usw-svgbox" id="usw-bridge-svg"></div>
+            <p class="usw-caption" id="usw-bridge-caption" aria-live="polite"></p>
+          </figure>
+        </section>
+
+        <section id="window">
+          <p class="eyebrow">Shortest printing</p>
+          <h2>The decimal window</h2>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double f has neighbours below and above. Halfway to each is a <b>midpoint</b>; together they bound the <b>rounding interval</b> (Cox calls its width the <em>footprint</em>). Every decimal strictly inside reads back as f.</p>
+            <p>A decimal exactly on a midpoint is a tie, and reading it back picks the neighbour with the <b>even</b> mantissa. So the midpoints belong to f when its mantissa is even (drawn ●) and not when it is odd (drawn ○).</p>
+            <p>At a power of two the gap below is half as wide as the gap above, so the footprint is skewed: ¾ of the usual width.</p>
+          </div>
+          <p>Cox's <code>Short(f)</code> never scales f first. It scales the two <em>edges</em> and reads the answer off the integers between them:</p>
+          <ol class="lab-steps">
+            <li><strong>Pick p</strong> so that the footprint, multiplied by 10<sup>p</sup>, is between 1 and 10 units wide. Now the integers are the candidate decimals, each meaning k · 10<sup>−p</sup>.</li>
+            <li><strong>Scale both midpoints</strong> with uscale. Then <code>dmin = ceil(⟨min⟩)</code> and <code>dmax = floor(⟨max⟩)</code>, each nudged inward first when the mantissa is odd. Every integer in dmin…dmax is a valid output.</li>
+            <li><strong>Decide.</strong> (A) If one of them ends in 0, use it and strip its zeros. (B) Else, if there is only one, use it. (C) Else scale f too and round it half to even.</li>
+          </ol>
+          <p>Step through it below. The top ruler is binary (f, its neighbours, the midpoints); the bottom ruler has the decimal integers at scale 10<sup>−p</sup>. Both share one axis, so the uscale arrows go straight down. Pick a preset or type a number (<code>0.1+0.2</code>, <code>2/3</code>, <code>2^89</code> work too).</p>
+          <figure class="lab-figure usw-figure" id="usw-win">
+            <div class="lab-controls">
+              <div class="lab-chips" id="usw-presets" role="group" aria-label="Preset values"></div>
+            </div>
+            <form class="lab-controls" id="usw-form">
+              <label for="usw-input">Value <input type="text" id="usw-input" inputmode="decimal" autocomplete="off" spellcheck="false" size="18" value="0.3"></label>
+              <button type="submit" class="lab-button primary">Show</button>
+              <button type="button" class="lab-button" id="usw-prev-double" aria-label="Previous double">◀ double</button>
+              <button type="button" class="lab-button" id="usw-next-double" aria-label="Next double">double ▶</button>
+              <span class="usw-error" id="usw-error" role="alert"></span>
+            </form>
+            <div class="lab-controls">
+              <label for="usw-p">Zoom p <input type="range" id="usw-p" min="-2" max="2" step="1" value="0"></label>
+              <output id="usw-p-out" for="usw-p"></output>
+              <label class="usw-flip" for="usw-flip"><input type="checkbox" id="usw-flip"> <span id="usw-flip-label">pretend the mantissa is odd</span></label>
+            </div>
+            <div class="lab-controls usw-stepper">
+              <button type="button" class="lab-button" id="usw-back">← Back</button>
+              <button type="button" class="lab-button primary" id="usw-next">Next →</button>
+              <button type="button" class="lab-button" id="usw-all">All steps</button>
+              <span class="usw-step-label" id="usw-step-label" aria-live="polite"></span>
+            </div>
+            <div class="usw-svgbox" id="usw-win-svg" role="img" aria-describedby="usw-win-readout"></div>
+            <div class="usw-legend" aria-hidden="true">
+              <span><i class="usw-key-band"></i>rounding interval</span>
+              <span><i class="usw-key-in"></i>edge included</span>
+              <span><i class="usw-key-out"></i>edge excluded</span>
+              <span><i class="usw-key-valid"></i>valid integer</span>
+              <span><i class="usw-key-zero"></i>valid, ends in 0</span>
+              <span><i class="usw-key-pick"></i>answer</span>
+            </div>
+            <div class="lab-readout usw-readout" id="usw-win-readout" aria-live="polite"></div>
+            <figcaption>Tick labels show the last digits of the integers; the readout prints them in full, with the part all of them share dimmed. Every number is computed exactly (BigInt) in your browser, and the fast 128-bit uscale is run alongside to check that it gives the same codes.</figcaption>
+          </figure>
+        </section>
+
+        <section id="why">
+          <p class="eyebrow">Why it works</p>
+          <h2>Between 1 and 10 units wide</h2>
+          <p>The width of the window decides everything. <b>At least 1 unit</b> means some integer fits. <b>Less than 10</b> means at most one multiple of 10 fits. The footprint of f = m · 2<sup>e</sup> is 2<sup>e</sup> (or ¾ · 2<sup>e</sup> at a power of two), so</p>
+          <div class="equation">p = −⌊log<sub>10</sub> 2<sup>e</sup>⌋ &nbsp; or &nbsp; p = −⌊log<sub>10</sub>(¾ · 2<sup>e</sup>)⌋</div>
+          <p>computed with one multiply and shift: <code>log10Pow2(x) = (x·78913) &gt;&gt; 18</code> and <code>skewed(e) = (e·631305 − 261663) &gt;&gt; 21</code>. Note that p sets the zoom, not the number of digits in the output.</p>
+          <p>Try the zoom dial on <button type="button" class="usw-try" data-x="0.1+0.2" data-dp="-1" data-step="4">0.1+0.2 at p = 16</button>: no integer fits, so no decimal with 16 or fewer digits reads back as this double. At <button type="button" class="usw-try" data-x="0.1+0.2" data-dp="0" data-step="4">p = 17</button> six fit, none ending in 0. At <button type="button" class="usw-try" data-x="0.1+0.2" data-dp="1" data-step="4">p = 18</button> fifty-six fit and six of them end in 0, so “the one ending in 0” is no longer a unique answer.</p>
+          <p>Why do the three cases give the shortest output? The valid integers are consecutive and fewer than ten. If a multiple of 10 is among them, it is the only one, and once its trailing zeros are stripped no other candidate is shorter (0.3 is 30000000000000000 · 10<sup>−17</sup> = 3 · 10<sup>−1</sup>). No even shorter decimal was missed either: every coarser ruler's ticks are multiples of 10 on this one. Without a multiple of 10, all candidates have the same length, so the best is the one nearest f: the correctly rounded ⟨f⟩. If only one candidate exists, there is nothing to choose.</p>
+          <p>One corner needs care. A window exactly 1 unit wide would miss every integer if both its edges were integers and excluded. But the width is exactly 1 only when e = p = 0, and then the edges are the half-integers m ± ½. <button type="button" class="usw-try" data-x="2^53-1" data-step="4">2^53−1</button> is such a case: the window is ⟨9007199254740990.5⟩ to ⟨9007199254740991.5⟩, and exactly one integer, f itself, fits.</p>
+          <p>The edges are rounded with ceil and floor, not to nearest, so that dmin and dmax are themselves inside the interval. When the mantissa is odd the edges don't belong to f, so each is nudged inward first. On an inexact code (a “+”) the nudge changes nothing. On an exact one it moves the result by one.</p>
+        </section>
+
+        <section id="traps">
+          <p class="eyebrow">Two traps</p>
+          <h2>Scale the edges, and keep the sticky bit honest</h2>
+          <h3>2<sup>89</sup>: the nearest decimal is not valid</h3>
+          <p>An obvious alternative is to round f itself to 16, then 17 digits until the result reads back. Cox shows that this can miss the shortest answer. <button type="button" class="usw-try" data-x="2^89" data-step="5">Show 2^89</button> f is a power of two, so the gap below it is half as wide and the window reaches only a quarter step down. f scaled by 10<sup>−11</sup> is 6189700196426901.37…, so the correctly rounded 16-digit value ends in …901. But …901 lies <em>outside</em> the window (drawn as a red ghost): it would read back as the double below. …902 is inside, also has 16 digits, and is the answer. Scaling the edges finds it; rounding the value cannot.</p>
+          <h3>1e23: an edge exactly on the ruler</h3>
+          <p><button type="button" class="usw-try" data-x="1e23" data-step="5">Show 1e23</button> The double nearest 10<sup>23</sup> is 99999999999999991611392. Its upper midpoint is <em>exactly</em> 10<sup>23</sup>, so ⟨max⟩ = ⟨10000000000000000.0⟩ with no “+”. The mantissa 5960464477539062 is even, so the edge belongs to f, no nudge happens, the integer 10000000000000000 is valid and ends in 0: the output is 1e23. Tick “pretend the mantissa is odd” and the edge is nudged out. The answer becomes 9999999999999999e7, which still reads back but is not what an even mantissa deserves. Here the sticky bit decides the output, and this edge is one of the rare calls where the fast uscale needs its second multiply.</p>
+          <h3>Check it by hand: 5e-324</h3>
+          <p><button type="button" class="usw-try" data-x="5e-324" data-step="6">Show 5e-324</button> The smallest subnormal is 4.94…e-324, with neighbours 0 and 9.88…e-324. The midpoints are 2.47…e-324 and 7.41…e-324, so at p = 324 the window is 2.47 … 7.41 and the valid integers are 3 to 7. None ends in 0, so f is scaled too: 4.94 → ⟨4.5+⟩ → 5. Output: 5e-324.</p>
+        </section>
+
+        <section id="fast">
+          <p class="eyebrow">Epilogue</p>
+          <h2>Making uscale fast</h2>
+          <p>This page computes every ⟨⟩ with exact big integers. The real uscale gets the same bits from one table of 128-bit powers of ten, rounded up: multiply x by the top 64 bits of the entry and look at the bits about to be shifted out. If any of them is 1, the small error of the table cannot reach the result, the sticky bit is 1, and one 64×64 multiply is all it took. Only when they are all 0 (as for 1e23's upper edge) does a second multiply settle the borrow and the sticky bit. <a href="./uscale-machine.html">Approach B</a> takes that machine apart and runs the real code with every variable shown.</p>
+          <p>Cox presents unrounded scaling as a synthesis. The shortest printer is adapted from Giulietti's <a href="../chapters/schubfach.html">Schubfach</a>, including the observation that with the right p at most one valid decimal ends in 0. <code>trimZeros</code> is adapted from <a href="../chapters/dragonbox.html">Dragonbox</a>. That 128-bit tables are enough for exact results was found earlier by Hanson, Hack, Nadhezin and Giulietti, and Adams (Ryū); Eisel and Lemire use them for parsing. The check of the discarded bits echoes Slishman (1990). The sticky bit itself goes back to Len Harding and the BCC Model 1 around 1970. New is the combination: one unrounded primitive, with the check done before the second multiply.</p>
+          <p class="usw-note">Sources: R. Cox, <a href="https://research.swtch.com/fp">Floating-Point Printing and Parsing Can Be Simple And Fast</a> and <a href="https://research.swtch.com/fp-proof">Fast Unrounded Scaling: Proof by Ivy</a>; code: <a href="https://github.com/rsc/fpfmt">rsc/fpfmt</a> (fpfmt.go at ec108cb).</p>
+        </section>
+
+        <section id="quiz">
+          <p class="eyebrow">Self-check</p>
+          <h2>Beat the printer</h2>
+          <p>Six doubles, one window each. You see the edges as uscale returns them, with ● for an included edge and ○ for an excluded one. Tap the integer that <code>Short</code> prints. The last two levels are the traps.</p>
+          <figure class="lab-figure usw-figure" id="usw-quiz-fig">
+            <div class="lab-controls">
+              <div class="lab-chips" id="usw-levels" role="group" aria-label="Level"></div>
+              <span class="usw-score" id="usw-score" aria-live="polite"></span>
+            </div>
+            <p class="usw-quiz-q" id="usw-quiz-q"></p>
+            <div class="usw-svgbox" id="usw-quiz-svg" role="img" aria-describedby="usw-quiz-q"></div>
+            <div class="usw-choices" id="usw-choices" role="group" aria-label="Candidate integers"></div>
+            <div class="lab-readout usw-readout" id="usw-feedback" aria-live="polite"></div>
+            <div class="lab-controls"><button type="button" class="lab-button primary" id="usw-quiz-next" hidden>Next level →</button></div>
+          </figure>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/unrounded-scaling.html"><span>Compare</span><strong>Unrounded scaling chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
