@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Grisu, mechanics first: park the binary point with one cached power of ten, run all of Grisu3 on 16-bit floats with numbers small enough for a calculator, then single-step the 64-bit production code.">
+  <title>Grisu · Pocket Grisu · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/grisu-pocket.css">
+  <script type="module" src="./js/grisu-pocket.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Grisu / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./grisu-blur.html">compare with approach A</a></p>
+      <h1>Pocket Grisu</h1>
+      <p class="chapter-deck">Grisu prints a double using one multiplication and a few operations on 64-bit integers. First see where that multiplication puts the binary point. Then run all of Grisu3 on 16-bit floats, where every number fits on a calculator. Finally, step through the real 64-bit code.</p>
+      <p class="lab-pitch">Mechanics first. The reader picks the cached power that parks the binary point, checks Grisu3 by hand on half precision (including an exhaustive map of which inputs it rejects), and then single-steps a paraphrase of <code>fast-dtoa.cc</code> with live values. Approach A explains the same algorithm through the geometry of blurry interval ends.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Grisu</strong>
+        <a href="#job">The job</a>
+        <a href="#park">1 · Park the binary point</a>
+        <a href="#multiply">One rounded multiply</a>
+        <a href="#lot">Digits from a parked point</a>
+        <a href="#grisu1">Grisu1: correct but long</a>
+        <a href="#pocket">2 · Grisu in 16 bits</a>
+        <a href="#cards">Hand-check card</a>
+        <a href="#rejects">When it says no</a>
+        <a href="#map">All 31,743 inputs</a>
+        <a href="#debugger">3 · The 64-bit debugger</a>
+        <a href="#contracts">Three Grisus, three promises</a>
+      </aside>
+      <article class="chapter">
+
+        <section id="job">
+          <p class="eyebrow">Before we start</p>
+          <h2>The job, and Grisu’s bet</h2>
+          <p class="lead">To print a double, find the shortest decimal that reads back as that double. Dragon4 does this exactly with big integers. Grisu uses only 64-bit integers, and pays for that with a small error that it has to track.</p>
+          <div class="lab-remember">
+            <strong>Remember: the rounding interval</strong>
+            <p>A double is <var>v</var> = <var>f</var>&thinsp;·&thinsp;2<sup><var>e</var></sup>. Halfway to its lower and upper neighbours lie the boundaries <var>m</var><sup>−</sup> and <var>m</var><sup>+</sup>. Any decimal strictly between them reads back as <var>v</var>. When <var>f</var> is even, a decimal exactly on a boundary also reads back as <var>v</var>, because ties round to even.</p>
+            <p>At a power of two the lower neighbour is only half as far away as the upper one, so <var>m</var><sup>−</sup> sits a quarter gap below <var>v</var> instead of half a gap.</p>
+          </div>
+          <div class="lab-remember">
+            <strong>Remember: DiyFp</strong>
+            <p>Grisu’s number type is a “do-it-yourself floating point”: a pair (<var>f</var>, <var>e</var>) of a 64-bit unsigned integer and an exponent, meaning <var>f</var>&thinsp;·&thinsp;2<sup><var>e</var></sup>. It has no hidden bit and no special values. To <em>normalize</em> it, shift <var>f</var> left until its top bit is set. A double’s 53-bit significand then has 11 zero bits below it, and those spare bits are what Grisu works with.</p>
+          </div>
+          <p>The page has three parts:</p>
+          <ol class="lab-steps">
+            <li><strong>Park the binary point.</strong> One multiplication by a stored power of ten turns printing into ordinary integer work. This part ends with Grisu1, which prints correct but long results.</li>
+            <li><strong>Grisu in 16 bits.</strong> The whole of Grisu3 runs on half-precision floats, where you can check each step by hand. A map then shows which of the 31,743 positive inputs it rejects.</li>
+            <li><strong>The 64-bit debugger.</strong> Step through the production code of double-conversion with live values.</li>
+          </ol>
+        </section>
+
+        <section id="park">
+          <p class="eyebrow">Part 1 · Park the binary point</p>
+          <h2>One multiplication puts the binary point where we want it</h2>
+          <p>The exponent <var>e</var> of a double ranges from −1074 to 971. Printing a number like that is awkward. It would be easy if its binary point sat at a known place inside a 64-bit register. The bits left of the point form an integer, and division prints it. The bits right of the point form a fraction: multiply it by 10, and the bits that cross the point are the next decimal digit.</p>
+          <p>Grisu gets there by multiplying <var>v</var> by a power of ten 10<sup><var>k</var></sup>, where <var>k</var> is chosen so that the binary point of the product lands in a fixed window. It prints the product’s digits and subtracts <var>k</var> from the decimal exponent. The power of ten comes from a table of <strong>87 pre-rounded DiyFps</strong>: 10<sup>−348</sup>, 10<sup>−340</sup>, …, 10<sup>340</sup>, every eighth power.</p>
+
+          <figure class="lab-figure" id="comb-figure" aria-labelledby="comb-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="park-chips" role="group" aria-label="Example numbers"></div>
+              <form class="grisu-pocket-inline" id="park-form">
+                <label>Your number <input type="text" id="park-input" size="16" autocomplete="off" spellcheck="false" placeholder="e.g. 123.456 or 1/3"></label>
+                <button class="lab-button" type="submit">Use</button>
+              </form>
+            </div>
+            <div class="lab-controls">
+              <label for="tooth-range">Cached power</label>
+              <button class="lab-button" type="button" id="tooth-prev" aria-label="Previous cached power">◀</button>
+              <input type="range" id="tooth-range" min="0" max="86" step="1" value="44" aria-describedby="comb-status">
+              <button class="lab-button" type="button" id="tooth-next" aria-label="Next cached power">▶</button>
+              <button class="lab-button primary" type="button" id="tooth-auto">Let the code choose</button>
+            </div>
+            <div id="comb" class="grisu-pocket-svgbox"></div>
+            <div id="park-register" class="grisu-pocket-svgbox"></div>
+            <p class="lab-readout" id="comb-status" aria-live="polite"></p>
+            <figcaption id="comb-caption">Top: the 87 table entries as teeth on a comb, placed by their decimal exponent. Drag along the comb, or use the slider or arrow keys, to pick one. Middle: the binary point <var>t</var> = <var>w.e</var> + <var>c.e</var> + 64 of the product for the chosen tooth and its neighbours. The green band is the window −60 … −32. Bottom: the 64 bits of the product <var>w</var> ⊗ <var>c</var>. Blue bits are the integral part, grey bits the fraction.</figcaption>
+          </figure>
+
+          <h3>Why every eighth power is enough</h3>
+          <p>Multiplying two DiyFps adds their exponents, and keeping the top 64 of the 128 product bits adds 64 more: <var>t</var> = <var>w.e</var> + <var>c.e</var> + 64. The product has 64 bits, so its integral part has 64 + <var>t</var> bits and its fraction has −<var>t</var> bits. double-conversion requires −60 ≤ <var>t</var> ≤ −32:</p>
+          <ul>
+            <li>At most 32 integral bits, so the integral part fits a <code>uint32_t</code> and prints with cheap 32-bit division.</li>
+            <li>At most 60 fraction bits, so fraction × 10 &lt; 2<sup>64</sup>. Four bits of headroom are enough for the ×10 step.</li>
+          </ul>
+          <p>The window holds 29 values of <var>t</var>. Neighbouring table entries differ by a factor of 10<sup>8</sup>, which is 8·log<sub>2</sub>10 ≈ 26.58 in binary exponent, so their <var>t</var> values are 26 or 27 apart. A window that is 28 wide cannot fit between two neighbouring teeth, so at least one entry always fits, and sometimes two do. The code does not search for it. It computes the index directly:</p>
+          <p class="equation grisu-pocket-eq">k = ⌈(−60 − (w.e + 64) + 63) · log<sub>10</sub>2⌉<br>index = ⌊(348 + k − 1) / 8⌋ + 1</p>
+          <p class="lab-readout" id="comb-formula"></p>
+          <p>When two teeth fit, this formula picks the one with the smaller <var>t</var>, which leaves more fraction bits.</p>
+        </section>
+
+        <section id="multiply">
+          <p class="eyebrow">Part 1 · The price</p>
+          <h2>One rounded multiply, less than one unit off</h2>
+          <p>A table entry only approximates 10<sup><var>k</var></sup>. Its 64-bit significand is rounded to nearest, so it is off by at most half a unit in its last place. Only 10<sup>4</sup>, 10<sup>12</sup> and 10<sup>20</sup> are exact. The product <var>w</var> × <var>c</var> needs 128 bits. <code>DiyFp::Times</code> keeps the upper 64 bits, rounding half up. <code>diy-fp.h</code> does this without a 128-bit type: it splits each factor into two 32-bit halves and adds four partial products.</p>
+          <figure class="lab-figure" aria-labelledby="mul-caption">
+            <div id="mul-grid" class="grisu-pocket-svgbox"></div>
+            <div id="mul-budget" class="grisu-pocket-svgbox"></div>
+            <p class="lab-readout" id="mul-readout"></p>
+            <details class="grisu-pocket-details"><summary>The partial products in hex</summary><div id="mul-hex"></div></details>
+            <figcaption id="mul-caption">This uses the number and the cached power from the comb above, with the tooth the code chooses. A <em>unit</em> is the last bit of the product: 2<sup><var>t</var></sup> of the scaled value. The bar adds up the two errors, measured against the exact product <var>w</var>&thinsp;·&thinsp;10<sup><var>k</var></sup> in BigInt arithmetic.</figcaption>
+          </figure>
+          <p>Each error is below half a unit of the result, so the computed product is off by less than one unit. That uncertainty is the price of avoiding bignums, and the rest of the algorithm is about living with it. It is small: because of the 11 spare bits, a unit is between 1/2048 and 1/1024 of the gap between neighbouring doubles. For 0.3 the rounding interval is 1250 units wide.</p>
+        </section>
+
+        <section id="lot">
+          <p class="eyebrow">Part 1 · The payoff</p>
+          <h2>Digits from a parked point</h2>
+          <p>Once the point sits between bit −<var>t</var> and bit −<var>t</var> − 1, printing is just integer work. The integral part is at most 32 bits and prints with division. The fraction is multiplied by 10: the bits that cross the point form the next digit, and a mask removes them.</p>
+          <figure class="lab-figure" aria-labelledby="lot-caption">
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" id="lot-step">×10: next digit</button>
+              <button class="lab-button" type="button" id="lot-all">All 18 digits</button>
+              <button class="lab-button" type="button" id="lot-reset">Reset</button>
+            </div>
+            <div id="lot-register" class="grisu-pocket-svgbox"></div>
+            <div id="lot-conveyor" class="grisu-pocket-svgbox"></div>
+            <p class="lab-readout" id="lot-readout" aria-live="polite"></p>
+            <figcaption id="lot-caption">Each row is one pass of <code>f *= 10; digit = f &gt;&gt; −t; f &amp;= one − 1</code>. The red cells are the bits pushed across the point, and they are the digit. The grey cells are the fraction that remains. The product never needs more than 64 bits.</figcaption>
+          </figure>
+        </section>
+
+        <section id="grisu1">
+          <p class="eyebrow">Part 1 · Grisu1</p>
+          <h2>Correct, but long</h2>
+          <p>The first algorithm in the paper stops here. It prints the digits of the product and appends −<var>k</var> as the exponent. The variant above is the paper’s “digit-gen-mix” (Figure 6). It prints the integral part, then fraction digits until it has 18 digits. The paper used the window −59 … −32; double-conversion’s −60 works just as well.</p>
+          <p class="lab-readout" id="g1-readout"></p>
+          <p>The result always reads back as the right double. The product is off by less than one unit, and cutting after 18 digits costs less than 10<sup>−17</sup> relative, both far smaller than the gap between doubles. But it is 18 digits long even for 0.3. The paper’s simplest variant prints 1.0 as <code>10000000000000000000e-19</code>.</p>
+          <p>Shorter output needs the rounding interval. Grisu2 and Grisu3 also scale the boundaries <var>m</var><sup>−</sup> and <var>m</var><sup>+</sup>, and generate only as many digits as the interval requires. But after scaling, the boundaries are also off by up to one unit, so the question “is this decimal inside the interval?” can come out as “maybe”. Part 2 shows how Grisu3 handles that, on numbers small enough to check by hand.</p>
+        </section>
+
+        <section id="pocket">
+          <p class="eyebrow">Part 2 · Grisu in 16 bits</p>
+          <h2>The whole of Grisu3 on a pocket calculator</h2>
+          <p>Grisu3 works the same way on any binary float format, so it can run on a small one. Take half-precision floats (11-bit significands) and 16-bit DiyFps. Every number then has at most five digits. With 5 spare bits instead of 11, one unit of error is relatively larger, so rejections are common enough to study.</p>
+          <div class="lab-remember">
+            <strong>Remember: half precision</strong>
+            <p>binary16 has 1 sign bit, 5 exponent bits and 10 fraction bits. A value is <var>f</var>&thinsp;·&thinsp;2<sup><var>e</var></sup> with 1024 ≤ <var>f</var> ≤ 2047 and −24 ≤ <var>e</var> ≤ 5 for normal numbers, and <var>f</var> &lt; 1024 with <var>e</var> = −24 for subnormals. The largest value is 65504.</p>
+          </div>
+          <div class="aside">
+            <p><strong>Our simplification.</strong> The pocket version runs the code of <code>fast-dtoa.cc</code> unchanged (<code>DigitGen</code>, <code>RoundWeed</code>, <code>BiggestPowerTen</code>) with <var>q</var>-bit integers instead of 64-bit ones. We changed two constants to fit: the window for <var>t</var> is −(<var>q</var>−4) … −(<var>q</var>−8), which is −12 … −8 for <var>q</var> = 16, and the table holds <em>every</em> power of ten rounded to <var>q</var> bits. A 5-value window needs a tooth every 3.3 binary exponents. This window and cache are our choices, not the library’s. The window keeps the real code’s 4 bits of headroom for ×10, and allows an integral part of at most 8 bits.</p>
+          </div>
+          <p>Here is the algorithm. The card below runs it.</p>
+          <ol class="lab-steps">
+            <li><strong>Scale</strong> <var>w</var>, <var>m</var><sup>−</sup> and <var>m</var><sup>+</sup> by the same cached power. Each result is off by less than 1 unit.</li>
+            <li><strong>Widen:</strong> <var>too_low</var> = scaled <var>m</var><sup>−</sup> − 1 and <var>too_high</var> = scaled <var>m</var><sup>+</sup> + 1. The true interval certainly lies inside (<var>too_low</var>, <var>too_high</var>). Call its width <var>unsafe</var>.</li>
+            <li><strong>Cut digits from the top of <var>too_high</var>.</strong> After each digit, <var>rest</var> is the part of <var>too_high</var> not yet printed, so the printed prefix equals <var>too_high</var> − <var>rest</var>. Stop at the first digit where <var>rest</var> &lt; <var>unsafe</var>: the prefix is then the coarsest decimal inside the widened interval, which makes it the shortest.</li>
+            <li><strong>Round:</strong> lower the last digit toward <var>w</var> while that brings it closer to <var>w</var>. Give up if <var>w</var>’s own ±1 unit error makes “closer” impossible to decide.</li>
+            <li><strong>Weed:</strong> accept only if the result is at least 2 units below <var>too_high</var> and at least 4 above <var>too_low</var>. Only then is it certainly inside the true interval. Otherwise give up.</li>
+          </ol>
+          <p>When Grisu3 gives up, double-conversion calls an exact bignum algorithm instead.</p>
+
+          <figure class="lab-figure" id="cards" aria-labelledby="card-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="card-chips" role="group" aria-label="Card examples"></div>
+            </div>
+            <div class="lab-controls">
+              <form class="grisu-pocket-inline" id="card-form">
+                <label>Any number <input type="text" id="card-input" size="16" autocomplete="off" spellcheck="false" placeholder="rounded to half precision"></label>
+                <button class="lab-button" type="submit">Run</button>
+              </form>
+              <label>DiyFp bits <select id="card-q"></select></label>
+            </div>
+            <ol class="grisu-pocket-card" id="card-steps"></ol>
+            <div class="grisu-pocket-verdict" id="card-verdict" aria-live="polite"></div>
+            <figcaption id="card-caption">Every number on the card is an exact integer computed by the page. A unit is 2<sup><var>t</var></sup>. “÷” means integer division and “mod” the remainder. In the fraction phase, <var>rest</var>, <var>unsafe</var> and <var>unit</var> are all multiplied by 10 each round, as in the real code.</figcaption>
+          </figure>
+        </section>
+
+        <section id="rejects">
+          <p class="eyebrow">Part 2 · Rejections</p>
+          <h2>When the card says no</h2>
+          <p>There are two ways to fail, and both happen at <var>q</var> = 16:</p>
+          <ul>
+            <li><button class="grisu-pocket-link" type="button" data-card="0.0316162109375">0.0316162109375</button> = 1036·2<sup>−15</sup> fails the <strong>safe-zone test</strong>. The shortest candidate in the widened interval is 316e−4, and it lands 0.4 units above <var>too_low</var>. That is inside the widened interval but not inside the safe zone. Rejecting is right: the exact <var>m</var><sup>−</sup> is 0.0316009521484375, which is larger than 0.0316, so 0.0316 reads back as the neighbour 1035·2<sup>−15</sup>. Accepting would have printed a wrong number. The correct answer is 3162e−5, and with 20-bit DiyFps Grisu3 finds and accepts it.</li>
+            <li><button class="grisu-pocket-link" type="button" data-card="0.031524658203125">0.031524658203125</button> fails the <strong>closeness test</strong>. The round step walks 3154 → 3153, but then cannot tell whether 3152 is closer to <var>w</var>. The midpoint between the two candidates lies inside <var>w</var>’s ±1 unit uncertainty. The correct answer is 3152e−5.</li>
+          </ul>
+          <p>Grisu3 never guesses. When a candidate could be wrong, it rejects it, whether the candidate would have been right or not.</p>
+        </section>
+
+        <section id="map">
+          <p class="eyebrow">Part 2 · Exhaustive</p>
+          <h2>All 31,743 positive half-precision inputs at once</h2>
+          <p>Half precision has few enough values to run Grisu3 on all of them. Each pixel below is one positive value, one row per binade, with small numbers at the top. Adding bits to the DiyFp shrinks the unit, and the rejections shrink with it.</p>
+          <figure class="lab-figure" aria-labelledby="map-caption">
+            <div class="lab-controls">
+              <label for="map-q">DiyFp bits <var>q</var></label>
+              <input type="range" id="map-q" min="13" max="24" step="1" value="16">
+              <output id="map-q-out" for="map-q">16</output>
+            </div>
+            <div class="grisu-pocket-legend" id="map-legend" aria-live="polite"></div>
+            <div class="grisu-pocket-map-wrap"><canvas id="map-canvas" width="1024" height="248" role="img" aria-label="Map of Grisu3 results for every positive half-precision value"></canvas></div>
+            <p class="lab-readout" id="map-hover">Point at a pixel to see its value. Click it to load it into the card above.</p>
+            <div id="map-rates" class="grisu-pocket-svgbox"></div>
+            <figcaption id="map-caption">Green: accepted, always with the correct shortest and closest answer; the tests check all values at every <var>q</var> from 13 to 24. Orange: rejected by the closeness test. Dark red: rejected by the safe-zone test. The bar chart shows the rejection rate for each <var>q</var>.</figcaption>
+          </figure>
+          <p>The rejections do not go to zero. From <var>q</var> = 32 on, exactly 2008 values (6.33%) are still rejected, and more bits will never change that, because for these values the answer depends on an exact coincidence:</p>
+          <ul>
+            <li><strong>1024 exact ties.</strong> 0.15625 has two equally close shortest candidates, 1562e−4 and 1563e−4. Measured with even the smallest error, “which is closer” cannot be decided.</li>
+            <li><strong>492 answers exactly on a closed boundary.</strong> For 4112, the answer 411e1 = 4110 is exactly <var>m</var><sup>−</sup>. It is valid, because 4112’s significand is even. But Grisu3 can never prove that a point lies exactly on a boundary rather than just outside it.</li>
+            <li><strong>492 shorter decimals exactly on an open boundary.</strong> For 4108, 4110 is again a boundary, but the significand is odd, so 4110 does not read back as 4108. Grisu3 cannot rule it out, so it rejects.</li>
+          </ul>
+          <p>These coincidences need <var>v</var> or a boundary to hit a short decimal exactly. With 11-bit significands that happens often. With 53-bit ones it is rare: for random doubles, 80-bit or 96-bit arithmetic still rejects about 0.1%, compared with about 0.5% at 64 bits.</p>
+        </section>
+
+        <section id="debugger">
+          <p class="eyebrow">Part 3 · The 64-bit debugger</p>
+          <h2>Step through <code>fast-dtoa.cc</code></h2>
+          <p>This is the same algorithm with the real constants. Pick a number and step through it. The code panel is a JavaScript paraphrase of <code>Grisu3</code>, <code>DigitGen</code> and <code>RoundWeed</code> from double-conversion’s <code>fast-dtoa.cc</code>, with BigInt standing in for <code>uint64_t</code>. The values next to the code are live.</p>
+          <figure class="lab-figure grisu-pocket-debugger" aria-labelledby="dbg-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="dbg-chips" role="group" aria-label="Debugger examples"></div>
+              <form class="grisu-pocket-inline" id="dbg-form">
+                <label>Your number <input type="text" id="dbg-input" size="16" autocomplete="off" spellcheck="false" placeholder="e.g. 2/3"></label>
+                <button class="lab-button" type="submit">Debug</button>
+              </form>
+            </div>
+            <div class="lab-controls">
+              <button class="lab-button" type="button" id="dbg-prev">◀ Back</button>
+              <button class="lab-button primary" type="button" id="dbg-next">Step ▶</button>
+              <span class="grisu-pocket-counter" id="dbg-counter" aria-live="polite"></span>
+            </div>
+            <div class="lab-chips grisu-pocket-steps" id="dbg-steps" role="group" aria-label="Jump to step"></div>
+            <div class="grisu-pocket-dbg-grid">
+              <div class="grisu-pocket-dbg-main">
+                <h3 id="dbg-title"></h3>
+                <div id="dbg-body"></div>
+                <div id="dbg-visual" class="grisu-pocket-svgbox"></div>
+                <table class="grisu-pocket-regs" id="dbg-regs"></table>
+                <details class="grisu-pocket-details"><summary>Registers in hex</summary><div id="dbg-hex"></div></details>
+              </div>
+              <pre class="lab-code grisu-pocket-code" id="dbg-code" aria-label="Grisu3 code with the current lines highlighted"></pre>
+            </div>
+            <figcaption id="dbg-caption">Presets: 0.3 is the short case, 1/3 needs 16 digits, 5e-324 shows the round step walking 7 → 6 → 5, and 1e23 is rejected and falls back to the exact algorithm. The arrow keys ← and → step when focus is inside the figure.</figcaption>
+          </figure>
+        </section>
+
+        <section id="contracts">
+          <p class="eyebrow">Closing</p>
+          <h2>Three Grisus, three promises</h2>
+          <p>All three variants share the cached power and the rounded multiply. They differ in what they do with the one-unit uncertainty.</p>
+          <div class="grisu-pocket-table-wrap">
+            <table class="grisu-pocket-contracts" id="contract-table">
+              <thead><tr><th scope="col"></th><th scope="col">Grisu1</th><th scope="col">Grisu2</th><th scope="col">Grisu3</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Interval</th><td>not used</td><td>shrunk by 1 unit at each end</td><td>widened by 1 unit at each end, and the result checked against the shrunk one</td></tr>
+                <tr><th scope="row">DiyFp bits needed</th><td><var>q</var> ≥ <var>p</var> + 2</td><td><var>q</var> ≥ <var>p</var> + 3</td><td><var>q</var> ≥ <var>p</var> + 3</td></tr>
+                <tr><th scope="row">Promise</th><td>reads back</td><td>reads back; usually shortest</td><td>shortest and closest, or “cannot prove it”</td></tr>
+              </tbody>
+              <tbody id="contract-rows"></tbody>
+            </table>
+          </div>
+          <p>The Grisu2 column is the paper’s Figure 7, which has no rounding step, so it prints the top of its shrunk interval: <code>7e-324</code> is valid but not the closest. On 100,000 random doubles we measured Grisu2 shortest 99.9% of the time, but also closest only 63%. A rounding step, as in the paper’s “Grisu2b”, fixes most of that. For 1e23 the shortest answer lies exactly on the boundary, outside Grisu2’s shrunk interval, so Grisu2 prints 16 digits. Grisu3 rejects about 0.5% of random doubles. In our tests it never accepted a wrong output: we compared every accepted result with an exact reference, for tens of thousands of random doubles and for every half-precision value in the pocket version.</p>
+          <figure class="lab-figure" aria-labelledby="sample-caption">
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" id="sample-run">Run 10,000 random doubles</button>
+              <span id="sample-progress" aria-live="polite"></span>
+            </div>
+            <div class="lab-readout" id="sample-readout">Random 64-bit patterns, positive and finite. Each goes through Grisu3 and Grisu2, and the results are compared with JavaScript’s shortest output.</div>
+            <figcaption id="sample-caption">Runs in your browser with the same BigInt engine as the debugger.</figcaption>
+          </figure>
+          <p>In double-conversion, the shortest mode of <code>DoubleToAscii</code> calls <code>FastDtoa</code>, which is Grisu3. When that returns false, it calls <code>BignumDtoa</code>. The fast path handles the vast majority of inputs. The rare rejections cost a bignum computation but never a wrong digit. Later algorithms in this series remove the fallback by proving that their fixed-width arithmetic is always precise enough.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/grisu.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

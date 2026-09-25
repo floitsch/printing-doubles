@@ -1,0 +1,119 @@
+/* Pocket Grisu: page-specific styles. Every class is prefixed "grisu-pocket-". */
+
+.grisu-pocket-inline { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.grisu-pocket-svgbox { margin: 10px 0; max-width: 100%; overflow-x: auto; }
+.grisu-pocket-svgbox svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.grisu-pocket-eq { white-space: normal; line-height: 1.6; }
+.grisu-pocket-svgbox svg text { font-family: var(--mono); }
+.grisu-pocket-svgbox svg:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.grisu-pocket-ok { color: #1f7a45; font-weight: 600; }
+.grisu-pocket-bad { color: var(--red); font-weight: 600; }
+.grisu-pocket-int { color: var(--blue); }
+.grisu-pocket-frac { color: #5b6670; }
+.grisu-pocket-dec { color: var(--red); }
+.grisu-pocket-note { color: var(--muted); font-size: .92em; }
+.grisu-pocket-link { padding: 0; border: 0; border-bottom: 1px dashed currentColor; background: none; color: var(--blue); font: inherit; font-family: var(--mono); font-size: .95em; cursor: pointer; }
+.grisu-pocket-link:hover, .grisu-pocket-link:focus-visible { color: var(--red); }
+.lab-readout.grisu-pocket-multi { white-space: normal; }
+.grisu-pocket-details { margin-top: 12px; font: 12px/1.6 var(--mono); }
+.grisu-pocket-details summary { cursor: pointer; color: var(--muted); }
+.grisu-pocket-details table { margin-top: 8px; border-collapse: collapse; }
+.grisu-pocket-details td, .grisu-pocket-details th { padding: 2px 10px 2px 0; text-align: left; font-weight: 400; overflow-wrap: anywhere; }
+.grisu-pocket-details th { color: var(--muted); }
+
+/* SVG parts */
+.grisu-pocket-axis { stroke: var(--ink); stroke-width: 1.2; }
+.grisu-pocket-tooth { stroke: var(--ink); stroke-width: 1.4; opacity: .55; }
+.grisu-pocket-tooth-fit { stroke: #1f7a45; opacity: 1; stroke-width: 2; }
+.grisu-pocket-tooth-sel { stroke: var(--red); opacity: 1; stroke-width: 3; }
+.grisu-pocket-label { fill: var(--ink); font-size: 17px; }
+.grisu-pocket-label-muted { fill: var(--muted); font-size: 15px; }
+.grisu-pocket-label-red { fill: var(--red); font-size: 17px; font-weight: 600; }
+.grisu-pocket-label-blue { fill: var(--blue); font-size: 17px; }
+.grisu-pocket-label-green { fill: #1f7a45; font-size: 16px; }
+.grisu-pocket-window { fill: color-mix(in srgb, #2ea661 22%, transparent); stroke: #1f7a45; stroke-width: 1; }
+.grisu-pocket-cell { stroke: color-mix(in srgb, var(--ink) 35%, transparent); stroke-width: .6; }
+.grisu-pocket-cell-int0 { fill: color-mix(in srgb, var(--blue) 10%, var(--paper)); }
+.grisu-pocket-cell-int1 { fill: var(--blue); }
+.grisu-pocket-cell-frac0 { fill: var(--paper); }
+.grisu-pocket-cell-frac1 { fill: #5b6670; }
+.grisu-pocket-cell-dig0 { fill: color-mix(in srgb, var(--red) 12%, var(--paper)); }
+.grisu-pocket-cell-dig1 { fill: var(--red); }
+.grisu-pocket-cell-spare0 { fill: color-mix(in srgb, var(--acid) 40%, var(--paper)); }
+.grisu-pocket-cell-spare1 { fill: #9aa3aa; }
+.grisu-pocket-cell-sign1, .grisu-pocket-cell-exp1 { fill: var(--ink); }
+.grisu-pocket-cell-sign0, .grisu-pocket-cell-exp0 { fill: color-mix(in srgb, var(--ink) 8%, var(--paper)); }
+.grisu-pocket-cell-over { stroke: var(--red); stroke-width: 1.6; }
+.grisu-pocket-point { fill: var(--red); }
+.grisu-pocket-pointline { stroke: var(--red); stroke-width: 2; }
+.grisu-pocket-band { fill: color-mix(in srgb, var(--blue) 12%, transparent); stroke: var(--blue); stroke-width: 1; }
+.grisu-pocket-safe { fill: color-mix(in srgb, #2ea661 20%, transparent); stroke: #1f7a45; stroke-width: 1; stroke-dasharray: 4 3; }
+.grisu-pocket-blur { fill: color-mix(in srgb, var(--blue) 35%, transparent); }
+.grisu-pocket-cand { stroke: var(--red); stroke-width: 2.4; }
+.grisu-pocket-cand-old { stroke: var(--red); stroke-width: 1.4; opacity: .4; stroke-dasharray: 3 3; }
+.grisu-pocket-bar-a { fill: var(--blue); }
+.grisu-pocket-bar-b { fill: var(--red); }
+.grisu-pocket-bar-kept { fill: color-mix(in srgb, var(--blue) 18%, var(--paper)); stroke: var(--blue); }
+.grisu-pocket-bar-drop { fill: color-mix(in srgb, var(--ink) 6%, var(--paper)); stroke: var(--muted); stroke-dasharray: 4 3; }
+.grisu-pocket-bar-part { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
+.grisu-pocket-rate { fill: color-mix(in srgb, var(--ink) 25%, var(--paper)); }
+.grisu-pocket-rate-sel { fill: var(--red); }
+.grisu-pocket-rate-floor { stroke: var(--ink); stroke-dasharray: 4 3; }
+.grisu-pocket-light-ok { fill: #2ea661; }
+.grisu-pocket-light-no { fill: var(--red); }
+
+/* Hand-check card */
+.grisu-pocket-card { margin: 0; padding: 0; list-style: none; counter-reset: grisu-pocket-card; background: var(--paper); border: 1px solid var(--line); }
+.grisu-pocket-card > li { position: relative; display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 4px 14px; padding: 9px 14px 9px 44px; border-bottom: 1px solid var(--line); counter-increment: grisu-pocket-card; font-size: 15px; }
+.grisu-pocket-card > li:last-child { border-bottom: 0; }
+.grisu-pocket-card > li::before { content: counter(grisu-pocket-card); position: absolute; left: 12px; top: 10px; width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font: 500 11px var(--mono); }
+.grisu-pocket-card b { font: 600 12px/1.8 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.grisu-pocket-card span { overflow-wrap: anywhere; }
+.grisu-pocket-card code { font-size: .92em; }
+.grisu-pocket-card .grisu-pocket-stop { background: color-mix(in srgb, var(--acid) 45%, transparent); }
+.grisu-pocket-verdict { margin-top: 14px; padding: 12px 16px; border-left: 3px solid var(--ink); background: var(--paper); font-size: 15px; }
+.grisu-pocket-verdict.is-ok { border-left-color: #1f7a45; }
+.grisu-pocket-verdict.is-bad { border-left-color: var(--red); }
+.grisu-pocket-verdict p { margin: 4px 0; }
+
+/* Map */
+.grisu-pocket-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 10px; font: 12px var(--mono); }
+.grisu-pocket-legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--line); }
+.grisu-pocket-map-wrap { position: relative; border: 1px solid var(--line); background: var(--paper); }
+#map-canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; cursor: crosshair; touch-action: manipulation; }
+
+/* Debugger */
+.grisu-pocket-counter { color: var(--muted); }
+.grisu-pocket-steps { margin-bottom: 14px; }
+.grisu-pocket-steps button { font-size: 10px; padding: 4px 6px; }
+.grisu-pocket-dbg-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.grisu-pocket-dbg-main h3 { margin-top: 0; }
+.grisu-pocket-dbg-main p { font-size: 15px; }
+.grisu-pocket-code { position: relative; margin: 0; font-size: 12px; line-height: 1.5; white-space: pre; max-height: 440px; overflow: auto; }
+.grisu-pocket-code .grisu-pocket-line { display: block; padding: 0 6px; border-left: 3px solid transparent; }
+.grisu-pocket-code .grisu-pocket-line.hl { background: color-mix(in srgb, var(--acid) 22%, transparent); border-left-color: var(--acid); color: #fff; }
+.grisu-pocket-code .grisu-pocket-ln { display: inline-block; width: 2.2em; color: #6f7c88; user-select: none; }
+.grisu-pocket-code .grisu-pocket-live { color: var(--acid); }
+.grisu-pocket-code .grisu-pocket-cm { color: #8b98a5; }
+.grisu-pocket-regs { width: 100%; margin-top: 12px; border-collapse: collapse; font: 12.5px/1.45 var(--mono); }
+.grisu-pocket-regs th, .grisu-pocket-regs td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.grisu-pocket-regs th { font-weight: 500; white-space: nowrap; text-transform: none; font-size: 12.5px; letter-spacing: 0; }
+.grisu-pocket-regs td:last-child { color: var(--muted); font-family: var(--sans); font-size: 13px; }
+.grisu-pocket-rows { width: 100%; border-collapse: collapse; font: 12px/1.4 var(--mono); }
+.grisu-pocket-rows th, .grisu-pocket-rows td { padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); text-align: right; }
+.grisu-pocket-rows th { color: var(--muted); font-weight: 500; text-transform: none; }
+.grisu-pocket-rows td:nth-child(2) { text-align: left; color: var(--red); }
+.grisu-pocket-rows tr.is-current td { background: color-mix(in srgb, var(--acid) 35%, transparent); }
+
+/* Contracts */
+.grisu-pocket-table-wrap { max-width: 100%; overflow-x: auto; margin: 24px 0; }
+.grisu-pocket-contracts { width: 100%; border-collapse: collapse; font-size: 14px; }
+.grisu-pocket-contracts th, .grisu-pocket-contracts td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.grisu-pocket-contracts thead th { border-bottom: 1px solid var(--ink); font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.grisu-pocket-contracts th[scope="row"] { font-weight: 600; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 13px; }
+.grisu-pocket-contracts td code { font-size: 12.5px; overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .grisu-pocket-card > li { grid-template-columns: minmax(0, 1fr); padding-left: 40px; font-size: 14px; }
+  .grisu-pocket-code { font-size: 11px; }
+}
