@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Dragonbox explained through one magnified window: scale the rounding interval to a width between 100 and 1000, then read the answer from the last three digits of one integer.">
+  <title>Dragonbox · Three digits decide · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/dragonbox-window.css">
+  <script type="module" src="./js/dragonbox-window.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main id="main">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Dragonbox / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./dragonbox-clock.html">compare with approach A</a></p>
+      <h1>Three digits decide</h1>
+      <p class="chapter-deck">Dragonbox magnifies a double until its rounding interval is between 100 and 1000 units wide. After that, the last three digits of one integer decide the output.</p>
+      <p class="lab-pitch">A straight number line seen through six magnifier frames, then a κ knob that turns the same picture into Schubfach's, then a stepper through a line-by-line transcription of the real <code>compute_nearest</code>.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Dragonbox</strong><a href="#one-number">One number, not three</a><a href="#window">The window</a><a href="#rare">Rare cases</a><a href="#kappa">The κ knob</a><a href="#shorter">Powers of two</a><a href="#code">The real code</a></aside>
+      <article class="chapter">
+
+        <section id="one-number">
+          <p class="eyebrow">Dragonbox · Junekey Jeon, 2020–2024</p>
+          <h2>One number, not three</h2>
+          <p>A shortest-output printer has one job: find the shortest decimal inside the double's <em>rounding interval</em>. If several have that length, it picks the one closest to the double. Schubfach, Dragonbox's direct ancestor, computes three numbers for this: the lower end x, the centre y and the upper end z.</p>
+          <p>Dragonbox computes only one: the upper end z. It then reads the answer from the last three digits of ⌊z⌋. The trick is to choose the magnification so that three digits are enough.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is w = f<sub>c</sub> · 2<sup>e</sup> with an integer significand f<sub>c</sub> &lt; 2<sup>53</sup>. Its neighbours are (f<sub>c</sub> ± 1) · 2<sup>e</sup>.</p>
+            <p>A parser rounds every decimal between the two midpoints to w. So the rounding interval is [w − 2<sup>e−1</sup>, w + 2<sup>e−1</sup>], and its width is exactly 2<sup>e</sup>.</p>
+            <p>A decimal exactly on a midpoint is a tie. Ties go to the even significand, so the interval includes its ends if f<sub>c</sub> is even and excludes them if f<sub>c</sub> is odd.</p>
+            <p>Powers of two are the exception. There the lower neighbour is only half as far away; <a href="#shorter">see below</a>.</p>
+          </div>
+        </section>
+
+        <section id="window">
+          <p class="eyebrow">Explorable · six frames</p>
+          <h2>The window</h2>
+          <p>Pick a double and step through the frames. Each frame magnifies further until only a 1000-unit window around z is left.</p>
+          <figure class="lab-figure dbw-figure" id="dbw-window-figure">
+            <div class="lab-controls">
+              <label for="dbw-input">Double</label>
+              <input id="dbw-input" type="text" inputmode="decimal" spellcheck="false" autocomplete="off" value="0.1" size="22">
+              <button class="lab-button primary" type="button" id="dbw-show">Show</button>
+              <button class="lab-button" type="button" id="dbw-down" aria-label="Previous double (one ulp down)">− 1 ulp</button>
+              <button class="lab-button" type="button" id="dbw-up" aria-label="Next double (one ulp up)">+ 1 ulp</button>
+              <button class="lab-button" type="button" id="dbw-random">Random double</button>
+            </div>
+            <div class="lab-chips dbw-presets" id="dbw-presets" aria-label="Preset doubles"></div>
+            <p class="dbw-error" id="dbw-error" role="alert" hidden></p>
+            <div class="dbw-frames" role="group" aria-label="Magnifier frames">
+              <button class="lab-button" type="button" id="dbw-prev-frame" aria-label="Previous frame">◀</button>
+              <button class="lab-button" type="button" id="dbw-next-frame" aria-label="Next frame">▶</button>
+              <div class="lab-chips" id="dbw-frame-chips"></div>
+            </div>
+            <div class="dbw-svg" id="dbw-window-svg"></div>
+            <div class="dbw-frame-text" id="dbw-frame-text" aria-live="polite"></div>
+            <div class="dbw-table-wrap" tabindex="0" aria-label="Readout for the current double"><table class="dbw-readout" id="dbw-readout"></table></div>
+            <figcaption>Drawings are not to scale across frames: frame 1 multiplies by 10<sup>k</sup>, which can be anywhere from 10<sup>−290</sup> to 10<sup>326</sup>. Scaled values are shown with two decimals, truncated. The algorithm never computes x or y; they appear dashed.</figcaption>
+          </figure>
+
+          <h3>Why 100 to 1000?</h3>
+          <p>Multiplying by 10<sup>k</sup> with k = 2 − ⌊e · log<sub>10</sub> 2⌋ turns the width 2<sup>e</sup> into δ = 2<sup>e</sup> · 10<sup>k</sup> = 10<sup>2 + frac(e·log<sub>10</sub>2)</sup>, which always lies in [100, 1000). This magnification guarantees two things:</p>
+          <ul>
+            <li><strong>δ &lt; 1000</strong>: the interval contains at most one multiple of 1000. If it contains one, that multiple is the shortest candidate.</li>
+            <li><strong>δ ≥ 100</strong>: the interval contains at least one multiple of 100. So when no multiple of 1000 fits, the multiple of 100 nearest the centre is the answer, with one more digit.</li>
+          </ul>
+          <p>The only multiple of 1000 that can be inside is 1000 · ⌊z/1000⌋, the last one at or below z. Its distance below z is r plus the fractional part of z, where r = ⌊z⌋ mod 1000. So the test “is that multiple inside?” becomes <code>r &lt; δ<sub>i</sub></code>, where δ<sub>i</sub> = ⌊δ⌋. Both are integers, so this is one integer comparison.</p>
+          <div class="equation dbw-eq">r &lt; δ<sub>i</sub> ⇒ output ⌊z/1000⌋ · 10<sup>−k+3</sup></div>
+          <p>Trailing zeros of ⌊z/1000⌋ are then stripped (0.1 comes out as 10<sup>15</sup> · 10<sup>−16</sup> first). Otherwise the centre is y = z − δ/2. Rounding it to the nearest multiple of 100 gives the next digit, again using only integers.</p>
+          <div class="equation dbw-eq">dist = r − ⌊δ<sub>i</sub>/2⌋ + 50, &nbsp; digit = ⌊dist/100⌋</div>
+          <p>The output is (10 · ⌊z/1000⌋ + digit) · 10<sup>−k+2</sup>. It never ends in 0: a multiple of 1000 inside the interval would already have been found. Both formulas drop the fractional parts of z and δ. That is harmless except when the integer comparison is too close to call. Those cases are in the next section.</p>
+        </section>
+
+        <section id="rare">
+          <p class="eyebrow">Deep dive · optional</p>
+          <h2>Rare cases</h2>
+          <details class="dbw-details" id="dbw-rare-details">
+            <summary>The fog of fractions: when integer parts are not enough</summary>
+            <p>z and δ are known only through their integer parts ⌊z⌋ and δ<sub>i</sub>. Each one carries up to one unit of “fog”, its unknown fractional part. The lower end x = z − δ therefore lies somewhere in a 2-unit band around ⌊z⌋ − δ<sub>i</sub>. The same is true of the centre y.</p>
+            <p>Usually the band is far from the tick being tested, and the fog doesn't matter. Only three situations need more information. None of them needs a full product; the answer is one bit.</p>
+            <figure class="lab-figure dbw-figure">
+              <div class="lab-chips" id="dbw-fog-chips" aria-label="Rare cases"></div>
+              <div class="dbw-svg" id="dbw-fog-svg"></div>
+              <div class="lab-controls dbw-fog-controls"><button class="lab-button primary" type="button" id="dbw-fog-reveal" aria-pressed="false">Ask for one more bit</button></div>
+              <div class="dbw-frame-text" id="dbw-fog-text" aria-live="polite"></div>
+              <figcaption>One scaled unit per tick. The fog band shows everything the integer parts allow; the solid mark is the exact value.</figcaption>
+            </figure>
+            <p><strong>Why a parity bit is enough.</strong> The tick being tested, 1000 · s, is even. When r = δ<sub>i</sub>, ⌊x⌋ must be either 1000 · s or 1000 · s − 1, and these have different parities. The parity of ⌊x⌋ sits in the low bits of the product (2f<sub>c</sub> − 1) · φ<sub>k</sub>, which <code>compute_mul_parity</code> computes without the top word. The same argument works for the centre y and the product 2f<sub>c</sub> · φ<sub>k</sub>. The same call also reports whether the value is an exact integer, which settles closed ends and exact ties.</p>
+            <p id="dbw-rare-freq"></p>
+          </details>
+        </section>
+
+        <section id="kappa">
+          <p class="eyebrow">Explorable · why three digits</p>
+          <h2>The κ knob</h2>
+          <p>The “2” in k = 2 − ⌊e · log<sub>10</sub> 2⌋ is a parameter the paper calls κ. At κ = 0 the width lies in [1, 10). That is Schubfach's magnification, with coarse ticks every 10 and fine ticks every 1. Each extra step of κ magnifies ten times more, so the fog of one unit shrinks tenfold relative to the ticks. Turn the knob to watch the same double at each magnification.</p>
+          <figure class="lab-figure dbw-figure">
+            <div class="lab-controls">
+              <label for="dbw-kappa">κ <output id="dbw-kappa-out" for="dbw-kappa">2</output></label>
+              <input id="dbw-kappa" type="range" min="0" max="3" step="1" value="2" aria-describedby="dbw-kappa-text">
+              <span class="dbw-using" id="dbw-kappa-using"></span>
+            </div>
+            <div class="dbw-svg" id="dbw-kappa-svg"></div>
+            <div class="dbw-frame-text" id="dbw-kappa-text" aria-live="polite"></div>
+            <div class="dbw-kappa-panels">
+              <div>
+                <h4 class="dbw-panel-title">How often the integers can't decide</h4>
+                <div class="dbw-svg" id="dbw-rates-svg"></div>
+              </div>
+              <div>
+                <h4 class="dbw-panel-title">Does the shifted significand fit 64 bits?</h4>
+                <div class="dbw-svg" id="dbw-register-svg"></div>
+              </div>
+            </div>
+            <figcaption id="dbw-kappa-caption"></figcaption>
+          </figure>
+          <p><strong>So why stop at κ = 2?</strong> The code multiplies u = (2f<sub>c</sub> + 1) · 2<sup>β</sup> by the 128-bit cache entry, and u must fit a 64-bit register. 2f<sub>c</sub> + 1 needs 54 bits, and the shift β grows with κ, reaching ⌊(κ + 1) · log<sub>2</sub> 10⌋. The paper states the condition as p + 2 + β &lt; 64 with p = 52. κ = 2 is the largest value that satisfies it (at most 63 bits); κ = 3 would need up to 67 bits.</p>
+          <p><strong>Relation to Schubfach.</strong> Schubfach works at the κ = 0 magnification, with width in [1, 10). The integer parts are too coarse to decide there, so it computes x, y and z, each with its own 128-bit multiplication. Dragonbox uses the same kind of cached powers of ten, but magnifies by two more decimal digits. That leaves one multiplication for z, a shift for δ, and a parity product in well under 1% of inputs. The output is identical at every κ, because the coarse and fine grids are the same decimal grids. Only the integer arithmetic that finds the answer changes.</p>
+        </section>
+
+        <section id="shorter">
+          <p class="eyebrow">Special case · 2046 doubles</p>
+          <h2>Powers of two</h2>
+          <p>When the stored fraction is zero (f<sub>c</sub> = 2<sup>52</sup>), the neighbour below is only half as far away as the neighbour above. The interval becomes [w − 2<sup>e−2</sup>, w + 2<sup>e−1</sup>], with width ¾ · 2<sup>e</sup>. Dragonbox handles this before the main path and “proceeds like Schubfach”. It scales so the width lies in [1, 10), with k = −⌊log<sub>10</sub>(¾ · 2<sup>e</sup>)⌋. Here f<sub>c</sub> is a power of two, so multiplying by it is just a shift of the cached constant. Both ends therefore come almost for free. The code tries multiples of 10 first; if none fits, it rounds the centre to the nearest integer.</p>
+          <figure class="lab-figure dbw-figure">
+            <div class="lab-chips" id="dbw-shorter-chips" aria-label="Powers of two"></div>
+            <div class="dbw-svg" id="dbw-shorter-svg"></div>
+            <div class="dbw-frame-text" id="dbw-shorter-text" aria-live="polite"></div>
+            <figcaption>Scaled by 10<sup>k</sup>; one unit per small tick, multiples of 10 tall. The dashed outline is the symmetric interval a careless implementation would use.</figcaption>
+          </figure>
+        </section>
+
+        <section id="code">
+          <p class="eyebrow">Stepper · compute_nearest</p>
+          <h2>The real code</h2>
+          <p>Below is a line-by-line JavaScript transcription of <code>impl::compute_nearest</code> from <a href="https://github.com/jk-jeon/dragonbox/blob/master/include/dragonbox/dragonbox.h">dragonbox.h</a>. It keeps the upstream names, for binary64 with the default policies. Step through it for the double chosen above; the variables update as you go. The page runs this same code, with BigInt standing in for the 64- and 128-bit integers.</p>
+          <figure class="lab-figure dbw-figure dbw-code-figure">
+            <div class="lab-controls">
+              <span class="dbw-using" id="dbw-code-using"></span>
+              <button class="lab-button" type="button" id="dbw-step-reset">Reset</button>
+              <button class="lab-button" type="button" id="dbw-step-back">◀ Step</button>
+              <button class="lab-button primary" type="button" id="dbw-step-next">Step ▶</button>
+              <button class="lab-button" type="button" id="dbw-step-end">Run to end</button>
+              <span class="dbw-stepcount" id="dbw-step-count" aria-live="polite"></span>
+            </div>
+            <div class="dbw-code-grid">
+              <pre class="lab-code dbw-code" id="dbw-code" tabindex="0" aria-label="Transcribed source of compute_nearest"></pre>
+              <div class="dbw-vars" id="dbw-vars" aria-live="polite"></div>
+            </div>
+            <figcaption>The highlighted line is the one just executed; the note beside it shows the value of its condition.</figcaption>
+          </figure>
+
+          <h3>One multiplication, three words</h3>
+          <p>The cache entry φ<sub>k</sub> is 10<sup>k</sup> scaled to a 128-bit integer. Multiplying it by the 64-bit u = (2f<sub>c</sub> + 1) · 2<sup>β</sup> gives 192 bits. The top word is ⌊z⌋. The middle word is the start of z's fraction: if it is zero, z is an integer. The low word is discarded. δ<sub>i</sub> needs no multiplication at all: it is the cache's high word shifted right by 63 − β.</p>
+          <div class="dbw-limbs" id="dbw-limbs"></div>
+
+          <h3>Where the inputs go</h3>
+          <p>Line thickness is proportional to how many inputs take each branch. The sample is <span id="dbw-flow-n"></span> random bit patterns, seeded and recomputed by this page's tests. The red path is the double chosen above.</p>
+          <figure class="lab-figure dbw-figure">
+            <div class="dbw-flow-scroll" tabindex="0" aria-label="Flowchart of compute_nearest (scrolls sideways)"><div class="dbw-svg" id="dbw-flow-svg"></div></div>
+            <figcaption id="dbw-flow-caption"></figcaption>
+          </figure>
+
+          <details class="dbw-details">
+            <summary>Sidebar: branchless trailing-zero removal</summary>
+            <p>On the coarse path the significand can end in zeros (0.1 comes out as 10<sup>15</sup> · 10<sup>−16</sup>). Upstream removes them without a division loop. It binary-searches 8, 4, 2 and 1 zeros. Each test multiplies by the modular inverse of 5<sup>n</sup> (mod 2<sup>64</sup>), rotates right by n bits, and compares with ⌊2<sup>64</sup>/10<sup>n</sup>⌋ + 1. The result is below that bound exactly when the significand is divisible by 10<sup>n</sup>, and then it equals the quotient. Four multiplications remove up to 15 zeros. (Idea credited upstream to reddit users r/pigeon768 and r/TheoreticalDumbass; see <a href="https://github.com/jk-jeon/rtz_benchmark">rtz_benchmark</a>.)</p>
+            <div id="dbw-rtz"></div>
+          </details>
+          <details class="dbw-details">
+            <summary>Sidebar: full cache or compact cache</summary>
+            <p>The full cache stores φ<sub>k</sub> = ⌈10<sup>k</sup> · 2<sup>127 − ⌊k·log<sub>2</sub>10⌋</sup>⌉ for k = −292 … 326. That is <span id="dbw-full-size"></span>. The compact policy keeps every 27th entry plus the powers 5<sup>0</sup> … 5<sup>26</sup>, <span id="dbw-compact-size"></span> in total. It recovers an entry by multiplying the base entry by 5<sup>offset</sup>, shifting, and adding 1. A recovered entry can be slightly larger in its last bits than the full table's. Both policies give identical output; this page's tests check that on random doubles and every power of two.</p>
+            <div id="dbw-cache"></div>
+          </details>
+          <details class="dbw-details">
+            <summary>Sidebar: policies</summary>
+            <ul class="dbw-policies">
+              <li><strong>sign</strong>: return the sign or ignore it.</li>
+              <li><strong>trailing_zero</strong>: remove (default), remove_compact, report, or ignore.</li>
+              <li><strong>decimal_to_binary_rounding</strong>: which parser the output must round-trip through. nearest_to_even is the default and gives the interval above. Other nearest modes change which ends are included. The directed modes (toward zero, toward ±∞, away from zero) use separate one-sided routines.</li>
+              <li><strong>binary_to_decimal_rounding</strong>: the tie rule on the fine path (to_even by default, to_odd, away_from_zero, toward_zero). <code>do_not_care</code> skips the “closest” step: still shortest and round-tripping, but not necessarily closest.</li>
+              <li><strong>cache</strong>: full or compact, as above.</li>
+            </ul>
+          </details>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/dragonbox.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
