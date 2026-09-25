@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="A detailed executable account of Ryū: common integer boundaries, powers of five, wide multiplication, decimal digit removal, and rounding.">
-  <title>Ryū: make the decimal grid coarser until it would miss · Printing doubles</title>
+  <title>Ryū: remove decimal places while an answer survives · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
   <script type="module" src="../js/ryu.js"></script>
 </head>
 <body>
@@ -13,14 +15,28 @@
   <main>
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part III · Fixed-width conversion</p>
-      <h1>Ryū: make the decimal grid coarser until it would miss</h1>
-      <p class="chapter-deck">Ryū first places the complete parsing interval on a fine decimal integer grid. It then groups grid cells by ten, removing one decimal digit of resolution each time. The last grid that still contains an admissible integer determines the shortest result.</p>
+      <h1>Ryū: remove decimal places while an answer survives</h1>
+      <p class="chapter-deck">Ryū starts with enough decimal precision. It removes a place from the whole interval of acceptable answers, stopping when one more removal would leave no answer.</p>
       <div class="chapter-meta"><span>Chapter 7</span><span>PLDI 2018</span><span>Fixed width</span><span>No fallback</span><span>Executable exact specification</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 7</strong><a href="#change">Resolution laboratory</a><a href="#boundaries">Integer boundaries</a><a href="#scale">Decimal projection</a><a href="#pow5">Powers of five</a><a href="#wide">Wide multiplication</a><a href="#remove">Remove digits</a><a href="#round">Rounding</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 7</strong><a href="#idea-ryu">Start with a small example</a><a href="#change">Resolution laboratory</a><a href="#boundaries">Integer boundaries</a><a href="#scale">Decimal projection</a><a href="#pow5">Powers of five</a><a href="#wide">Wide multiplication</a><a href="#remove">Remove digits</a><a href="#round">Rounding</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
+        <section id="idea-ryu" class="worked-intro">
+          <p class="eyebrow">Ryū · Shorten from the right</p>
+          <h2>Cross out a decimal place. Does any answer survive?</h2>
+          <p class="mini-context">Our small example uses <strong>8 significant binary bits</strong>. The stored value is 6.28125. Decimals strictly between 6.265625 and 6.296875 round back to it; the shortest, closest choice is 6.28. <a href="./one-number.html#start">Start with the rounding interval</a>. The detailed sections below use binary64.</p>
+          <p>Ryū starts with enough decimal places and then removes the ones it does not need. With three places after the point, the decimals inside our interval run from <strong>6.266 through 6.296</strong>, in steps of 0.001.</p>
+          <p>Write these as integers, with the decimal point’s position kept separately: <strong>6266 through 6296, each divided by 1000</strong>. Only the two ends need to be stored.</p>
+          <p>Which of these decimals can be written with one fewer place? The ones ending in zero: <strong>6.270, 6.280, and 6.290</strong>. In integer form, keep 6270, 6280, and 6290, then divide by ten. We get 627, 628, and 629, now each divided by 100.</p>
+          <div class="worked-visual" data-lesson="ryu"><p>Thousandths: 6266…6296. Hundredths: 627…629. Tenths: empty. Choose 628 × 0.01 = 6.28.</p></div>
+          <p>Try removing another place. None of 627, 628, or 629 ends in zero, so no answer survives at tenths. Stop at hundredths and choose 628, meaning 6.28.</p>
+          <p><strong>Ryū shortens the set of possible answers.</strong> It keeps track of the interval while removing digits; simply truncating one guessed string would not do that.</p>
+          <details class="story-detail"><summary>Where does the initial integer interval come from?</summary><p>In this small example, multiply the boundaries by 1000: 6265.625 and 6296.875. The integers strictly between them are 6266 through 6296. In Ryū, the input’s binary exponent determines a sufficiently fine starting decimal scale. Cached powers of five and binary shifts produce the necessary integer information with bounded machine arithmetic. The production loop keeps endpoint and discarded-digit flags; our picture shows their exact set meaning.</p></details>
+          <details class="story-detail"><summary>Do a power-of-five multiply and a binary shift by hand</summary><p>For our value, thousandths require the integer part of <code>201 × 1000 / 32</code>. Factor 1000 into 8 × 125 and cancel the 8 against 32. What remains is <code>201 × 125 / 4</code>. The 125 is a power of five: 5³.</p><div class="lesson-scale-math"><span>Multiply by the scale’s odd part</span><code>201 × 125 = 25125</code><span>Divide by 4: separate the last two binary bits</span><div class="lesson-bit-cut"><div><code>1100010001001</code><small>kept bits: integer 6281</small></div><div><code>01</code><small>remainder 1 of 4</small></div></div></div><p>The quotient is 6281, and the remainder says the exact result is a quarter above it. For the boundaries, the same cancellation gives <code>401 × 125 / 8 = 6265 + 5/8</code> and <code>403 × 125 / 8 = 6296 + 7/8</code>. So the allowed thousandth integers are 6266 through 6296.</p><p>No floating-point multiplication was needed. For real doubles the powers are larger, and some scales need reciprocals. The hard part of Ryū’s proof is showing how many multiplier bits suffice, and which remainder facts must be preserved.</p></details>
+          <p class="story-bridge">Dragon grows a prefix until stopping is safe. Ryū begins with sufficient precision and removes what it can. <a href="./ryu.html#boundaries">Continue to Ryū’s scaling and endpoint bookkeeping →</a></p>
+        </section>
         <section id="change">
           <p class="eyebrow">7.1 · The organizing change</p>
           <h2>Begin at a fine decimal grid and move outward</h2>

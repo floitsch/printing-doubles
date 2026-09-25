@@ -6,6 +6,8 @@
   <meta name="description" content="A detailed, executable presentation of Coonen's economical binary-to-decimal conversion algorithm.">
   <title>Coonen: scale once, round once · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
   <script type="module" src="../js/coonen.js"></script>
 </head>
 <body>
@@ -14,13 +16,24 @@
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
       <h1>Coonen: scale once, round once</h1>
-      <p class="chapter-deck">Coonen replaces complete exact expansion with a short computation in an extended binary format: estimate a decimal decade, scale the input into an integer range, and perform the requested rounding once.</p>
+      <p class="chapter-deck">Coonen begins with a requested number of significant digits. Scale the value into that many integer places, round, then restore the decimal point; the challenge is controlling binary scaling error.</p>
       <div class="chapter-meta"><span>Chapter 3</span><span>1984 dissertation</span><span>Fixed precision</span><span>Executable control</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 3</strong><a href="#contract">The contract</a><a href="#baseline">What it replaces</a><a href="#algorithm-b">Algorithm B</a><a href="#execution">Worked execution</a><a href="#reciprocal">Division by multiplication</a><a href="#support">L, S, P, and Q</a><a href="#accuracy">Accuracy</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 3</strong><a href="#idea-coonen">Start with a small example</a><a href="#contract">The contract</a><a href="#baseline">What it replaces</a><a href="#algorithm-b">Algorithm B</a><a href="#execution">Worked execution</a><a href="#reciprocal">Division by multiplication</a><a href="#support">L, S, P, and Q</a><a href="#accuracy">Accuracy</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
+        <section id="idea-coonen" class="worked-intro">
+          <p class="eyebrow">Coonen · A different question</p>
+          <h2>What if the caller supplies the number of digits?</h2>
+          <p class="mini-context">Our small example uses <strong>8 significant binary bits</strong>. The stored value is 6.28125. Decimals strictly between 6.265625 and 6.296875 round back to it; the shortest, closest choice is 6.28. <a href="./one-number.html#start">Start with the rounding interval</a>. The detailed sections below use binary64.</p>
+          <p>The earlier algorithms find how many digits are needed. Coonen starts with a request such as <strong>“give me four significant digits.”</strong></p>
+          <p>For 6.28125, move the decimal point three places right: 6281.25. Round to the integer 6281, then move the point back: <strong>6.281</strong>. The requested length takes the place of a shortest-answer search.</p>
+          <div class="worked-visual" data-lesson="coonen"><p>Four digits: 6.28125 × 1000 → 6281.25 → round to 6281 → divide by 1000 → 6.281.</p></div>
+          <p>The difficulty is carrying out the scaling accurately with a limited number of binary bits. Coonen’s algorithm controls the extra error introduced by this calculation.</p>
+          <p class="story-note">The picture shows ideal decimal rounding. The full chapter explains Algorithm B’s error bounds.</p>
+          <p class="story-bridge"><a href="./coonen.html#contract">Continue to requested-digit conversion and scaling error →</a></p>
+        </section>
         <section id="contract">
           <p class="eyebrow">3.1 · Output contract</p>
           <h2>Accurate and economical digit generation</h2>

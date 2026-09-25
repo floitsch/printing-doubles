@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="A detailed executable account of Dragonbox: Schubfach geometry, large and small divisors, shorter intervals, parity tests, and policy-based output.">
-  <title>Dragonbox: schedule Schubfach’s decisions around one product · Printing doubles</title>
+  <title>Dragonbox: use the remainder as a distance · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
   <script type="module" src="../js/dragonbox.js"></script>
 </head>
 <body>
@@ -13,14 +15,26 @@
   <main>
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part III · Fixed-width conversion</p>
-      <h1>Dragonbox: schedule Schubfach’s decisions around one product</h1>
-      <p class="chapter-deck">Dragonbox inherits Schubfach’s bounded candidate set. Its contribution is an execution arrangement: one cached product supplies a coarse attempt, the failed attempt’s remainder supplies a one-digit refinement, and output policies remain outside candidate selection.</p>
+      <h1>Dragonbox: use the remainder as a distance</h1>
+      <p class="chapter-deck">Dragonbox tests a short candidate by measuring backward from the interval’s right edge. Division supplies both the candidate and that distance; a failed attempt leaves useful information for the next digit.</p>
       <div class="chapter-meta"><span>Chapter 9</span><span>2020–2024</span><span>Fixed width</span><span>Policy interface</span><span>Executable exact policy model</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 9</strong><a href="#inheritance">What is inherited</a><a href="#routing">Routing laboratory</a><a href="#window">Multiplier window</a><a href="#divisors">Two divisors</a><a href="#large">Large path</a><a href="#small">Small path</a><a href="#shorter">Shorter interval</a><a href="#policies">Policies</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 9</strong><a href="#idea-dragonbox">Start with a small example</a><a href="#inheritance">What is inherited</a><a href="#routing">Routing laboratory</a><a href="#window">Multiplier window</a><a href="#divisors">Two divisors</a><a href="#large">Large path</a><a href="#small">Small path</a><a href="#shorter">Shorter interval</a><a href="#policies">Policies</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
+        <section id="idea-dragonbox" class="worked-intro">
+          <p class="eyebrow">Dragonbox · Measure from the right</p>
+          <h2>The division remainder is a distance</h2>
+          <p class="mini-context">Our small example uses <strong>8 significant binary bits</strong>. The stored value is 6.28125. Decimals strictly between 6.265625 and 6.296875 round back to it; the shortest, closest choice is 6.28. <a href="./one-number.html#start">Start with the rounding interval</a>. The detailed sections below use binary64.</p>
+          <p>Dragonbox builds on Schubfach’s choice of spacings. To test tenths, start at the interval’s <strong>right edge</strong> and measure back to the first tenth on its left. If that distance is less than the interval’s width, the tenth is inside.</p>
+          <p>Here, the right edge is 6.296875. The first tenth to its left is 6.2, a distance of 0.096875. That is greater than the interval’s width, 0.03125, so 6.2 is outside. The next tenth, 6.3, is past the right edge. Tenths fail.</p>
+          <div class="worked-visual" data-lesson="dragonbox"><p>Right edge 6.296875 = 62 × 0.1 + 0.096875. The remainder, 0.096875, is greater than the interval width, 0.03125. Tenths fail; try hundredths.</p></div>
+          <p>Division gives us both facts at once. There are 62 complete tenths before the right edge, with 0.096875 left over. The <strong>quotient, 62, gives the candidate 6.2</strong>. The <strong>remainder, 0.096875, is the distance back to it</strong>.</p>
+          <p>If tenths fail, Dragonbox reuses this remainder to find the next digit. It does not need to start the scaling calculation again.</p>
+          <details class="story-detail"><summary>How does the remainder give the next digit?</summary><p>Our interval is symmetric, so the stored value is half the width left of its right edge. Subtract that half-width from the remainder: <code>0.096875 − 0.015625 = 0.08125</code>. This is the distance from 6.2 to the stored value.</p><p>The nearest hundredth to that distance is 0.08. Add it to 6.2 to get <strong>6.28</strong>.</p><p>In the binary64 implementation, a larger scale turns these into tests using divisors 1000 and 100. For this example, multiplying by 10000 would give <code>62968.75 = 62 × 1000 + 968.75</code>, with width 312.5. The comparison is unchanged.</p><p>Actual Dragonbox also needs tests for exact endpoints and ties, and a separate path for asymmetric intervals. The diagram shows the distance calculation those tests implement.</p></details>
+          <p class="story-bridge">The diagram uses exact distances to explain the large- and small-divisor tests. <a href="./dragonbox.html#window">Continue to the bounded products that implement them →</a></p>
+        </section>
         <section id="inheritance">
           <p class="eyebrow">9.1 · Relation to Schubfach</p>
           <h2>The candidate theorem remains the foundation</h2>

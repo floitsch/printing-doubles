@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Understand double-to-decimal algorithms by working through one small binary number, with a different visual explanation for each idea.">
+  <title>One number, different ways to print it · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#start">Skip to the explanation</a>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav aria-label="Main navigation"><a href="../index.html">Overview</a><a href="./index.html">Chapters</a><a href="../index.html#sources">Sources</a></nav></header>
+  <main>
+    <section class="chapter-hero story-hero">
+      <p class="breadcrumbs">Start here · The ideas before the machinery</p>
+      <h1>One number.<br>Different ways<br>to print it.</h1>
+      <p class="chapter-deck">How can a computer print fewer digits and still recover the same binary value? Follow one small example through the algorithms, and see how each knows when it has enough digits.</p>
+      <a class="button" href="#start">Start with 6.28125 <span aria-hidden="true">↓</span></a>
+    </section>
+    <div class="chapter-layout story-layout">
+      <aside class="chapter-toc"><strong>A first reading</strong><a href="#start">The task</a><a href="#idea-dragon">Dragon: build digits</a><a href="#idea-ryu">Ryū: remove digits</a><a href="#idea-schubfach">Schubfach: skip the search</a><a href="#idea-dragonbox">Dragonbox: measure backward</a><a href="#idea-grisu">Grisu: allow for error</a><a href="#idea-errol">Errol: keep the correction</a><a href="#idea-coonen">Coonen: fill digit places</a><a href="#beyond">The remaining machinery</a></aside>
+      <article class="chapter story">
+        <section id="start">
+          <p class="eyebrow">The task</p>
+          <h2>Print fewer digits. Read back the same value.</h2>
+          <p class="lead">When a computer reads a decimal, it rounds to the nearest value its binary format can store. Several different decimals can therefore round to the same stored value.</p>
+          <p>A printer uses this freedom. It looks for the decimal with the <strong>fewest significant digits</strong> that rounds back to the original value. If several are equally short, we want the closest one.</p>
+          <p>To keep the numbers small, we’ll use a miniature format with <strong>8 significant binary bits</strong>. Our stored value is exactly <strong>6.28125</strong>, or 201/32. The neighboring stored values are 6.25 and 6.3125.</p>
+          <p>The midpoints between these values mark the limits of rounding back to 6.28125. We call the range between them its <strong>rounding interval</strong>:</p>
+          <div class="worked-visual" data-lesson="destination"><p>6.265625 &lt; decimal &lt; 6.296875. The shortest choices are 6.27, 6.28, and 6.29; 6.28 is closest.</p></div>
+          <p><strong>6.28 works even though it is not exactly 6.28125.</strong> Reading 6.28 in our miniature format rounds it back to 6.28125. The same is true of 6.27 and 6.29.</p>
+          <p>Can we use fewer digits? The nearest two-digit choices, 6.2 and 6.3, both lie outside the interval. So we need three significant digits. Of the three-digit choices inside, <strong>6.28 is closest</strong>.</p>
+          <p>The answer is settled. Now we can ask how each algorithm finds it without first calculating the entire decimal expansion.</p>
+          <details class="story-detail"><summary>What happens exactly at a boundary?</summary><p>At a midpoint, two stored values are equally close. The usual rule chooses the one whose binary significand is even. Our value is 201/32, with the odd significand 201, so both boundary points round to its neighbors. That is why this example excludes the endpoints.</p></details>
+          <details class="story-detail"><summary>What changes for a real double?</summary><p>Binary64 has 53 significant bits rather than 8. Its rounding intervals are much narrower, and the calculations need larger integers. The task is the same.</p><p><strong>6.28 is the answer for our miniature format only.</strong> For binary64, the shortest text for this value is <code>6.28125</code>. The full algorithm chapters use binary64 inputs.</p></details>
+        </section>
+
+        <section id="idea-dragon">
+          <p class="eyebrow">Dragon · Build from the left</p>
+          <h2>Long division, with permission to stop early</h2>
+          <p>Dragon produces digits by long division, starting at the left. After each digit it tests two choices: <strong>stop with the digits written so far</strong>, or <strong>round the last digit up</strong>.</p>
+          <p>With just 6, the choices are 6 and 7. Neither is inside the rounding interval. With 6.2, the choices are 6.2 and 6.3. Still neither. Reveal the next digit below to see when stopping becomes possible.</p>
+          <div class="worked-visual" data-lesson="dragon"><p>6 or 7: neither fits. 6.2 or 6.3: neither fits. 6.28 or 6.29: both fit; choose 6.28.</p></div>
+          <p>Long division tells us the digits already written—the <em>prefix</em>—and how much remains. Dragon also tracks <strong>the distance from the stored value to each boundary</strong>. These distances are the allowed errors.</p>
+          <p>Once a choice is inside the interval, Dragon can stop. It does not need to finish the exact expansion. Here, 6.28 and 6.29 both fit, and 6.28 is closer.</p>
+          <details class="story-detail"><summary>Connect the picture to Dragon’s R, S, and margins</summary><p>Use a common denominator of 64. The value is 402/64; the boundaries are 401/64 and 403/64. So the initial numerator <code>R</code> is 402, denominator <code>S</code> is 64, and both allowed margins are 1.</p><p>First: <code>402 = 6 × 64 + 18</code>. Next: <code>180 = 2 × 64 + 52</code>. Next: <code>520 = 8 × 64 + 8</code>. At each new digit, multiply both the remainder and margins by ten. The margins become 1, 10, then 100. At the third digit, the distance down is 8 and the distance up is 64 − 8 = 56. Both are below 100; 8 is smaller, so keep 6.28.</p></details>
+          <p class="story-bridge">For binary64, the fractions can require large integers. Dragon keeps them exact, even when that needs several machine words. <a href="./dragon.html#division">Continue to the full Dragon derivation →</a></p>
+        </section>
+
+        <section id="idea-ryu">
+          <p class="eyebrow">Ryū · Shorten from the right</p>
+          <h2>Cross out a decimal place. Does any answer survive?</h2>
+          <p>Ryū starts with enough decimal places and then removes the ones it does not need. With three places after the point, the decimals inside our interval run from <strong>6.266 through 6.296</strong>, in steps of 0.001.</p>
+          <p>Write these as integers, with the decimal point’s position kept separately: <strong>6266 through 6296, each divided by 1000</strong>. Only the two ends need to be stored.</p>
+          <p>Which of these decimals can be written with one fewer place? The ones ending in zero: <strong>6.270, 6.280, and 6.290</strong>. In integer form, keep 6270, 6280, and 6290, then divide by ten. We get 627, 628, and 629, now each divided by 100.</p>
+          <div class="worked-visual" data-lesson="ryu"><p>Thousandths: 6266…6296. Hundredths: 627…629. Tenths: empty. Choose 628 × 0.01 = 6.28.</p></div>
+          <p>Try removing another place. None of 627, 628, or 629 ends in zero, so no answer survives at tenths. Stop at hundredths and choose 628, meaning 6.28.</p>
+          <p><strong>Ryū shortens the set of possible answers.</strong> It keeps track of the interval while removing digits; simply truncating one guessed string would not do that.</p>
+          <details class="story-detail"><summary>Where does the initial integer interval come from?</summary><p>In this small example, multiply the boundaries by 1000: 6265.625 and 6296.875. The integers strictly between them are 6266 through 6296. In Ryū, the input’s binary exponent determines a sufficiently fine starting decimal scale. Cached powers of five and binary shifts produce the necessary integer information with bounded machine arithmetic. The production loop keeps endpoint and discarded-digit flags; our picture shows their exact set meaning.</p></details>
+          <details class="story-detail"><summary>Do a power-of-five multiply and a binary shift by hand</summary><p>For our value, thousandths require the integer part of <code>201 × 1000 / 32</code>. Factor 1000 into 8 × 125 and cancel the 8 against 32. What remains is <code>201 × 125 / 4</code>. The 125 is a power of five: 5³.</p><div class="lesson-scale-math"><span>Multiply by the scale’s odd part</span><code>201 × 125 = 25125</code><span>Divide by 4: separate the last two binary bits</span><div class="lesson-bit-cut"><div><code>1100010001001</code><small>kept bits: integer 6281</small></div><div><code>01</code><small>remainder 1 of 4</small></div></div></div><p>The quotient is 6281, and the remainder says the exact result is a quarter above it. For the boundaries, the same cancellation gives <code>401 × 125 / 8 = 6265 + 5/8</code> and <code>403 × 125 / 8 = 6296 + 7/8</code>. So the allowed thousandth integers are 6266 through 6296.</p><p>No floating-point multiplication was needed. For real doubles the powers are larger, and some scales need reciprocals. The hard part of Ryū’s proof is showing how many multiplier bits suffice, and which remainder facts must be preserved.</p></details>
+          <p class="story-bridge">Dragon grows a prefix until stopping is safe. Ryū begins with sufficient precision and removes what it can. <a href="./ryu.html#boundaries">Continue to Ryū’s scaling and endpoint bookkeeping →</a></p>
+        </section>
+
+        <section id="idea-schubfach">
+          <p class="eyebrow">Schubfach · Use the width</p>
+          <h2>Use the interval’s width to choose two spacings</h2>
+          <p>Ryū repeatedly removes decimal places. Schubfach can work out which two spacings to try from the interval’s width.</p>
+          <p>Picture decimals as the teeth of a comb. At hundredths, the teeth are <strong>0.01 apart</strong>. Our interval is <strong>0.03125 wide</strong>, so it is too wide to fit between two teeth: at least one hundredth must lie inside.</p>
+          <p>At tenths, the teeth are <strong>0.1 apart</strong>. The interval is narrower than that gap, so it can contain at most one tenth.</p>
+          <p><strong>Try tenths first. If none fits, use hundredths.</strong> Move the interval below. Its width stays the same, but it sometimes contains a tenth and sometimes does not.</p>
+          <div class="worked-visual" data-lesson="schubfach"><p>The interval is wider than 0.01 and narrower than 0.1. No tenth fits the interval around 6.28125; the nearest hundredth, 6.28, does.</p></div>
+          <p>For 6.28125, tenths miss. At hundredths, we only need to compare <strong>6.28 and 6.29</strong>, the two decimals immediately below and above the stored value. Although 6.27 is also inside, it is farther away than 6.28. It cannot win.</p>
+          <details class="story-detail"><summary>Why can’t an even shorter decimal escape this argument?</summary><p>Every whole-number tooth also belongs to the tenths comb, and every tenths tooth belongs to the hundredths comb. These sets are nested. If the tenths comb misses, all coarser combs miss too. If a tenth fits and has trailing zeros in its significand, remove those zeros without moving the tooth. For general inputs, the interval width chooses the pair of decimal spacings; the proof also handles endpoint inclusion and the unequal spacing at powers of two.</p></details>
+          <p class="story-bridge">Ryū finds the last useful precision by repeated removal. Schubfach derives two sufficient precisions from the width. <a href="./schubfach.html#scale">Continue to the exponent formula and candidate proof →</a></p>
+        </section>
+
+        <section id="idea-dragonbox">
+          <p class="eyebrow">Dragonbox · Measure from the right</p>
+          <h2>The division remainder is a distance</h2>
+          <p>Dragonbox builds on Schubfach’s choice of spacings. To test tenths, start at the interval’s <strong>right edge</strong> and measure back to the first tenth on its left. If that distance is less than the interval’s width, the tenth is inside.</p>
+          <p>Here, the right edge is 6.296875. The first tenth to its left is 6.2, a distance of 0.096875. That is greater than the interval’s width, 0.03125, so 6.2 is outside. The next tenth, 6.3, is past the right edge. Tenths fail.</p>
+          <div class="worked-visual" data-lesson="dragonbox"><p>Right edge 6.296875 = 62 × 0.1 + 0.096875. The remainder, 0.096875, is greater than the interval width, 0.03125. Tenths fail; try hundredths.</p></div>
+          <p>Division gives us both facts at once. There are 62 complete tenths before the right edge, with 0.096875 left over. The <strong>quotient, 62, gives the candidate 6.2</strong>. The <strong>remainder, 0.096875, is the distance back to it</strong>.</p>
+          <p>If tenths fail, Dragonbox reuses this remainder to find the next digit. It does not need to start the scaling calculation again.</p>
+          <details class="story-detail"><summary>How does the remainder give the next digit?</summary><p>Our interval is symmetric, so the stored value is half the width left of its right edge. Subtract that half-width from the remainder: <code>0.096875 − 0.015625 = 0.08125</code>. This is the distance from 6.2 to the stored value.</p><p>The nearest hundredth to that distance is 0.08. Add it to 6.2 to get <strong>6.28</strong>.</p><p>In the binary64 implementation, a larger scale turns these into tests using divisors 1000 and 100. For this example, multiplying by 10000 would give <code>62968.75 = 62 × 1000 + 968.75</code>, with width 312.5. The comparison is unchanged.</p><p>Actual Dragonbox also needs tests for exact endpoints and ties, and a separate path for asymmetric intervals. The diagram shows the distance calculation those tests implement.</p></details>
+          <p class="story-bridge">The diagram uses exact distances to explain the large- and small-divisor tests. <a href="./dragonbox.html#window">Continue to the bounded products that implement them →</a></p>
+        </section>
+
+        <section id="idea-grisu">
+          <p class="eyebrow">Grisu · Make uncertainty visible</p>
+          <h2>A blurred boundary can still settle a decision</h2>
+          <p>So far, our comparisons have been exact. Grisu uses faster, approximate scaling. It keeps a bound on the error, so it knows that each true boundary lies somewhere within a narrow band.</p>
+          <p>A decimal is definitely inside only if it stays inside <strong>for every boundary position allowed by those bands</strong>. Increase the uncertainty below to see when that proof stops working.</p>
+          <div class="worked-visual" data-lesson="grisu"><p>If the possible lower boundary is 6.264625…6.266625, 6.28 is definitely above it. If the uncertainty grows to 6.245625…6.285625, membership of 6.28 is unresolved.</p></div>
+          <p>With narrow bands, 6.28 is clearly inside. With wider bands, a boundary might lie past it. The decimal has not moved. <strong>We no longer know enough to prove that it is inside.</strong></p>
+          <p>Grisu3 returns an answer only when its checks prove that it rounds back, is shortest, and is the closest such choice. Otherwise, it hands the input to an exact algorithm such as Dragon.</p>
+          <p class="story-note">This picture explains one part of that proof: being inside the interval. The adjustable bands illustrate uncertainty; they are not Grisu’s actual error bounds.</p>
+          <p class="story-bridge"><a href="./grisu.html#family">Continue to the Grisu variants and their acceptance guarantees →</a></p>
+        </section>
+
+        <section id="idea-errol">
+          <p class="eyebrow">Errol · Save what rounding throws away</p>
+          <h2>Keep a main measurement and a correction</h2>
+          <p>Imagine a measuring device that reports only three significant decimal digits. It reports our value as <strong>6.28</strong>. The part it lost is <strong>+0.00125</strong>. Write both down. Together, they still describe 6.28125.</p>
+          <div class="worked-visual" data-lesson="errol"><p>6.28 + 0.00125 = 6.28125. Relative to the threshold 6.28, the main word says “on it”; the saved correction says “above it.”</p></div>
+          <p>Suppose we need to know whether the value is above 6.28. The main measurement alone looks equal to 6.28. The positive correction tells us it is above.</p>
+          <p>Errol uses the same idea with two binary doubles. It keeps them separate, as a <strong>main value plus a small correction</strong>. This is called <em>double-double arithmetic</em>. Rounding their sum back to one double would lose the extra precision.</p>
+          <p>Errol carries paired values through scaling and digit generation. More precision reduces ambiguous cases; it does not by itself prove there are none. Errol3 also uses a precomputed correction table for its exceptional inputs.</p>
+          <p class="story-bridge">The decimal measuring device is an analogy for the two-word representation. <a href="./errol.html#pair">Continue to compensated arithmetic and the exceptional cases →</a></p>
+        </section>
+
+        <section id="idea-coonen">
+          <p class="eyebrow">Coonen · A different question</p>
+          <h2>What if the caller supplies the number of digits?</h2>
+          <p>The earlier algorithms find how many digits are needed. Coonen starts with a request such as <strong>“give me four significant digits.”</strong></p>
+          <p>For 6.28125, move the decimal point three places right: 6281.25. Round to the integer 6281, then move the point back: <strong>6.281</strong>. The requested length takes the place of a shortest-answer search.</p>
+          <div class="worked-visual" data-lesson="coonen"><p>Four digits: 6.28125 × 1000 → 6281.25 → round to 6281 → divide by 1000 → 6.281.</p></div>
+          <p>The difficulty is carrying out the scaling accurately with a limited number of binary bits. Coonen’s algorithm controls the extra error introduced by this calculation.</p>
+          <p class="story-note">The picture shows ideal decimal rounding. The full chapter explains Algorithm B’s error bounds.</p>
+          <p class="story-bridge"><a href="./coonen.html#contract">Continue to requested-digit conversion and scaling error →</a></p>
+        </section>
+
+        <section id="beyond">
+          <p class="eyebrow">Now the machinery has a purpose</p>
+          <h2>Two different problems were hiding in the code</h2>
+          <p>First, decide <strong>which decimal to choose</strong>. That is what the intervals, combs, and distances explain. Then compute those decisions <strong>quickly and reliably</strong>, using the arithmetic the machine provides.</p>
+          <p>Often a calculation only needs to answer “below, equal, or above?” It does not need every digit of the exact result. Powers stored in tables, wide integer products, and flags for discarded bits help obtain that answer. Their proofs show why the information kept is enough.</p>
+          <div class="story-reading">
+            <a href="./dragon-descendants.html"><strong>Gay and Burger–Dybvig</strong><span>Keep Dragon’s stopping rule. Avoid unnecessary setup and large-integer work.</span></a>
+            <a href="./unrounded-scaling.html"><strong>Unrounded scaling</strong><span>Keep the integer part, the halfway bit, and whether anything remains. Those facts can settle rounding without retaining the whole fraction.</span></a>
+            <a href="./zmij.html"><strong>Żmij</strong><span>Follow the answer all the way to characters. Choosing the decimal and writing its digits are separate costs.</span></a>
+            <a href="./xjb.html"><strong>xjb</strong><span>Fix the leading digits, then inspect the final digit and the exits that allow shortening.</span></a>
+            <a href="./teju-jagua.html"><strong>Tejú Jaguá</strong><span>Compute format-specific constants on the build machine so the runtime program has less work.</span></a>
+            <a href="./toothless.html"><strong>Toothless audit</strong><span>A very close rational scale still needs a proof that no decision threshold is crossed.</span></a>
+          </div>
+          <details class="story-detail"><summary>Try explaining the differences without looking</summary><p>Why does Dragon stop before its remainder is zero? Why must Ryū shorten a set of answers rather than blindly truncate one string? What fact lets Schubfach skip repeated digit removal? What physical distance does Dragonbox’s remainder represent? Why can Grisu reject a decimal that is actually valid?</p><p>Answers: the remaining error fits the parsing allowance; a different decimal might survive at the next precision; interval width bounds the two useful spacings; the distance from the right endpoint to the preceding coarse candidate; approximation may leave the required proof unresolved.</p></details>
+          <p class="story-sources">The worked miniature examples are derived here. The algorithm connections follow the <a href="https://lists.gnu.org/archive/html/gcl-devel/2012-10/pdfkieTlklRzN.pdf">Dragon paper</a>, <a href="https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf">Grisu paper</a>, <a href="https://github.com/ulfjack/ryu/blob/master/ryu/d2s.c">Ryū reference</a>, <a href="https://fmt.dev/papers/Schubfach4.pdf">Schubfach paper</a>, and <a href="https://github.com/jk-jeon/dragonbox">Dragonbox reference</a>. Each full chapter records its implementation scope and sources.</p>
+        </section>
+        <nav class="chapter-links"><a href="./foundations.html"><span>Background</span><strong>Exact values and rounding intervals</strong></a><a href="./index.html"><span>Go deeper</span><strong>All algorithm chapters →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · one number, several algorithms</p><p><a href="./index.html">Full chapters and sources</a></p></footer>
+</body>
+</html>

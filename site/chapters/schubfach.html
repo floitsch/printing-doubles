@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="An executable explanation of Schubfach: interval width, two decimal grids, local candidates, round-to-odd estimates, and fixed-width powers of ten.">
-  <title>Schubfach: only the neighboring candidates matter · Printing doubles</title>
+  <title>Schubfach: use the interval width to skip the search · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
   <script type="module" src="../js/schubfach.js"></script>
 </head>
 <body>
@@ -13,14 +15,27 @@
   <main>
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part III · Fixed-width conversion</p>
-      <h1>Schubfach: only the neighboring candidates matter</h1>
-      <p class="chapter-deck">Schubfach chooses a decimal spacing from the width of the parsing interval. A spacing of that size cannot miss the interval; the next coarser spacing cannot hit it twice. This confines the complete shortest search to the decimals immediately below and above the value on two adjacent grids.</p>
+      <h1>Schubfach: use the interval width to skip the search</h1>
+      <p class="chapter-deck">Schubfach uses the width of the rounding interval to choose two decimal spacings. Try the coarser one first; if it misses, the finer one is guaranteed to work.</p>
       <div class="chapter-meta"><span>Chapter 8</span><span>2017–2021</span><span>Non-iterative selection</span><span>Round-to-odd estimates</span><span>Executable exact skeleton</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 8</strong><a href="#principle">Drawer principle</a><a href="#candidates">Candidate laboratory</a><a href="#scale">Choose k</a><a href="#selection">Selection</a><a href="#integer">Integer rewriting</a><a href="#odd">Round to odd</a><a href="#cache">Power table</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 8</strong><a href="#idea-schubfach">Start with a small example</a><a href="#principle">Drawer principle</a><a href="#candidates">Candidate laboratory</a><a href="#scale">Choose k</a><a href="#selection">Selection</a><a href="#integer">Integer rewriting</a><a href="#odd">Round to odd</a><a href="#cache">Power table</a><a href="#proof">Correctness</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
+        <section id="idea-schubfach" class="worked-intro">
+          <p class="eyebrow">Schubfach · Use the width</p>
+          <h2>Use the interval’s width to choose two spacings</h2>
+          <p class="mini-context">Our small example uses <strong>8 significant binary bits</strong>. The stored value is 6.28125. Decimals strictly between 6.265625 and 6.296875 round back to it; the shortest, closest choice is 6.28. <a href="./one-number.html#start">Start with the rounding interval</a>. The detailed sections below use binary64.</p>
+          <p>Ryū repeatedly removes decimal places. Schubfach can work out which two spacings to try from the interval’s width.</p>
+          <p>Picture decimals as the teeth of a comb. At hundredths, the teeth are <strong>0.01 apart</strong>. Our interval is <strong>0.03125 wide</strong>, so it is too wide to fit between two teeth: at least one hundredth must lie inside.</p>
+          <p>At tenths, the teeth are <strong>0.1 apart</strong>. The interval is narrower than that gap, so it can contain at most one tenth.</p>
+          <p><strong>Try tenths first. If none fits, use hundredths.</strong> Move the interval below. Its width stays the same, but it sometimes contains a tenth and sometimes does not.</p>
+          <div class="worked-visual" data-lesson="schubfach"><p>The interval is wider than 0.01 and narrower than 0.1. No tenth fits the interval around 6.28125; the nearest hundredth, 6.28, does.</p></div>
+          <p>For 6.28125, tenths miss. At hundredths, we only need to compare <strong>6.28 and 6.29</strong>, the two decimals immediately below and above the stored value. Although 6.27 is also inside, it is farther away than 6.28. It cannot win.</p>
+          <details class="story-detail"><summary>Why can’t an even shorter decimal escape this argument?</summary><p>Every whole-number tooth also belongs to the tenths comb, and every tenths tooth belongs to the hundredths comb. These sets are nested. If the tenths comb misses, all coarser combs miss too. If a tenth fits and has trailing zeros in its significand, remove those zeros without moving the tooth. For general inputs, the interval width chooses the pair of decimal spacings; the proof also handles endpoint inclusion and the unequal spacing at powers of two.</p></details>
+          <p class="story-bridge">Ryū finds the last useful precision by repeated removal. Schubfach derives two sufficient precisions from the width. <a href="./schubfach.html#scale">Continue to the exponent formula and candidate proof →</a></p>
+        </section>
         <section id="principle">
           <p class="eyebrow">8.1 · The geometric lemma</p>
           <h2>A fine grid cannot miss; a coarse grid cannot hit twice</h2>

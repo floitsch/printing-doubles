@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#f4f0e8">
   <title>Printing doubles — when binary floating point becomes decimal text</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./one-number.css">
   <script type="module" src="./js/main.js"></script>
 </head>
 <body>
@@ -20,6 +21,7 @@
       <a href="#introduction">Introduction</a>
       <a href="#explorer">Explorer</a>
       <a href="#problem">The problem</a>
+      <a href="./chapters/one-number.html">The algorithms</a>
       <a href="./chapters/index.html">Chapters</a>
       <a href="#frontier">Now</a>
       <a href="#sources">Sources</a>
@@ -33,7 +35,8 @@
         <h1 id="hero-title">When doubles<br>become decimal</h1>
         <p class="standfirst">A visual and executable account of the algorithms that render IEEE 754 binary64 values as decimal strings: from exact expansion and rounding intervals to the shortest text that recovers the original bits.</p>
         <p class="prerequisite-note">The main account assumes familiarity with IEEE 754 binary floating-point. If exponent fields, significands, subnormals, or ulps are unfamiliar—or merely rusty—begin with the <a href="./chapters/binary64-number-line.html">binary64 primer</a>.</p>
-        <a class="button" href="#explorer">Put 0.3 under the microscope <span aria-hidden="true">↓</span></a>
+        <a class="button" href="./chapters/one-number.html">Understand the algorithms, one number at a time <span aria-hidden="true">→</span></a>
+        <p><a href="#explorer">Or put 0.3 under the microscope ↓</a></p>
       </div>
       <div class="hero-figure" aria-hidden="true">
         <svg viewBox="0 0 720 450" role="img">
@@ -132,6 +135,8 @@
         <div class="callout"><p>The shortest problem is geometric: find the coarsest decimal grid that still places a point inside the round-trip interval. Later algorithms differ chiefly in how they represent that interval, how they scale it, and how much arithmetic is required to prove that a candidate lies inside.</p></div>
       </div>
     </section>
+
+    <aside class="story-entry story-home-entry"><strong>See how the algorithms find an answer</strong><p>Follow one small binary number. Build its decimal with Dragon, shorten it with Ryū, skip the search with Schubfach, and measure backward with Dragonbox.</p><a href="./chapters/one-number.html">Read the visual walkthrough →</a></aside>
 
     <section class="timeline section-grid" id="timeline" aria-labelledby="timeline-title">
       <div class="section-number">04</div>

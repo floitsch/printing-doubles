@@ -6,6 +6,8 @@
   <meta name="description" content="A detailed executable presentation of Errol, double-double interval arithmetic, digit generation, and the enumerated exceptional set.">
   <title>Errol: extend precision, enumerate the residue · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
   <script type="module" src="../js/errol.js"></script>
 </head>
 <body>
@@ -14,13 +16,24 @@
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
       <h1>Errol: extend precision, enumerate the residue</h1>
-      <p class="chapter-deck">Errol represents each scaled quantity with two hardware doubles: a leading approximation and a small offset. This nearly doubles the working precision. Rather than retaining a runtime uncertainty test, Errol3 enumerates the inputs for which the unchecked arithmetic can fail and corrects them with a bit-pattern table.</p>
+      <p class="chapter-deck">Errol saves the small corrections that ordinary floating-point arithmetic would discard. Pairs of doubles carry extra precision through conversion; Errol3 handles exceptional inputs with precomputed corrections.</p>
       <div class="chapter-meta"><span>Chapter 6</span><span>POPL 2016</span><span>Double-double</span><span>Generated correction table</span><span>Executable idealized core</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 6</strong><a href="#family">Errol family</a><a href="#pair">Double-double</a><a href="#operations">Operations</a><a href="#interval">Narrow interval</a><a href="#digits">Digits</a><a href="#verification">Optimality</a><a href="#enumeration">Enumeration</a><a href="#laboratory">Common-prefix zoom</a><a href="#corrections">Artifact corrections</a><a href="#status">Implementation status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 6</strong><a href="#idea-errol">Start with a small example</a><a href="#family">Errol family</a><a href="#pair">Double-double</a><a href="#operations">Operations</a><a href="#interval">Narrow interval</a><a href="#digits">Digits</a><a href="#verification">Optimality</a><a href="#enumeration">Enumeration</a><a href="#laboratory">Common-prefix zoom</a><a href="#corrections">Artifact corrections</a><a href="#status">Implementation status</a></aside>
       <article class="chapter">
+        <section id="idea-errol" class="worked-intro">
+          <p class="eyebrow">Errol · Save what rounding throws away</p>
+          <h2>Keep a main measurement and a correction</h2>
+          <p class="mini-context">Our small example uses <strong>8 significant binary bits</strong>. The stored value is 6.28125. Decimals strictly between 6.265625 and 6.296875 round back to it; the shortest, closest choice is 6.28. <a href="./one-number.html#start">Start with the rounding interval</a>. The detailed sections below use binary64.</p>
+          <p>Imagine a measuring device that reports only three significant decimal digits. It reports our value as <strong>6.28</strong>. The part it lost is <strong>+0.00125</strong>. Write both down. Together, they still describe 6.28125.</p>
+          <div class="worked-visual" data-lesson="errol"><p>6.28 + 0.00125 = 6.28125. Relative to the threshold 6.28, the main word says “on it”; the saved correction says “above it.”</p></div>
+          <p>Suppose we need to know whether the value is above 6.28. The main measurement alone looks equal to 6.28. The positive correction tells us it is above.</p>
+          <p>Errol uses the same idea with two binary doubles. It keeps them separate, as a <strong>main value plus a small correction</strong>. This is called <em>double-double arithmetic</em>. Rounding their sum back to one double would lose the extra precision.</p>
+          <p>Errol carries paired values through scaling and digit generation. More precision reduces ambiguous cases; it does not by itself prove there are none. Errol3 also uses a precomputed correction table for its exceptional inputs.</p>
+          <p class="story-bridge">The decimal measuring device is an analogy for the two-word representation. <a href="./errol.html#pair">Continue to compensated arithmetic and the exceptional cases →</a></p>
+        </section>
         <section id="family">
           <p class="eyebrow">6.1 · From a checked fast path to a corrected total algorithm</p>
           <h2>Three versions separate accuracy, verification, and enumeration</h2>

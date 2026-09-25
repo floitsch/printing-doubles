@@ -6,6 +6,8 @@
   <meta name="description" content="A detailed, executable account of Dragon's exact remainder-and-margin digit generation.">
   <title>Dragon: carry the margins with the digits · Printing doubles</title>
   <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../one-number.css">
+  <script type="module" src="../js/one-number.js"></script>
   <script type="module" src="../js/dragon.js"></script>
 </head>
 <body>
@@ -14,13 +16,25 @@
     <section class="chapter-hero">
       <p class="breadcrumbs"><a href="./index.html">Chapters</a> / Part II · Scaling and exact intervals</p>
       <h1>Dragon: carry the margins with the digits</h1>
-      <p class="chapter-deck">Ordinary long division can expose decimal digits exactly, but it does not know when enough digits have been printed. Dragon carries the distance to both parsing boundaries through the same recurrence, allowing the loop itself to prove when it may stop.</p>
+      <p class="chapter-deck">Dragon writes digits from the left. After each digit, it asks whether stopping here—or rounding the last digit up—lands inside the input’s rounding interval.</p>
       <div class="chapter-meta"><span>Chapter 4</span><span>Steele &amp; White · 1990</span><span>Big integers</span><span>Executable exact path</span></div>
     </section>
 
     <div class="chapter-layout">
-      <aside class="chapter-toc"><strong>Chapter 4</strong><a href="#contract">The contract</a><a href="#division">Why generate digits?</a><a href="#margins">Room to stop</a><a href="#scaling">Integer representation</a><a href="#loop">Digit loop</a><a href="#execution">Worked execution</a><a href="#edges">Shared structural cases</a><a href="#correctness">Why it works</a><a href="#descendants">Exact descendants</a><a href="#status">Evidence status</a></aside>
+      <aside class="chapter-toc"><strong>Chapter 4</strong><a href="#idea-dragon">Start with a small example</a><a href="#contract">The contract</a><a href="#division">Why generate digits?</a><a href="#margins">Room to stop</a><a href="#scaling">Integer representation</a><a href="#loop">Digit loop</a><a href="#execution">Worked execution</a><a href="#edges">Shared structural cases</a><a href="#correctness">Why it works</a><a href="#descendants">Exact descendants</a><a href="#status">Evidence status</a></aside>
       <article class="chapter">
+        <section id="idea-dragon" class="worked-intro">
+          <p class="eyebrow">Dragon · Build from the left</p>
+          <h2>Long division, with permission to stop early</h2>
+          <p class="mini-context">Our small example uses <strong>8 significant binary bits</strong>. The stored value is 6.28125. Decimals strictly between 6.265625 and 6.296875 round back to it; the shortest, closest choice is 6.28. <a href="./one-number.html#start">Start with the rounding interval</a>. The detailed sections below use binary64.</p>
+          <p>Dragon produces digits by long division, starting at the left. After each digit it tests two choices: <strong>stop with the digits written so far</strong>, or <strong>round the last digit up</strong>.</p>
+          <p>With just 6, the choices are 6 and 7. Neither is inside the rounding interval. With 6.2, the choices are 6.2 and 6.3. Still neither. Reveal the next digit below to see when stopping becomes possible.</p>
+          <div class="worked-visual" data-lesson="dragon"><p>6 or 7: neither fits. 6.2 or 6.3: neither fits. 6.28 or 6.29: both fit; choose 6.28.</p></div>
+          <p>Long division tells us the digits already written—the <em>prefix</em>—and how much remains. Dragon also tracks <strong>the distance from the stored value to each boundary</strong>. These distances are the allowed errors.</p>
+          <p>Once a choice is inside the interval, Dragon can stop. It does not need to finish the exact expansion. Here, 6.28 and 6.29 both fit, and 6.28 is closer.</p>
+          <details class="story-detail"><summary>Connect the picture to Dragon’s R, S, and margins</summary><p>Use a common denominator of 64. The value is 402/64; the boundaries are 401/64 and 403/64. So the initial numerator <code>R</code> is 402, denominator <code>S</code> is 64, and both allowed margins are 1.</p><p>First: <code>402 = 6 × 64 + 18</code>. Next: <code>180 = 2 × 64 + 52</code>. Next: <code>520 = 8 × 64 + 8</code>. At each new digit, multiply both the remainder and margins by ten. The margins become 1, 10, then 100. At the third digit, the distance down is 8 and the distance up is 64 − 8 = 56. Both are below 100; 8 is smaller, so keep 6.28.</p></details>
+          <p class="story-bridge">For binary64, the fractions can require large integers. Dragon keeps them exact, even when that needs several machine words. <a href="./dragon.html#division">Continue to the full Dragon derivation →</a></p>
+        </section>
         <section id="contract">
           <p class="eyebrow">4.1 · Output contract</p>
           <h2>Enough digits to recover the input, and no more</h2>
@@ -110,7 +124,7 @@
           <p class="eyebrow">4.7 · Structural cases</p>
           <h2>Some complications belong to the number format, not to Dragon</h2>
           <p>Equal spacing is the ordinary case, but an exponent transition can place the predecessor twice as close as the successor. Endpoint ownership comes from the parser’s ties-to-even rule. These facts affect every shortest conversion algorithm; Dragon merely records them as two separate margins and strict or non-strict comparisons.</p>
-          <p>The <a href="./binary64-number-line.html#transition">binary64 primer’s exponent-transition instrument</a> shows the closer predecessor directly, and the <a href="./foundations.html#parsing">parsing-geometry chapter</a> shows how endpoint ownership changes under ties-to-even. They are format facts rather than extra Dragon steps, so they are not replayed here as an algorithm trace.</p>
+          <p>The <a href="./binary64-number-line.html#transition">binary64 primer’s exponent-transition instrument</a> shows the closer predecessor directly, and the <a href="./foundations.html#interval">parsing-geometry chapter</a> shows how endpoint ownership changes under ties-to-even. They are format facts rather than extra Dragon steps, so they are not replayed here as an algorithm trace.</p>
           <p>The remaining special inputs are best separated from the digit loop. Signed zero, infinities, and NaNs are classified before conversion. Negative finite values use the positive magnitude path and receive a sign afterward. Subnormals still participate in the same interval construction; the binary64 primer explains why their effective precision changes near zero. The executable corpus covers the normal/subnormal transition and both ends of the finite range.</p>
         </section>
 
