@@ -1,0 +1,111 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/teju-generator.html; every class is prefixed tg-. */
+
+/* Keep figures inside the text column (no breakout). */
+.chapter .tg-figure.lab-figure { margin: 36px 0; }
+.chapter .tg-equation { margin: 28px 0; padding: 18px 12px; white-space: normal; font-size: clamp(15px, 1.7vw, 20px); line-height: 1.6; }
+
+/* Controls: our own light style (site/styles.css has a dark .lab-controls). */
+.tg-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 14px; font: 500 12px var(--mono); color: var(--ink); }
+.tg-controls label { display: inline-flex; align-items: center; gap: 8px; }
+.tg-controls input[type="text"], .tg-controls input[type="number"], .tg-controls select { min-width: 0; max-width: 100%; padding: 7px 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 500 13px var(--mono); }
+.tg-controls input[type="number"] { width: 9ch; }
+.tg-slider input[type="range"] { width: min(260px, 48vw); accent-color: var(--red); }
+.tg-slider output { min-width: 3ch; color: var(--red); font-weight: 500; }
+.tg-label { color: var(--muted); font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.tg-rowpick { margin-top: 10px; }
+
+.tg-svgbox, .tg-canvasbox { width: 100%; }
+.tg-canvasbox canvas { display: block; max-width: 100%; touch-action: manipulation; cursor: crosshair; }
+.tg-svg { display: block; width: 100%; height: auto; font-family: var(--mono); }
+.tg-svg text { font-size: 10.5px; fill: var(--muted); }
+.tg-svg .tg-axis { font-size: 10.5px; fill: var(--ink); }
+.tg-svg .tg-strong { fill: var(--ink); font-weight: 500; }
+.tg-svg .tg-linelabel { fill: var(--ink); font-size: 11px; }
+.tg-svg .tg-halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+.tg-grid { stroke: var(--line); stroke-width: 1; }
+.tg-dot { fill: var(--blue); fill-opacity: .7; }
+.tg-dot-fail { fill: var(--red); }
+.tg-line { stroke: var(--ink); stroke-width: 2; }
+.tg-danger { fill: var(--red); fill-opacity: .07; }
+.tg-median { stroke: var(--ink); stroke-dasharray: 4 3; stroke-width: 1; }
+.tg-minline { stroke: var(--red); stroke-width: 1.2; }
+.tg-selline { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 2; }
+.tg-seltri { fill: var(--ink); }
+.tg-genchart { cursor: pointer; }
+
+.tg-hover { min-height: 1.6em; margin: 6px 0 0; color: var(--muted); font: 12px var(--mono); overflow-wrap: anywhere; }
+.tg-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; color: var(--muted); font: 11px var(--mono); }
+.tg-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.tg-legend i { display: inline-block; flex: none; }
+.tg-key-used { width: 8px; height: 8px; background: var(--blue); }
+.tg-key-unused { width: 8px; height: 8px; background: var(--muted); opacity: .5; }
+.tg-key-fail { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+.tg-key-line { width: 18px; height: 2px; background: var(--ink); }
+.tg-key-min { width: 18px; height: 2px; background: var(--red); }
+.tg-key-median { width: 18px; border-top: 1px dashed var(--ink); }
+#tg-gen-key { margin-top: 8px; }
+
+.chapter .tg-figure p.lab-readout { font-size: 13px; }
+.chapter .tg-figure .lab-readout p { margin: 0 0 6px; font-size: 13px; }
+.chapter .tg-figure .lab-readout p:last-child { margin-bottom: 0; }
+.tg-fails { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; }
+.tg-fails .lab-chips span { align-self: center; font: 11px var(--mono); }
+.tg-detail { margin-top: 12px; }
+.chapter .tg-detail p, .chapter .tg-detail li { margin: 4px 0; font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+.tg-uses { margin: 4px 0 0; padding-left: 20px; }
+
+.tg-product { padding: 12px 14px; border-left: 3px solid var(--blue); background: var(--paper); }
+.tg-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font: 13px/1.6 var(--mono); }
+.tg-dl dt { color: var(--muted); }
+.tg-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tg-words { display: flex; flex-wrap: wrap; gap: 4px; }
+.tg-word { padding: 1px 5px; border: 1px solid var(--line); color: var(--muted); }
+.tg-word-top { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, var(--paper)); color: var(--ink); }
+.chapter .tg-product .tg-note { margin: 8px 0 0; font-size: 13px; }
+
+.tg-blue { color: var(--blue); font-weight: 500; }
+.tg-red { color: var(--red); font-weight: 500; }
+.tg-ok { color: #1d7a3a; font-weight: 500; }
+.tg-bad { color: var(--red); font-weight: 500; }
+.tg-error { color: var(--red); margin: 0; }
+.tg-dim { color: var(--muted); }
+.chapter .tg-note { color: var(--muted); font-size: 14px; }
+.tg-status { display: block; font: 12px/1.6 var(--mono); color: var(--ink); }
+#tg-fac-status { margin: 4px 0 10px; }
+
+/* Tables */
+.chapter .tg-table { margin: 18px 0; font: 12px var(--mono); }
+.chapter .tg-table th, .chapter .tg-table td { padding: 7px 8px; white-space: nowrap; }
+.chapter .tg-table th { text-transform: none; font-size: 11px; color: var(--muted); }
+.tg-table .tg-run1 td:nth-child(2) { color: var(--blue); font-weight: 500; }
+.tg-table .tg-run2 td:nth-child(2) { color: var(--red); font-weight: 500; }
+.chapter .tg-steps { margin: 0; }
+.tg-figure .table-scroll { max-height: 420px; overflow: auto; border: 1px solid var(--line); background: var(--paper); }
+
+/* Checks */
+.tg-checks { margin: 12px 0; padding: 0; list-style: none; }
+.chapter .tg-checks li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.tg-checks code { font-size: 12px; overflow-wrap: anywhere; }
+.tg-checks li > span:not(.tg-mark):not(.lab-sr-only) { color: var(--muted); }
+.tg-mark { width: 1.2em; font: 500 14px var(--mono); }
+.tg-okitem .tg-mark { color: #1d7a3a; }
+.tg-baditem .tg-mark { color: var(--red); }
+.tg-baditem code { color: var(--red); }
+.tg-skipped .tg-mark { color: var(--muted); }
+
+/* Code */
+.tg-code { max-height: 420px; margin: 18px 0; font-size: 12px; white-space: pre; }
+.tg-code .tg-skip { color: #7d8a95; }
+.tg-code-full { max-height: 360px; }
+.tg-details { margin: 0 0 18px; }
+.tg-details summary { cursor: pointer; font: 500 12px var(--mono); }
+
+.tg-sources li { margin-bottom: 10px; }
+
+@media (max-width: 680px) {
+  .tg-dl { grid-template-columns: 1fr; gap: 0; }
+  .tg-dl dt { margin-top: 6px; }
+  .tg-slider input[type="range"] { width: 100%; }
+  .tg-slider { flex-wrap: wrap; width: 100%; }
+}

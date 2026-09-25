@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Tejú Jaguá explained from its generator: break a fast multiply-and-shift with a slider, find the worst input with a Euclid-like recursion, then prove and emit all 617 binary64 multipliers in your browser.">
+  <title>Tejú Jaguá · Break the multiplier · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/teju-generator.css">
+  <script type="module" src="./js/teju-generator.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Tejú Jaguá / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./teju-ruler.html">compare with approach A</a></p>
+      <h1>Tejú Jaguá: break the multiplier</h1>
+      <p class="chapter-deck">Tejú Jaguá's runtime trusts one multiplication completely and never checks it. On this page you break that multiplication on purpose, find its worst input without trying them all, and then run the generator that proves all 617 binary64 constants.</p>
+      <p class="lab-pitch">Generator first. Make the one inequality visible on a toy row, let the reader break it with a shift slider, then run a BigInt port of the C++ generator. It proves every row and emits a C table that matches the repository byte for byte.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Tejú Jaguá · generator</strong><a href="#deal">The deal</a><a href="#inequality">One inequality</a><a href="#break">Break it</a><a href="#worst">The worst n</a><a href="#generate">Generate binary64</a><a href="#factory">A compiler for formats</a><a href="#sources">Sources</a></aside>
+      <article class="chapter">
+
+        <section id="deal">
+          <p class="eyebrow">The deal</p>
+          <h2>Floors you can trust</h2>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is x = m · 2<sup>e</sup>, with an integer significand m (53 bits) and a binary exponent e.</p>
+            <p>Its <b>rounding interval</b> reaches halfway to each neighbour: from (2m − 1) · 2<sup>e−1</sup> to (2m + 1) · 2<sup>e−1</sup>. Any decimal inside reads back as x. When m is a power of two, the neighbour below is closer, so the lower end is (4m − 1) · 2<sup>e−2</sup>.</p>
+            <p>Tejú Jaguá measures the interval in units of 10<sup>F</sup>, with F = ⌊e · log<sub>10</sub> 2⌋. That makes the interval between 1 and 10 units wide.</p>
+          </div>
+          <p>To pick the output, the runtime needs the interval's ends in those units, rounded down. For the upper end that is b = ⌊(2m + 1) · 2<sup>e−1</sup> / 10<sup>F</sup>⌋.</p>
+          <p>Several binary exponents share one F. Call the smallest of them e<sub>0</sub> and write e = e<sub>0</sub> + r, with r between 0 and 3. Then (2m + 1) · 2<sup>e−1</sup> = ((2m + 1) ≪ r) · 2<sup>e<sub>0</sub>−1</sup>, so every floor the runtime needs looks like this:</p>
+          <p class="equation tg-equation">⌊ n · α / δ ⌋ &nbsp; where &nbsp; α / δ = 2<sup>e<sub>0</sub>−1</sup> / 10<sup>F</sup> in lowest terms.</p>
+          <p>Here n is a small integer built from the significand, such as (2m + 1) ≪ r. The fraction α/δ is fixed for each F, and it is always a power of 2 over a power of 5 or the other way round. Tejú Jaguá stores one 128-bit number per F:</p>
+          <p class="equation tg-equation">M = ⌊α · 2<sup>128</sup> / δ⌋ + 1, &nbsp; and computes &nbsp; ⌊n · M / 2<sup>128</sup>⌋.</p>
+          <p>That second floor is simply the top 64-bit word of the 192-bit product n · M, so there is no division and no shift. Try it:</p>
+          <figure class="lab-figure tg-figure" id="tg-deal">
+            <div class="tg-controls">
+              <label for="tg-deal-input">x =</label>
+              <input type="text" id="tg-deal-input" value="0.1" spellcheck="false" autocomplete="off" size="16">
+              <div class="lab-chips" id="tg-deal-chips" role="group" aria-label="Example doubles"></div>
+            </div>
+            <div class="tg-product" id="tg-deal-out" aria-live="polite"></div>
+            <figcaption>All values are computed exactly with BigInt in your browser. The exact quotient is shown only for comparison; the runtime never computes it.</figcaption>
+          </figure>
+          <p>If this floor is <em>always</em> exact, the rest of the kernel is plain integer logic: compare a and b, look at one multiple of ten, check the parity of one more floor. <a href="./teju-ruler.html">Approach A</a> walks through that kernel. This page is about the “if”. Nothing checks it at runtime. A separate program, the <b>generator</b>, proves it for every possible n before it writes the table into C.</p>
+        </section>
+
+        <section id="inequality">
+          <p class="eyebrow">Why it can fail</p>
+          <h2>One inequality</h2>
+          <p>M was rounded up, so n · M / 2<sup>k</sup> is slightly too big. (Here k is the shift: 128 for binary64. Keep it general, because we are about to shrink it.) How much too big is easy to write down:</p>
+          <p class="equation tg-equation">n · M / 2<sup>k</sup> = n · α / δ + n · ε / (δ · 2<sup>k</sup>),<br>with ε = M · δ − α · 2<sup>k</sup>, &nbsp; 1 ≤ ε ≤ δ.</p>
+          <p>The extra term is the <b>overshoot</b>. It is tiny, but it grows with n. The floor stays correct as long as the overshoot does not push n · α / δ past the next integer. The distance up to that integer is the <b>headroom</b>:</p>
+          <p class="equation tg-equation">headroom(n) = (δ − (α · n mod δ)) / δ.</p>
+          <p>The floor is right exactly when the overshoot is smaller than the headroom. Multiply both sides by δ · 2<sup>k</sup> / ε, and the condition splits into one side that depends only on n and one that depends only on the shift:</p>
+          <p class="equation tg-equation">φ(n) = n / (δ − α · n mod δ) &nbsp; &lt; &nbsp; 2<sup>k</sup> / ε.</p>
+          <p>Each extra bit of k roughly doubles the right side. So the proof comes down to one number: the largest φ(n) over every n the runtime can produce. If it is below 2<sup>k</sup>/ε, every floor is exact.</p>
+          <p>Here it is on a toy row, α/δ = 8192/15625 = 2<sup>13</sup>/5<sup>6</sup>. This is row F = 6 of a made-up format with 5-bit significands, so n runs from 33 to 992. Each dot is the fractional part of n · α / δ. The descending line is 1 minus the overshoot. A dot above the line gets pushed past the next integer, so its floor comes out one too big.</p>
+          <figure class="lab-figure tg-figure" id="tg-saw">
+            <div class="tg-controls">
+              <span class="tg-label" id="tg-saw-label">shift k</span>
+              <div class="lab-chips" id="tg-saw-chips" role="group" aria-labelledby="tg-saw-label"></div>
+            </div>
+            <div class="tg-svgbox" id="tg-saw-svg" role="img" aria-label="Fractional parts of n times 8192/15625 for n from 33 to 992, with the line one minus overshoot; dots above the line have wrong floors."></div>
+            <p class="lab-readout" id="tg-saw-out" aria-live="polite"></p>
+            <figcaption>Linear scales. The dangerous dots sit right against the top edge, and at larger k the line is too close to 1 to see.</figcaption>
+          </figure>
+          <p>On a linear scale the interesting part is invisible: the dots that fail sit a hair below the next integer, and at realistic shifts the line hugs the top edge. Two changes fix that. Plot the headroom (1 minus the fraction) instead of the fraction, and use logarithmic axes on both sides. Then the overshoot n · ε / (δ · 2<sup>k</sup>) becomes a <b>straight line</b> of slope one, and each extra bit of k moves it down by one grid step.</p>
+        </section>
+
+        <section id="break">
+          <p class="eyebrow">A lab</p>
+          <h2>Break it</h2>
+          <p>Both axes are logarithmic. Each dot is one n the generator must check: its headroom is its height. The ink line is the overshoot for shift k. <b>Any dot on or below the line gets a wrong floor.</b> Drag k down until dots turn red, then click one (or pick it from the list) to see the wrong floor.</p>
+          <p>The second row is real. binary16 row F = −8 has α/δ = 5<sup>8</sup>/2<sup>19</sup> and 65 507 dots, and the page also runs every binary16 conversion with the shortened multipliers.</p>
+          <figure class="lab-figure tg-figure" id="tg-lab">
+            <div class="tg-controls">
+              <span class="tg-label" id="tg-lab-row-label">row</span>
+              <div class="lab-chips" id="tg-lab-rows" role="group" aria-labelledby="tg-lab-row-label"></div>
+              <label class="tg-slider" for="tg-lab-k">shift k <input type="range" id="tg-lab-k" min="8" max="34" value="22" step="1"> <output id="tg-lab-kout" for="tg-lab-k">22</output></label>
+            </div>
+            <div class="tg-canvasbox" id="tg-lab-box">
+              <canvas id="tg-lab-canvas" role="img" aria-label="Log-log scatter of headroom against n with the overshoot line; the readout below lists the dots under the line."></canvas>
+            </div>
+            <p class="tg-hover" id="tg-lab-hover" aria-hidden="true">&nbsp;</p>
+            <div class="tg-legend" aria-hidden="true"><span><i class="tg-key-used"></i>n the runtime really uses</span><span><i class="tg-key-unused"></i>checked, never used</span><span><i class="tg-key-fail"></i>floor wrong at this k</span><span><i class="tg-key-line"></i><span>overshoot n·ε/(δ·2<sup>k</sup>)</span></span></div>
+            <div class="lab-readout" id="tg-lab-out" aria-live="polite"></div>
+            <div class="tg-fails"><span class="tg-label" id="tg-lab-fails-label">dots below the line</span><div class="lab-chips" id="tg-lab-fails" role="group" aria-labelledby="tg-lab-fails-label"></div></div>
+            <div class="tg-detail" id="tg-lab-detail" aria-live="polite"></div>
+            <figcaption>Every count and floor is exact (BigInt). “Checked” means the n range [2·m<sub>min</sub>+1, 32·m<sub>max</sub>] (from 1 for the lowest row) plus 16 extra operands of the power-of-two case, as in <code>generator_t::get_maximum</code>.</figcaption>
+          </figure>
+          <h3>What the binary16 row teaches</h3>
+          <p>At k = 23, n = 10320 is one of the red dots, and the runtime really uses it. It is m<sub>c</sub> = (4 · 645) ≪ 2, the operand of the final rounding step for x = 645 · 2<sup>−24</sup>. The exact value is 7688.99917…, so the headroom is 0.00082, but the overshoot is 10320 / 2<sup>23</sup> = 0.00123. The floor becomes 7689, which is odd, so the kernel rounds up, and x prints as <b>3.845e−5</b> instead of the correct <b>3.844e−5</b>. The two candidates are 5.004·10<sup>−9</sup> and 4.996·10<sup>−9</sup> away from x: a near-tie flipped by one unit of error.</p>
+          <div class="aside">
+            <p><b>The proof is sufficient, not necessary.</b> For all ten binary16 rows, the generator's check passes only from k = 33. But every binary16 conversion already prints correctly from k = 24. There are two reasons for the gap. The generator checks every n in a range, including the many grey n the kernel never produces. And a wrong floor does not always change the output: at k = 24, n = 16188 (a real m<sub>b</sub>) still gets a wrong floor, yet no printed digit changes. The generator does not try to be clever about this. It proves a clean, slightly conservative statement, and the real binary16 build uses 32-bit words, so k = 64: 31 bits to spare.</p>
+          </div>
+        </section>
+
+        <section id="worst">
+          <p class="eyebrow">Search without searching</p>
+          <h2>The worst n, without trying them all</h2>
+          <p>For binary64 the generator must check n from 2<sup>53</sup> + 1 to 32 · (2<sup>53</sup> − 1). That is about 2<sup>58</sup> values per row, and there are 617 rows. Trying them all is out of the question. But the dots that matter are not scattered randomly. Here are the <b>record holders</b> of the toy row, each n with a larger φ than every n before it:</p>
+          <div class="table-scroll"><table class="tg-table" id="tg-records"><caption class="lab-sr-only">Record holders of phi for the toy row</caption></table></div>
+          <p>After a short start, the records advance in <b>arithmetic runs</b>. Adding 21 to n always adds 21 · 8192 mod 15625 = 157 to α · n mod δ, so the gap to the next multiple of δ shrinks by 157: 445, 288, 131. Once the gap is smaller than 157, another +21 would jump past the integer. So a new step takes over: +103 shrinks the gap by 26, giving 105, 79, 53, 27, 1. At 597 the gap is 1, as small as it can be. Those step sizes are no accident: 21, 103 and 597 are denominators of the continued fraction convergents of 8192/15625 = <span id="tg-cf"></span>.</p>
+          <p>The generator exploits the same structure with a recursion. Only an n that sits just below a multiple of δ can set a record. Index those n by the integer j that they sit just below. Measured in j, the gap becomes j · δ mod α: <b>the same kind of problem, with (α, δ) replaced by (δ mod α, α)</b>. That is the Euclid step. The range of j is the range of n scaled by α/δ, so it shrinks at each level. The functions <code>get_maximum_1</code> and <code>get_maximum_2</code> alternate between two mirror-image forms (distance up to the next integer, distance above the previous one). At each level they keep the best endpoint and hand the rest down, until the range is a single value or empty.</p>
+          <figure class="lab-figure tg-figure" id="tg-rec">
+            <div class="tg-controls">
+              <span class="tg-label" id="tg-rec-label">row</span>
+              <div class="lab-chips" id="tg-rec-rows" role="group" aria-labelledby="tg-rec-label"></div>
+            </div>
+            <div class="table-scroll"><table class="tg-table tg-steps" id="tg-rec-table"><caption class="lab-sr-only">Steps of the generator's recursion for the selected row</caption></table></div>
+            <div class="lab-readout" id="tg-rec-out" aria-live="polite"></div>
+            <figcaption>Each line is one call, on a smaller problem than the line before. φ<sub>1</sub>(n) = n/(δ − α·n mod δ), φ<sub>2</sub>(n) = n/(1 + (α·n − 1) mod δ). Watch α and δ follow Euclid’s algorithm while the range shrinks. Long numbers are abbreviated; “values” is the size of the range still to search.</figcaption>
+          </figure>
+          <p class="tg-note">This is a close cousin of continued fractions, not the textbook algorithm: the recursion carries a range [L, U] along and cuts it at every level. The page runs the generator's recursion and checks it against brute force wherever brute force is possible. It does not prove the recursion correct. The underlying theory of such multiply-and-shift divisions is in Neri and Schneider's paper on Euclidean affine functions.</p>
+        </section>
+
+        <section id="generate">
+          <p class="eyebrow">The real thing</p>
+          <h2>Generate binary64</h2>
+          <p>For each decimal exponent F from −324 to 292, the generator does what you just saw:</p>
+          <ol class="lab-steps">
+            <li>Find e<sub>0</sub> and write 2<sup>e<sub>0</sub>−1</sup>/10<sup>F</sup> = α/δ.</li>
+            <li>Set M = ⌊α · 2<sup>128</sup>/δ⌋ + 1 and ε = M · δ − α · 2<sup>128</sup>.</li>
+            <li>Find the largest φ(n) over [2<sup>53</sup> + 1, 32 · (2<sup>53</sup> − 1)] with the recursion (from n = 1 for the lowest row), plus 16 extra operands of the power-of-two case.</li>
+            <li>Require it to be below 2<sup>128</sup>/ε. Otherwise stop with <i>“Unable to use shift that is twice the width.”</i></li>
+          </ol>
+          <p>It also runs a few static checks that no table row can fix. Here is a line-by-line BigInt port of <code>cpp/generator/generator.cpp</code>:</p>
+          <figure class="lab-figure tg-figure" id="tg-gen">
+            <div class="tg-controls">
+              <button type="button" class="lab-button primary" id="tg-gen-run">Generate binary64</button>
+              <span class="tg-status" id="tg-gen-status" aria-live="polite">617 rows waiting.</span>
+            </div>
+            <div class="tg-svgbox" id="tg-gen-svg" role="img" aria-label="Headroom in bits for each of the 617 binary64 table rows, by decimal exponent F."></div>
+            <div class="tg-legend" id="tg-gen-key" aria-hidden="true"></div>
+            <p class="tg-hover" id="tg-gen-hover" aria-hidden="true">&nbsp;</p>
+            <div class="tg-controls tg-rowpick">
+              <label class="tg-slider" for="tg-gen-row">row F <input type="range" id="tg-gen-row" min="-324" max="292" value="-199" step="1"> <output id="tg-gen-rowout" for="tg-gen-row">−199</output></label>
+              <div class="lab-chips" id="tg-gen-chips" role="group" aria-label="Interesting rows"></div>
+            </div>
+            <div class="tg-detail" id="tg-gen-detail" aria-live="polite"></div>
+            <figcaption>Bar height = headroom in bits = log<sub>2</sub>((2<sup>128</sup>/ε) / max φ): how many bits of shift the row could lose and still pass. Darker bars have less headroom. The peak near F = 0 comes from the 56 rows F = −55 … 0, where α/δ fits exactly in 128 bits, so M is the exact ratio plus 1.</figcaption>
+          </figure>
+          <div class="tg-after" id="tg-gen-after" hidden>
+            <h3>Checks</h3>
+            <ul class="tg-checks" id="tg-gen-checks"></ul>
+            <h3>What it writes</h3>
+            <p>The multipliers are stored as two 64-bit words, lower first. Row F = −17 (highlighted) is special: its α/δ = 5<sup>17</sup>/2<sup>40</sup> needs only 40 bits after the binary point, so M is exactly 5<sup>17</sup> · 2<sup>88</sup> + 1. The lower word is 1, and the upper word is 0xb1a2bc2ec5 = 5<sup>17</sup> shifted left by 24.</p>
+            <pre class="lab-code tg-code" id="tg-gen-code" tabindex="0" aria-label="Excerpt of the generated C file"></pre>
+            <details class="tg-details"><summary>Show the whole generated table (<span id="tg-gen-lines">…</span> lines)</summary><pre class="lab-code tg-code tg-code-full" id="tg-gen-full" tabindex="0"></pre></details>
+            <p>The second table, <code>minverse</code>, serves the divisibility tests for ties: 5<sup>−f</sup> mod 2<sup>64</sup> and ⌊2<sup>64</sup>/5<sup>f</sup>⌋ for f = 0 … 26. It stops where 5<sup>f</sup> ≥ 320 · (2<sup>53</sup> − 1), because no operand is that large, so no operand can be a multiple of 5<sup>f</sup>.</p>
+            <h3>Matches the repo</h3>
+            <ul class="tg-checks" id="tg-gen-repo"></ul>
+            <p class="tg-note">These lines are copied from <code>ieee64_with_uint128.c</code> at commit 4403283 and compared with what your browser just emitted. The page's test suite compares every table line, for binary16, bfloat16 and binary32 too.</p>
+          </div>
+        </section>
+
+        <section id="factory">
+          <p class="eyebrow">Stage three</p>
+          <h2>A compiler for float formats</h2>
+          <p>The runtime is one generic C file, <code>teju.h</code>. Everything specific to a format comes from the generator. It reads a small JSON config (word width W, exponent range, significand width), runs the checks, and emits <code>#define</code>s and two tables. It never searches: if anything fails, it stops with an error. Pick a format, or break one:</p>
+          <figure class="lab-figure tg-figure" id="tg-fac">
+            <div class="tg-controls">
+              <span class="tg-label" id="tg-fac-fmt-label">format</span>
+              <div class="lab-chips" id="tg-fac-fmts" role="group" aria-labelledby="tg-fac-fmt-label"></div>
+            </div>
+            <div class="tg-controls">
+              <label for="tg-fac-w">word W <select id="tg-fac-w"><option>16</option><option>32</option><option>64</option><option>128</option></select></label>
+              <label for="tg-fac-mw">significand bits <input type="number" id="tg-fac-mw" min="2" max="120" value="53"></label>
+              <button type="button" class="lab-button primary" id="tg-fac-run">Run generator</button>
+            </div>
+            <div class="tg-controls">
+              <span class="tg-label" id="tg-fac-break-label">break it</span>
+              <div class="lab-chips" id="tg-fac-breaks" role="group" aria-labelledby="tg-fac-break-label"></div>
+            </div>
+            <div class="tg-status" id="tg-fac-status" aria-live="polite"></div>
+            <ul class="tg-checks" id="tg-fac-checks"></ul>
+            <pre class="lab-code tg-code" id="tg-fac-code" tabindex="0" aria-label="Generated header lines"></pre>
+            <figcaption>Exponent ranges come from the repo's configs (binary16: −24…5, bfloat16: −133…120, binary32: −149…104, binary64: −1074…971). Changing W or the significand width keeps the range.</figcaption>
+          </figure>
+          <div class="table-scroll"><table class="tg-table">
+            <caption class="lab-sr-only">The repository's generated formats</caption>
+            <thead><tr><th>format</th><th>word W</th><th>shift</th><th>rows</th><th>minverse rows</th><th>sorted</th><th>tightest headroom</th></tr></thead>
+            <tbody id="tg-fac-summary"></tbody>
+          </table></div>
+          <p>Only binary16 comes out <em>sorted</em>. For every power of two, the lower end of its interval lands below the upper end on the 10<sup>F</sup> ruler, so the kernel's refined branch (one decade finer, operand 40m ≪ r) can never run, and the 8 + MW ≤ W check is skipped. For binary64, 33 powers of two need that branch. bfloat16 on 16-bit words passes with just 1.16 bits to spare.</p>
+        </section>
+
+        <section id="sources">
+          <p class="eyebrow">Sources</p>
+          <h2>Where this comes from</h2>
+          <ul class="tg-sources">
+            <li>Cassio Neri, <a href="https://github.com/cassioneri/teju_jagua">Tejú Jaguá</a> (repository, commit 4403283): the generator <code>cpp/generator/generator.cpp</code>, the output <code>teju/src/generated/ieee64_with_uint128.c</code> and the runtime <code>teju/src/teju.h</code>. There is no paper on Tejú Jaguá yet; the README says one will be written.</li>
+            <li>Cassio Neri, <a href="https://www.youtube.com/watch?v=fPZ1ZdA7Iwc">“A New Dragon in the Den”</a>, talk at CppCon 2024 (also given at C++Now and C++ on Sea 2024).</li>
+            <li>Cassio Neri and Lorenz Schneider, <a href="https://arxiv.org/abs/2102.06959">“Euclidean affine functions and their application to calendar algorithms”</a>, Software: Practice and Experience, 2023. This is the theory of fast multiply-and-shift division, including the div10 check.</li>
+          </ul>
+          <p class="tg-note">The generator uses Boost.Multiprecision. This page uses JavaScript BigInt and follows the C++ function by function. The test suite checks the emitted tables against the repo's file (SHA-256 of all 617 + 27 rows), checks the recursion against brute force on the toy and all ten binary16 rows, and checks the ported runtime against an exact reference on every binary16 value.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/teju-jagua.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
