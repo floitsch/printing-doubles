@@ -19,5 +19,9 @@ For a first reading, start with
 It works through a miniature binary format before connecting each decision to
 the full binary64 algorithm chapters.
 
+The [explanation lab](site/explore/index.html) holds two alternative,
+self-contained explanations for every algorithm, so the better one can be
+chosen for the chapters.
+
 Research notes and source-preservation work live outside `site/` so the public
 story can stay approachable without losing technical detail or provenance.
