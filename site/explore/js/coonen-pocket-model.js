@@ -99,8 +99,7 @@ export function exactPowerLimit(p) {
 }
 
 /** Coonen's Algorithm Q table (double): 10^27 exact, then 10^55, 10^108, 10^206
- *  stored rounded to nearest. (The transcription's "10^110 · 2^366" and
- *  "10^210 · 2^698" are OCR errors; only 108 and 206 match the mantissas.) */
+ *  stored rounded to nearest, as printed in the dissertation. */
 export const Q_TABLE = [27, 55, 108, 206];
 
 /** A table entry as Algorithm Q uses it: stored rounded to nearest, then fixed by

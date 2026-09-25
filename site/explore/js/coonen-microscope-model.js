@@ -110,10 +110,8 @@ export function roundToInteger(n, d, mode) {
 // Coonen's "economical" table for double: 10^27 (exact), 10^55, 10^108,
 // 10^206, each kept rounded to nearest in the extended format, plus
 // pfix = +1/0/-1 (entry rounded up / exact / rounded down).
-// NOTE: the OCR transcription prints the last two entries as 10^110·2^366 and
-// 10^210·2^698; the printed significands only match 10^108 (·2^359) and
-// 10^206 (·2^685), and only 27+55+108+206 reaches 10^340 with two rounded
-// entries.  We compute the entries from exact powers of ten.
+// 27+55+108+206 reaches 10^340 with at most two rounded entries.  We compute
+// the entries from exact powers of ten; they match the dissertation's hex.
 export const TABLE = [27, 55, 108, 206].map((exp) => {
   const r = roundToExt(pow10(exp), 1n, "nearest");
   const rat = extToRat(r);

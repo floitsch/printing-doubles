@@ -197,7 +197,7 @@ function pow10(n, dir):                      // Q
   for (p, entry) in [(206, T206), (108, T108), (55, T55), (27, 10^27)]:
     if n ≥ p: z = z × fix(entry, dir); n −= p  // rounded in direction dir
   return z × 10^n                            // 10^n exact: n ≤ 27</code></pre>
-          <p class="cm-note">About the source: the chapter’s table of powers of ten is garbled in the available OCR transcription. It prints “10<sup>110</sup> … × 2<sup>366</sup>” and “10<sup>210</sup> … × 2<sup>698</sup>”, but the printed significands 0.DA01EE641A708DEA and 0.9F79A169BD203E41 match 10<sup>108</sup> · 2<sup>−359</sup> and 10<sup>206</sup> · 2<sup>−685</sup>, and only 27 + 55 + 108 + 206 reaches 10<sup>340</sup> with two rounded entries. This page uses the corrected table, computed from exact powers of ten. The error of the 10<sup>55</sup> entry is 2<sup>−76.2</sup>, not the printed 2<sup>−79</sup>.</p>
+          <p class="cm-note">About the source: the dissertation’s table stores 10<sup>27</sup> exactly and 10<sup>55</sup> = 0.D0CF4B50CFE20766<sub>16</sub> · 2<sup>183</sup> ≈ 10<sup>55</sup>·(1+2<sup>−76</sup>), 10<sup>108</sup> = 0.DA01EE641A708DEA<sub>16</sub> · 2<sup>359</sup> ≈ 10<sup>108</sup>·(1+2<sup>−67</sup>) and 10<sup>206</sup> = 0.9F79A169BD203E41<sub>16</sub> · 2<sup>685</sup> ≈ 10<sup>206</sup>·(1−2<sup>−67</sup>). 27 + 55 + 108 + 206 reaches 10<sup>340</sup> with at most two rounded entries. This page recomputes the entries from exact powers of ten; they match the printed hex digits.</p>
         </section>
 
         <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/coonen.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
