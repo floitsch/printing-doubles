@@ -1,0 +1,133 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/ryu-pocket.html. Every rule is scoped under a ryu-pocket-* class. */
+
+.ryu-pocket-link { padding: 0 2px; border: 0; border-bottom: 1px solid var(--red); background: none; color: inherit; font: inherit; cursor: pointer; }
+.ryu-pocket-link:hover, .ryu-pocket-link:focus-visible { background: var(--acid); }
+
+/* ---- step card */
+.ryu-pocket-card { min-width: 0; }
+.ryu-pocket-card .rp-card-controls input[type="text"] { width: min(190px, 100%); }
+.ryu-pocket-seg { display: inline-flex; border: 1px solid var(--ink); }
+.ryu-pocket-seg button { padding: 8px 10px; border: 0; background: var(--paper); color: var(--ink); font: 500 11px/1 var(--mono); cursor: pointer; }
+.ryu-pocket-seg button + button { border-left: 1px solid var(--ink); }
+.ryu-pocket-seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.ryu-pocket-seg button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.ryu-pocket-card .rp-card-presets { margin-bottom: 12px; }
+.ryu-pocket-card .rp-card-error { min-height: 0; margin: 0; color: var(--red); font: 500 12px var(--mono); }
+.ryu-pocket-card .rp-card-error:empty { display: none; }
+.ryu-pocket-card .rp-card-summary { margin: 6px 0 22px; padding: 12px 14px; border-left: 3px solid var(--blue); background: var(--paper); font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+.ryu-pocket-card .rp-steps { margin: 0; }
+.ryu-pocket-card .rp-steps > li { margin: 0 0 24px; }
+.ryu-pocket-card h4 { margin: 0 0 4px; font: 600 21px/1.2 var(--serif); }
+.ryu-pocket-card .rp-why { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+.ryu-pocket-card .rp-calc { padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); font: 13px/1.65 var(--mono); min-width: 0; }
+.ryu-pocket-card .rp-line { overflow-wrap: anywhere; }
+.ryu-pocket-card .rp-line + .rp-line { margin-top: 3px; }
+.ryu-pocket-card .rp-line b { color: var(--blue); font-weight: 500; }
+.ryu-pocket-card .rp-note { color: var(--muted); font-size: 12px; font-family: var(--sans); line-height: 1.5; }
+.ryu-pocket-card .rp-long { font-size: 12px; }
+.ryu-pocket-card .rp-muted, .ryu-pocket-lab .rp-muted { color: var(--muted); }
+.ryu-pocket-card .rp-bin { color: var(--blue); }
+.ryu-pocket-card .rp-out, .ryu-pocket-card .rp-line b.rp-out { color: var(--red); font-weight: 500; }
+.ryu-pocket-card .rp-bits { letter-spacing: .04em; }
+.ryu-pocket-card .rp-sgn { color: var(--muted); }
+.ryu-pocket-card .rp-exp { color: var(--blue); font-weight: 500; }
+.ryu-pocket-card .rp-frac { color: color-mix(in srgb, var(--blue) 70%, var(--ink)); }
+.ryu-pocket-card .rp-flag { display: inline-block; padding: 0 6px; border: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.ryu-pocket-card .rp-flag.on { border-color: var(--ink); background: var(--acid); color: var(--ink); }
+.ryu-pocket-card .rp-ok, .ryu-pocket-lab .rp-ok { color: #1c7c3c; }
+.ryu-pocket-card .rp-bad, .ryu-pocket-lab .rp-bad { color: var(--red); }
+.ryu-pocket-card sup, .ryu-pocket-lab sup { font-size: .72em; line-height: 0; }
+
+.ryu-pocket-card .rp-tablewrap, .ryu-pocket-lab .rp-tablewrap { max-width: 100%; overflow-x: auto; }
+.ryu-pocket-card table.rp-chop, .ryu-pocket-lab table.rp-chop { width: auto; margin: 4px 0 10px; border-collapse: collapse; font: 12.5px/1.4 var(--mono); }
+.ryu-pocket-card .rp-chop th, .ryu-pocket-card .rp-chop td, .ryu-pocket-lab .rp-chop th, .ryu-pocket-lab .rp-chop td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.ryu-pocket-card .rp-chop th, .ryu-pocket-lab .rp-chop th { font: 500 9px var(--mono); text-transform: uppercase; }
+.ryu-pocket-card .rp-chop td:last-child { text-align: left; color: var(--muted); font-size: 11px; }
+.ryu-pocket-card .rp-chop td.rp-dig { color: var(--red); font-weight: 500; text-align: center; }
+.ryu-pocket-card .rp-chop tr.rp-start td { color: var(--blue); }
+
+/* ---- lean diagram */
+.ryu-pocket-lean .rp-lean-h { font: 600 15px var(--serif); fill: var(--ink); }
+.ryu-pocket-lean .rp-lean-s { font: 12px var(--sans); fill: var(--muted); }
+.ryu-pocket-lean .rp-axis { stroke: var(--ink); stroke-width: 1.5; }
+.ryu-pocket-lean .rp-tick { stroke: var(--ink); stroke-width: 1.5; }
+.ryu-pocket-lean .rp-lab { font: 13px var(--mono); fill: var(--ink); text-anchor: middle; }
+.ryu-pocket-lean .rp-lab-s { font: 11px var(--mono); fill: var(--muted); }
+.ryu-pocket-lean .rp-lab-s.rp-red { fill: var(--red); }
+.ryu-pocket-lean .rp-dz { font: 10px var(--mono); fill: var(--red); text-anchor: middle; text-transform: uppercase; letter-spacing: .06em; }
+.ryu-pocket-lean .rp-danger { fill: color-mix(in srgb, var(--red) 28%, transparent); stroke: var(--red); stroke-width: 1; }
+.ryu-pocket-lean .rp-exact { fill: var(--blue); stroke: var(--paper); stroke-width: 2; }
+.ryu-pocket-lean .rp-comp { fill: var(--paper); stroke: var(--red); stroke-width: 2; }
+.ryu-pocket-lean .rp-arrow { fill: none; stroke: var(--muted); stroke-width: 1.3; }
+.ryu-pocket-lean .rp-ah { fill: var(--muted); }
+
+/* ---- needle lab */
+.ryu-pocket-lab .lab-controls + .lab-controls { margin-top: -4px; }
+.ryu-pocket-lab .lab-controls output { min-width: 64px; }
+.ryu-pocket-lab input[type="range"] { width: min(360px, 100%); }
+.ryu-pocket-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; font: 12px/1.5 var(--mono); color: var(--muted); }
+.ryu-pocket-status progress { width: 140px; height: 8px; accent-color: var(--red); }
+.ryu-pocket-chartwrap { position: relative; padding: 14px 12px 6px; border: 1px solid var(--line); background: var(--paper); }
+.ryu-pocket-charttitle { margin: 0 0 6px; font: 600 16px var(--serif); }
+.ryu-pocket-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 4px; color: var(--muted); font: 11px var(--mono); }
+.ryu-pocket-legend i { display: inline-block; width: 18px; height: 2px; margin-right: 6px; vertical-align: middle; }
+.ryu-pocket-legend .k-hunt { background: var(--red); }
+.ryu-pocket-legend .k-rand { background: var(--blue); }
+.ryu-pocket-legend .k-live { width: 10px; height: 10px; border: 2px solid var(--ink); border-radius: 50%; }
+.ryu-pocket-lab .rp-chart { touch-action: pan-y; cursor: crosshair; }
+.ryu-pocket-lab .rp-grid { stroke: var(--line); stroke-width: 1; }
+.ryu-pocket-lab .rp-zero { stroke-dasharray: 3 3; }
+.ryu-pocket-lab .rp-ax { font: 11px var(--mono); fill: var(--muted); }
+.ryu-pocket-lab .rp-axt { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.ryu-pocket-lab .rp-ref { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 3; }
+.ryu-pocket-lab .rp-refl { fill: var(--ink); font-size: 10px; }
+.ryu-pocket-lab .rp-cur { stroke: var(--ink); stroke-width: 1; opacity: .5; }
+.ryu-pocket-lab .rp-line { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.ryu-pocket-lab .rp-hunt { stroke: var(--red); }
+.ryu-pocket-lab .rp-rand { stroke: var(--blue); }
+.ryu-pocket-lab .rp-pt { stroke: var(--paper); stroke-width: 2; }
+.ryu-pocket-lab .rp-hunt-pt { fill: var(--red); }
+.ryu-pocket-lab .rp-rand-pt { fill: var(--blue); }
+.ryu-pocket-lab .rp-live { fill: none; stroke: var(--ink); stroke-width: 2; }
+.ryu-pocket-lab .rp-dl { font: 500 12px var(--mono); }
+.ryu-pocket-lab .rp-dl-hunt { fill: var(--ink); }
+.ryu-pocket-lab .rp-dl-rand { fill: var(--ink); }
+.ryu-pocket-lab .rp-hit { fill: transparent; }
+.ryu-pocket-tip { position: absolute; top: 60px; z-index: 2; width: 220px; padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); font: 11px/1.5 var(--mono); pointer-events: none; }
+.ryu-pocket-lab .rp-small { font-size: 12px; }
+.ryu-pocket-table { margin: 10px 0 0; font: 12px var(--mono); }
+.ryu-pocket-table summary { cursor: pointer; }
+.ryu-pocket-lab table.rp-data { width: 100%; margin: 8px 0; border-collapse: collapse; font: 12px/1.4 var(--mono); }
+.ryu-pocket-lab .rp-data th, .ryu-pocket-lab .rp-data td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.ryu-pocket-lab .rp-data thead th { font: 500 9px var(--mono); text-transform: uppercase; }
+.ryu-pocket-lab .rp-data tbody th { text-align: left; font: 500 11px var(--mono); }
+.ryu-pocket-lab .ryu-pocket-h4 { margin: 22px 0 8px; font: 600 18px var(--serif); }
+.ryu-pocket-lab #rp-needles, .ryu-pocket-lab #rp-presets { align-items: center; }
+.ryu-pocket-needle { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--ink); background: var(--paper); }
+.ryu-pocket-needle:empty { display: none; }
+.ryu-pocket-needle h4 { margin: 0 0 6px; font: 600 20px/1.2 var(--serif); overflow-wrap: anywhere; }
+.ryu-pocket-needle .rp-wrongrow th, .ryu-pocket-needle .rp-wrongrow td { background: color-mix(in srgb, var(--red) 9%, transparent); }
+.ryu-pocket-needle .rp-diff { color: var(--blue); font-weight: 500; }
+.ryu-pocket-needle .rp-diff-bad { color: var(--red); font-weight: 500; text-decoration: underline; }
+.ryu-pocket-needle .rp-verdict { margin: 10px 0; font-size: 15px; }
+.ryu-pocket-needle .rp-chops { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.ryu-pocket-needle .rp-chops > div { min-width: 0; }
+.ryu-pocket-needle .rp-chop-s td:last-child { color: var(--red); }
+.ryu-pocket-needle .rp-diffrow td { background: color-mix(in srgb, var(--acid) 45%, transparent); }
+
+@media (max-width: 680px) {
+  .ryu-pocket-card .rp-calc { padding: 8px; font-size: 12px; }
+  .ryu-pocket-card .rp-steps > li { padding-left: 36px; }
+  .ryu-pocket-tip { width: 190px; }
+}
+
+.ryu-pocket-rules > li + li { margin-top: 12px; }
+.ryu-pocket-lab .lab-readout, .ryu-pocket-bf .lab-readout { font-size: 13px; line-height: 1.6; }
+.ryu-pocket-lab .lab-readout strong, .ryu-pocket-bf .lab-readout strong { color: var(--red); font-weight: 500; }
+.ryu-pocket-needle .rp-needle-t td.rp-wrap { min-width: 120px; white-space: normal; text-align: left; font-size: 11px; }
+.ryu-pocket-card .rp-chop td.rp-loop2 { color: var(--muted); font-size: 11px; text-align: left; }
+.ryu-pocket-leanpair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.ryu-pocket-lean .rp-lean-h { font-size: 14px; }
+.ryu-pocket-card .rp-chop th { white-space: normal; }
+@media (max-width: 680px) { .ryu-pocket-leanpair { grid-template-columns: 1fr; gap: 10px; } }

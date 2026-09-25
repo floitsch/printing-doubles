@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Run every step of Ryū on a half-precision float where each number fits a phone calculator, then shrink its table of powers of five until it breaks.">
+  <title>Ryū · Pocket Ryū, then try to break it · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/ryu-pocket.css">
+  <script type="module" src="./js/ryu-pocket.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Ryū / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./ryu-leap-chop.html">compare with approach A</a></p>
+      <h1>Pocket Ryū, then try to break it</h1>
+      <p class="chapter-deck">First, run all of Ryū on a 16-bit float, where every number fits on a phone calculator. Then shrink its table of powers of five until it breaks, and see why the real table never does.</p>
+      <p class="lab-pitch">Learn the algorithm on a format small enough to check by hand. Then answer the safety question, “why is there no fallback?”, by letting the reader hunt for the inputs that would need one.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Ryū · approach B</strong><a href="#plan">The plan</a><a href="#pocket">Pocket Ryū</a><a href="#rules">Three rounding rules</a><a href="#binary64">Same steps, binary64</a><a href="#lean">Why no fallback?</a><a href="#shrink">Check every bfloat16</a><a href="#needle">Needle in a haystack</a><a href="#proof">What is proven</a></aside>
+      <article class="chapter">
+        <section id="plan">
+          <p class="eyebrow">01 · The plan</p>
+          <h2>Three integers, one multiply, then delete digits</h2>
+          <p>Ryū (Ulf Adams, <a href="https://doi.org/10.1145/3192366.3192369">PLDI 2018</a>) prints the shortest decimal that reads back as the same double, and among those the closest one. It does not produce digits from left to right. Instead it does four things:</p>
+          <ol class="lab-steps">
+            <li><strong>Make three integers.</strong> Write the value and the two ends of its rounding interval as integers, all counted in the same small power of two.</li>
+            <li><strong>Change the unit.</strong> Count the same three points in a decimal unit 10<sup>e10</sup> instead. Rounding down to whole units takes one multiplication by a stored power of five and one shift.</li>
+            <li><strong>Delete digits.</strong> Remove the last digit of all three integers together, as long as a shorter number still fits between the outer two.</li>
+            <li><strong>Round.</strong> The last digit removed from the middle integer decides between it and the next integer up.</li>
+          </ol>
+          <p>For a double these are 17–19-digit integers and 125-bit constants, too big to check by hand. So we run the same steps on <em>half precision</em> first, where every number fits a phone calculator.</p>
+          <div class="lab-remember">
+            <strong>Remember: binary16 (half precision)</strong>
+            <p>16 bits: 1 sign bit, 5 exponent bits (bias 15) and 10 fraction bits. A normal half is (1024 + fraction) × 2<sup>exponent − 25</sup>. Exponent field 0 means subnormal: fraction × 2<sup>−24</sup>. Field 31 means ∞ or NaN.</p>
+            <p>The largest half is 65504 and the smallest is 2<sup>−24</sup> ≈ 5.96·10<sup>−8</sup>. That is about three significant decimal digits.</p>
+            <p>The <em>rounding interval</em> of a value runs from the midpoint with its lower neighbour to the midpoint with its upper neighbour. Every real number in between reads back as this value. A number exactly on a midpoint goes to the neighbour with the even significand.</p>
+          </div>
+        </section>
+
+        <section id="pocket">
+          <p class="eyebrow">02 · Pocket Ryū</p>
+          <h2>The whole algorithm on half 0.1</h2>
+          <p>Typing 0.1 into a half gives 0.0999755859375, the nearest half. Ryū has to print it as “0.1”. Every line of the card below is a calculation you can repeat on a calculator. The card is not a summary of the code: it <em>is</em> the code (<code>d2d()</code> from <code>d2s.c</code>) run on a small float.</p>
+          <p>Try the other examples, type any number (it is rounded to the nearest half), or type raw bits such as <code>0x3555</code>. The ± buttons step to the neighbouring half.</p>
+          <figure class="lab-figure ryu-pocket-cardfig">
+            <div class="ryu-pocket-card" id="rp-card-a" data-fmt="half" data-value="0.1" data-param="x"></div>
+            <noscript><p>This card needs JavaScript. Without it: half 0.1 = 1638 × 2<sup>−14</sup>; mm, mv, mp = 6550, 6552, 6554; q = 10, e10 = −6; ⌊m × 5<sup>6</sup> / 2<sup>10</sup>⌋ gives a, b, c = 99945, 99975, 100006; deleting five digits leaves 0, 0, 1 with last digit 9; output 1 × 10<sup>−1</sup>.</p></noscript>
+            <figcaption>Every step as it runs in d2s.c, with the arithmetic written out. Blue is the stored binary value and red is the decimal output.</figcaption>
+          </figure>
+        </section>
+
+        <section id="rules">
+          <p class="eyebrow">03 · Rounding</p>
+          <h2>Three rules pick b or b + 1</h2>
+          <p>After the deletions, b is the value <em>rounded down</em> to the final unit, so the answer is either b or b + 1. The code decides with one line, <code>output = vr + (outside || lastDigit ≥ 5)</code>, which combines three rules:</p>
+          <ol class="lab-steps ryu-pocket-rules">
+            <li><strong>Round up when the last deleted digit is 5 or more.</strong> Example: half 0.1 above (digit 9).</li>
+            <li><strong>Except on an exact tie, which rounds half to even.</strong> The last deleted digit may be 5 with only zeros deleted before it, and with nothing lost in the multiply. Then the value sits exactly halfway between b and b + 1. If b is even, the code treats the 5 as a 4 and keeps b. Example: <button class="ryu-pocket-link" type="button" data-card="rp-card-a" data-load="0.15625">half 0.15625</button> prints 0.1562.</li>
+            <li><strong>Always round up when b is outside the interval.</strong> a is the lower bound <em>rounded down</em>, so when b = a, b can sit below the real lower bound. Then b is not allowed and b + 1 is. The one exception is when a lands exactly on the bound and the bound itself is allowed. This rule matters for powers of two, whose lower neighbour is twice as close. Example: <button class="ryu-pocket-link" type="button" data-card="rp-card-a" data-load="0.015625">half 2<sup>−6</sup> = 0.015625</button> is an exact tie with an even b = 1562. It still prints 0.01563, because 0.01562 is below its interval.</li>
+          </ol>
+          <p>The ends of the interval are allowed only when the significand is even, because a reader rounding ties to even would then map the midpoint back to this value. When an allowed lower bound is an exact decimal, it can even be the answer: <button class="ryu-pocket-link" type="button" data-card="rp-card-a" data-load="4112">half 4112</button> prints 4110, because a = 4110 is exact and allowed. In that case Ryū keeps deleting while a ends in 0 (the second loop in <code>d2s.c</code>). An exact upper bound that is <em>not</em> allowed is excluded by subtracting one from c at the start (<button class="ryu-pocket-link" type="button" data-card="rp-card-a" data-load="256.25">half 256.25</button>).</p>
+        </section>
+
+        <section id="binary64">
+          <p class="eyebrow">04 · Same steps, binary64</p>
+          <h2>A double only changes the sizes</h2>
+          <p>Here is the same card, set to binary64. Flip the switch on either card to run any value in the other format. The steps and branches are identical. Only the numbers are longer.</p>
+          <figure class="lab-figure ryu-pocket-cardfig">
+            <div class="ryu-pocket-card" id="rp-card-b" data-fmt="double" data-value="0.3" data-param="d"></div>
+            <figcaption>The same eight steps on a real double. The “exact” check in step 4 recomputes each floor with unbounded integers; Ryū itself never does.</figcaption>
+          </figure>
+          <p>What actually changes:</p>
+          <ul>
+            <li><strong>Sizes.</strong> m2 has 53 bits and e2 runs from −1076 to 969. The three counts have 17–19 digits, and up to 17 digits get deleted (0.3 needs 17 deletions; a typical random double needs 1–3).</li>
+            <li><strong>The table.</strong> A half never needs more than 5<sup>9</sup> = 1,953,125, which is 21 bits, so every pocket constant is exact. Halves of 4096 and above have q = 0, so they need no constant at all. A double needs powers up to 5<sup>325</sup> (755 bits) and reciprocals down to 1/5<sup>290</sup>. <code>d2s.c</code> stores 125-bit versions: the top bits of 5<sup>i</sup>, <em>truncated</em>, for e2 &lt; 0 (326 entries), and ⌊2<sup>k</sup>/5<sup>q</sup>⌋ + 1, the reciprocal <em>rounded up</em>, for e2 ≥ 0 (342 entries). Each entry fills two 64-bit words.</li>
+            <li><strong>The multiply.</strong> mX fits in 64 bits and the constant takes two words. So each of the three counts costs one 64×128-bit multiply that keeps the high part of the product, plus a shift.</li>
+            <li><strong>Two shortcuts, same results.</strong> <code>d2s.c</code> prints integers in [1, 2<sup>53</sup>) directly. In the common case where neither exactness flag is set (about 99.3% of doubles, per the source), it deletes two digits at a time first.</li>
+          </ul>
+          <p>The truncated table raises the one question that halves never do: is every floor still exact? If it is not, the output can be wrong, and Ryū has no fallback to catch it.</p>
+        </section>
+
+        <section id="lean">
+          <p class="eyebrow">05 · Why no fallback?</p>
+          <h2>When can a truncated constant hurt?</h2>
+          <p>Ryū never checks its floors. There is no error bound, no retry and no big-number fallback. For that to be safe, a 125-bit constant must give the same floor as the exact power of five for <em>every</em> double. First, look at which way the error goes:</p>
+          <figure class="lab-figure ryu-pocket-lean">
+            <div class="ryu-pocket-leanpair">
+              <svg viewBox="-4 0 336 196" role="img" aria-label="e2 below zero: the stored power of five is truncated, so the computed product is slightly too small. The floor is wrong only when the exact product lies in a thin strip just above an integer n.">
+                <defs><marker id="rp-ah0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="rp-ah"/></marker></defs>
+                <g class="rp-lean-panel">
+                <text x="0" y="24" class="rp-lean-h">e2 &lt; 0 · stored ⌊5<tspan dy="-6" font-size="10">i</tspan><tspan dy="6">/2</tspan><tspan dy="-6" font-size="10">k</tspan><tspan dy="6">⌋ is truncated</tspan></text>
+                <text x="0" y="44" class="rp-lean-s">computed ≤ exact: the result can only drop</text>
+                <line x1="0" y1="120" x2="320" y2="120" class="rp-axis"/>
+                <line x1="100" y1="104" x2="100" y2="136" class="rp-tick"/><text x="100" y="156" class="rp-lab">n</text>
+                <line x1="290" y1="104" x2="290" y2="136" class="rp-tick"/><text x="290" y="156" class="rp-lab">n + 1</text>
+                <rect x="100" y="108" width="22" height="24" class="rp-danger"/>
+                <text x="111" y="184" class="rp-dz">danger zone</text>
+                <circle cx="116" cy="120" r="6" class="rp-exact"/><text x="132" y="92" class="rp-lab-s" text-anchor="start">exact</text>
+                <path d="M114 104 Q100 88 86 104" class="rp-arrow" marker-end="url(#rp-ah0)"/>
+                <circle cx="84" cy="120" r="6" class="rp-comp"/><text x="70" y="92" class="rp-lab-s rp-red" text-anchor="end">computed</text>
+                <circle cx="204" cy="120" r="6" class="rp-exact"/><circle cx="196" cy="120" r="6" class="rp-comp"/><text x="200" y="92" class="rp-lab-s" text-anchor="middle">harmless</text>
+              </g>
+              </svg>
+              <svg viewBox="-4 0 336 196" role="img" aria-label="e2 at least zero: the stored reciprocal is rounded up, so the computed product is slightly too big. The floor is wrong only when the exact product lies in a thin strip just below the next integer n + 1.">
+                <defs><marker id="rp-ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="rp-ah"/></marker></defs>
+                <g class="rp-lean-panel">
+                <text x="0" y="24" class="rp-lean-h">e2 ≥ 0 · stored ⌊2<tspan dy="-6" font-size="10">k</tspan><tspan dy="6">/5</tspan><tspan dy="-6" font-size="10">q</tspan><tspan dy="6">⌋ + 1 is rounded up</tspan></text>
+                <text x="0" y="44" class="rp-lean-s">computed ≥ exact: the result can only rise</text>
+                <line x1="0" y1="120" x2="320" y2="120" class="rp-axis"/>
+                <line x1="30" y1="104" x2="30" y2="136" class="rp-tick"/><text x="30" y="156" class="rp-lab">n</text>
+                <line x1="230" y1="104" x2="230" y2="136" class="rp-tick"/><text x="230" y="156" class="rp-lab">n + 1</text>
+                <rect x="208" y="108" width="22" height="24" class="rp-danger"/>
+                <text x="219" y="184" class="rp-dz">danger zone</text>
+                <circle cx="214" cy="120" r="6" class="rp-exact"/><text x="198" y="92" class="rp-lab-s" text-anchor="end">exact</text>
+                <path d="M216 104 Q230 88 244 104" class="rp-arrow" marker-end="url(#rp-ah1)"/>
+                <circle cx="246" cy="120" r="6" class="rp-comp"/><text x="260" y="92" class="rp-lab-s rp-red" text-anchor="start">computed</text>
+                <circle cx="116" cy="120" r="6" class="rp-exact"/><circle cx="124" cy="120" r="6" class="rp-comp"/><text x="120" y="92" class="rp-lab-s" text-anchor="middle">harmless</text>
+              </g>
+              </svg>
+            </div>
+            <figcaption>The strips are drawn wide. For 125-bit constants they are narrower than 2<sup>−62</sup> of a unit: the error is at most about the value × 2<sup>1−B</sup>, and the counts stay below 2<sup>62</sup>.</figcaption>
+          </figure>
+          <p>A floor goes wrong only if some exact scaled value lands inside the thin strip on the dangerous side of an integer. An exact integer is never at risk. With a truncated 5<sup>i</sup>, the product can only be an integer when 2<sup>q</sup> divides mX, so q ≤ 54. For those exponents, 5<sup>i</sup> has at most 61 bits and the entry is exact anyway. With a rounded-up reciprocal, the product is just pushed a little above the integer.</p>
+          <p>So the question is not about rounding any more. It is number theory: how close can m · 2<sup>x</sup> / 5<sup>y</sup> get to an integer, over all 2<sup>53</sup> significands of one exponent? That differs from exponent to exponent and has to be computed.</p>
+        </section>
+
+        <section id="shrink">
+          <p class="eyebrow">06 · Shrink the float</p>
+          <h2>Check every bfloat16</h2>
+          <p>For a small format you can simply try everything. bfloat16 has an 8-bit significand and the same exponent range as float32. Run Ryū's own q and e10 rules on it, with a B-bit table in the same shape as <code>d2s.c</code>'s. Then compare all three floors of every positive finite value against the exact floors: 97,917 floors in all.</p>
+          <figure class="lab-figure ryu-pocket-bf">
+            <div class="lab-controls">
+              <label for="rp-bf-B">Table width B</label>
+              <input type="range" id="rp-bf-B" min="16" max="40" value="24" aria-describedby="rp-bf-out">
+              <output id="rp-bf-Bout" for="rp-bf-B">24 bits</output>
+            </div>
+            <div class="lab-readout" id="rp-bf-out" aria-live="polite"></div>
+            <figcaption>Every bfloat16 is checked each time you move the slider (tens of milliseconds). A floor is “wrong” when the B-bit constant gives a different ⌊m · 2<sup>e2</sup> / 10<sup>e10</sup>⌋ than exact arithmetic.</figcaption>
+          </figure>
+          <p>A few bits past “usually fine”, exactly one value is still wrong, and one more bit fixes it. For binary64 there are 2<sup>64</sup> values, far too many to try. So how do you find its lone survivors?</p>
+        </section>
+
+        <section id="needle">
+          <p class="eyebrow">07 · Needle in a haystack</p>
+          <h2>Random testing versus a hunt</h2>
+          <p>Pick a table width B for binary64. Then try to break Ryū in two ways:</p>
+          <ul>
+            <li><strong>Test random doubles.</strong> Draw 100,000 random bit patterns, so every exponent is equally likely, and compare all three floors with exact arithmetic.</li>
+            <li><strong>Hunt adversarially.</strong> For each of the 2,047 binary exponents, a wrong floor needs the residue (mX · 2<sup>s</sup>) mod 5<sup>q</sup>, or (mX · 5<sup>i</sup>) mod 2<sup>q</sup>, to land in a small window next to the modulus or zero. Finding the smallest x with (a · x) mod M inside a window is a recursion in the style of Euclid's algorithm, so the hunt jumps from candidate to candidate without scanning. Every candidate is then checked with exact arithmetic. This is <em>our reproduction</em> of the idea, not the paper's tool.</li>
+          </ul>
+          <figure class="lab-figure ryu-pocket-lab" id="rp-lab">
+            <div class="lab-controls">
+              <label for="rp-B">Stored constant width B</label>
+              <input type="range" id="rp-B" min="64" max="125" value="112">
+              <output id="rp-Bout" for="rp-B">112 bits</output>
+            </div>
+            <div class="lab-controls">
+              <button type="button" class="lab-button primary" id="rp-random">Test 100,000 random doubles</button>
+              <button type="button" class="lab-button primary" id="rp-hunt">Hunt adversarially</button>
+              <button type="button" class="lab-button" id="rp-sweep">Re-hunt all widths</button>
+              <button type="button" class="lab-button" id="rp-stop" disabled>Stop</button>
+            </div>
+            <div class="ryu-pocket-status"><progress id="rp-progress" max="1" value="0" aria-label="Progress"></progress><span id="rp-status" role="status" aria-live="polite">Ready.</span></div>
+            <div class="ryu-pocket-chartwrap">
+              <p class="ryu-pocket-charttitle">Binary exponents (of 2,047) where a wrong floor was found</p>
+              <div class="ryu-pocket-legend"><span><i class="k-hunt"></i>adversarial hunt</span><span><i class="k-rand"></i>100,000 random doubles</span><span><i class="k-live"></i>your runs</span></div>
+              <div id="rp-chart"></div>
+              <div class="ryu-pocket-tip" id="rp-tip" hidden></div>
+            </div>
+            <p class="lab-readout" id="rp-summary" aria-live="polite"></p>
+            <details class="ryu-pocket-table"><summary>Table view of the chart</summary><div id="rp-table"></div></details>
+            <h3 class="ryu-pocket-h4">Needles at this width</h3>
+            <div class="lab-chips" id="rp-needles" role="group" aria-label="Needles found at this width"></div>
+            <h3 class="ryu-pocket-h4">Verified needles</h3>
+            <div class="lab-chips" id="rp-presets" role="group" aria-label="Verified needles"></div>
+            <div id="rp-needle" class="ryu-pocket-needle" aria-live="polite"></div>
+            <figcaption>The curves come from this page's code: the hunt at every width, and random tests with a fixed seed. Your own runs appear as rings, and random runs use a fresh seed. At widths below about 108 bits the hunt gives up on a few exponents after 64 candidates, so those counts are lower bounds. From 108 bits up (except one exponent at 115) the search is complete.</figcaption>
+          </figure>
+          <p>Random testing stops finding anything at about 77 bits: at that width a wrong floor is too rare to show up in 100,000 draws. The hunt keeps finding needles for another 46 bits. At 112 bits more than half of all exponents still have one, and the last one disappears only at 124 bits. Some needles are harmless because the digit deletion throws the wrong digit away. Others change the output (click one), and some produce a string that reads back as a <em>different</em> double.</p>
+        </section>
+
+        <section id="proof">
+          <p class="eyebrow">08 · What is proven</p>
+          <h2>124 bits by proof, 125 in the code</h2>
+          <p>The paper does not search for needles. Its lemmas (Section 3.2) show that the floors are exact when 2<sup>k</sup> is large enough compared with the smallest (or largest) value of a modular product, (w · 5<sup>i</sup>) mod 2<sup>q</sup> or its e2 ≥ 0 counterpart, over every possible w. It computes those extremes per exponent with <code>minmax_euclid</code>, an extension of the extended Euclidean algorithm. The algorithm is sublinear and may return a slightly conservative bound. The resulting widths (Figure 4) are B<sub>0</sub> = B<sub>1</sub> = 124 bits for Float64, 60 and 63 for Float32, and 15 and 21 for Float16.</p>
+          <p><code>d2s.c</code> uses 125-bit constants (<code>DOUBLE_POW5_INV_BITCOUNT</code> = <code>DOUBLE_POW5_BITCOUNT</code> = 125) stored in pairs of 64-bit words. That is one bit more than the proven minimum.</p>
+          <p>Our hunt agrees with the paper from the other side. The last needles it finds are at 123 bits for e2 ≥ 0 (<button class="ryu-pocket-link" type="button" data-needle="1.85006342392073e233" data-B="123">1.85006342392073e+233</button>) and at 122 bits for e2 &lt; 0 (<button class="ryu-pocket-link" type="button" data-needle="2.1789991853451517e-166" data-B="122">2.1789991853451517e-166</button>). At 124 and 125 bits it finds nothing in any exponent. That is evidence, not a proof. The guarantee is the paper's lemma.</p>
+          <div class="aside"><p><strong>What “no fallback” buys.</strong> Grisu works with 64-bit approximations and error bounds, and gives up on about 0.5% of doubles, which then need a slow exact algorithm. Ryū pays for 128-bit products and a table of about 10 KB. In exchange its floors are exact by construction, so the digit deletion and rounding can be plain integer code with no uncertainty left to handle.</p></div>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/ryu.html"><span>Compare</span><strong>Ryū chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
