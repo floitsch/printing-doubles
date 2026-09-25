@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="How Gay's dtoa and Burger & Dybvig replace Dragon4's decade-by-decade search: read the decimal exponent off the binary exponent, then repair it with one exact comparison.">
+  <title>Gay &amp; Burger–Dybvig · Binade meets decade · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/descendants-rulers.css">
+  <script type="module" src="./js/descendants-rulers.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Gay &amp; Burger–Dybvig / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./descendants-machine.html">compare with approach B</a></p>
+      <h1>Binade meets decade</h1>
+      <p class="chapter-deck">Dragon4 finds the decimal exponent by multiplying by ten, one decade at a time: hundreds of bignum steps for the extreme doubles. David Gay's dtoa (1990) and Burger &amp; Dybvig (1996) read it off the binary exponent instead. The guess is off by at most one, and one exact comparison fixes it.</p>
+      <p class="lab-pitch">Two stacked rulers, binades above and decades below, make the key speedup visible. A binade is 0.301 decades wide, so it holds at most one power of ten, so the exponent bits leave only two candidates. What dtoa adds on top is shown afterwards as a ledger of 2s and 5s.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Gay &amp; Burger–Dybvig</strong><a href="#treadmill">1 · The treadmill</a><a href="#rulers">2 · Two rulers</a><a href="#guesses">3 · Two guesses</a><a href="#repair">4 · One comparison</a><a href="#sweep">5 · How often it misses</a><a href="#ledger">6 · A ledger of 2s and 5s</a><a href="#today">7 · Today's dtoa.c</a></aside>
+      <article class="chapter dr">
+
+        <section id="treadmill">
+          <p class="eyebrow">1 · Where Dragon4 spends its time</p>
+          <h2>The digits were never the slow part</h2>
+          <div class="lab-remember">
+            <strong>Remember: Dragon4's digit loop</strong>
+            <p>Steele &amp; White's Dragon4 works with four exact integers. <code>r/s</code> is the value v, scaled so that it lies in [0.1, 1). <code>m⁺/s</code> and <code>m⁻/s</code> are the half-gaps to the neighbouring doubles, scaled the same way.</p>
+            <p>Each round multiplies r, m⁺ and m⁻ by 10, takes the digit <code>d = ⌊r/s⌋</code> and keeps <code>r mod s</code>. It stops as soon as the digits so far already lie inside the rounding interval (<code>r &lt; m⁻</code>: emit d) or rounding the last digit up lands inside it (<code>r + m⁺ &gt; s</code>: emit d+1).</p>
+          </div>
+          <p>A double never needs more than 17 digits, so that loop runs at most 17 times. The expensive part comes <em>before</em> it: getting r/s into [0.1, 1). Dragon4's scaling loop does that one decade at a time. It multiplies s by 10 (or r, m⁺ and m⁻ by 10) and compares again, once for every power of ten between 1 and v. Pick a number and race the two strategies.</p>
+          <figure class="lab-figure dr-race" aria-labelledby="dr-race-cap">
+            <div class="lab-controls">
+              <span>Number:</span>
+              <div class="lab-chips" id="dr-race-chips" role="group" aria-label="Race presets"></div>
+              <button class="lab-button primary" id="dr-race-go" type="button">Race</button>
+            </div>
+            <div class="dr-lanes">
+              <div class="dr-lane" id="dr-lane-tread"></div>
+              <div class="dr-lane" id="dr-lane-lift"></div>
+            </div>
+            <div id="dr-race-chart" class="dr-chart"></div>
+            <figcaption id="dr-race-cap">Top: counts for one number, from running both strategies on exact integers. The treadmill is Burger &amp; Dybvig's Figure 1 <code>scale</code> loop, which is Steele &amp; White's method. The elevator is their Figure 3 estimate. Below: bignum multiplications by 10 in the scaling loop, for each power of ten from 10⁻³²³ to 10³⁰⁸ (sampled every 4 decades). Hover or tap to read values.</figcaption>
+          </figure>
+          <p>The treadmill's cost is V-shaped in the decimal exponent, and the integers grow on every step. Burger &amp; Dybvig timed it on 250,680 doubles: iterative scaling took 70 times the CPU time of their estimate (Table 2 of the paper). Both papers get rid of the treadmill with the same observation. The rest of this page explains it.</p>
+        </section>
+
+        <section id="rulers">
+          <p class="eyebrow">2 · The core idea</p>
+          <h2>Your exponent already knows the decade</h2>
+          <div class="lab-remember">
+            <strong>Remember: what the exponent field says</strong>
+            <p>A double stores v = f · 2<sup>e</sup> with an integer significand f. The exponent field tells you the <em>binade</em>, the power of two with 2<sup>s</sup> ≤ v &lt; 2<sup>s+1</sup>. Here s = e + len(f) − 1, where len(f) is f's length in bits. For normal doubles, s is just the unbiased exponent.</p>
+          </div>
+          <p class="dr-convention"><span class="dr-conv-badge">Convention on this page</span> Results are written <strong>d.ddd × 10<sup>E</sup></strong> (scientific, as in <code>1e23</code>). Burger &amp; Dybvig write 0.d₁d₂… × 10<sup>k</sup>, so their k is E + 1. dtoa's internal k is E, and its returned <code>decpt</code> is E + 1.</p>
+          <p>On a logarithmic axis every decade is 1 unit wide, and every binade is log₁₀ 2 ≈ <strong>0.30103</strong> units wide. Because 0.301 &lt; 1, <strong>a binade contains at most one power of ten</strong>. So once you know the binade, only two candidates for E are left: the decade the binade starts in, or the next one. Drag v and watch the blue binade project onto the decimal ruler.</p>
+          <figure class="lab-figure dr-rulers" aria-labelledby="dr-rulers-cap">
+            <div class="lab-controls">
+              <label for="dr-v-input">v =</label>
+              <input type="text" id="dr-v-input" size="22" spellcheck="false" autocomplete="off" aria-describedby="dr-v-error">
+              <button class="lab-button" type="button" id="dr-v-apply">Show</button>
+              <span id="dr-v-error" class="dr-error" role="status"></span>
+            </div>
+            <div class="lab-controls">
+              <div class="lab-chips" id="dr-v-chips" role="group" aria-label="Example numbers"></div>
+            </div>
+            <div class="lab-controls">
+              <fieldset class="dr-radios" id="dr-est-radios"><legend>Estimator</legend></fieldset>
+              <label for="dr-zoom">Window
+                <select id="dr-zoom">
+                  <option value="1.5">1.5 decades</option>
+                  <option value="4">4 decades</option>
+                  <option value="12">12 decades</option>
+                </select>
+              </label>
+            </div>
+            <div class="dr-slider-row">
+              <label for="dr-slider">log₁₀ v</label>
+              <input type="range" id="dr-slider" min="-323.3" max="308.25" step="0.0005">
+              <button class="lab-button" type="button" id="dr-prev-binade" aria-label="Previous binade">◀ binade</button>
+              <button class="lab-button" type="button" id="dr-next-binade" aria-label="Next binade">binade ▶</button>
+            </div>
+            <div id="dr-minimap" class="dr-minimap"></div>
+            <div id="dr-ruler" class="dr-ruler"></div>
+            <div class="dr-under">
+              <div id="dr-lens" class="dr-lens"></div>
+              <div id="dr-readout" class="lab-readout" aria-live="polite"></div>
+            </div>
+            <figcaption id="dr-rulers-cap">Top ruler: binades 2<sup>s</sup> (blue cells, each 0.301 decades wide). Bottom ruler: decades (red ticks at powers of ten). The hatched slivers are where the selected estimator guesses wrong. Drag the marker, use the slider, or type a number. The lens on the left zooms into v's rounding interval (half a gap to each neighbour). That is where it shows up when a power of ten lies just inside or just outside the interval. All verdicts are computed with exact integers.</figcaption>
+          </figure>
+          <p>The bits of the exponent cannot tell 700 from 1000: both live in binade 2⁹ = [512, 1024), whose single power of ten is 1000. The candidates are E = 2 and E = 3. Only the rest of v decides between them, so the estimate needs one more piece of information, and Section 4 shows how to get it with one comparison.</p>
+          <p class="dr-note"><strong>Which end decides?</strong> Burger &amp; Dybvig choose the exponent from the <em>upper end</em> of the rounding interval, high = v + ½ ulp, not from v. Their output then never has to carry into a new leading digit. For most numbers this makes no difference. It does for the double nearest 10²³, which is 99999999999999991611392. Its high end is exactly 10²³, and since the significand is even that end belongs to the interval. So B&amp;D's target is E = 23, while ⌊log₁₀ v⌋ = 22 is dtoa's target. The ruler's truth line follows whichever algorithm the selected estimator belongs to.</p>
+        </section>
+
+        <section id="guesses">
+          <p class="eyebrow">3 · The estimators</p>
+          <h2>Two ways to guess: err low or err high</h2>
+          <h3>Burger &amp; Dybvig: the binade's left edge</h3>
+          <p>Their fast estimator (Figure 3 of the paper) uses nothing but s:</p>
+          <p class="equation">k = ⌈s · log₁₀2 − 10⁻¹⁰⌉ &nbsp;⇒&nbsp; Ê = k − 1</p>
+          <p>That is two floating-point operations. It is the decade in which the binade <em>starts</em>, so it is never too high. It is one too low exactly when high has passed the power of ten inside the binade: in 2⁹ that is [1000, 1024). Over all normal doubles (every bit pattern counted once) that happens for <strong>16.8%</strong>. The −10⁻¹⁰ protects against the rounded product landing just above an integer. Its only side effect is that binade [1, 2) always gets the low guess.</p>
+          <h3>Gay: a tangent line through the significand</h3>
+          <p>dtoa also looks at the significand. With v = x · 2<sup>i</sup> and 1 ≤ x &lt; 2, log₁₀ v = i · log₁₀2 + log₁₀ x. Gay replaces log₁₀ x by its tangent at x = 1.5:</p>
+          <p class="equation">ds = (x − 1.5)·0.289529654602168 + 0.1760912590558 + i·0.301029995663981, &nbsp; Ê = ⌊ds⌋</p>
+          <figure class="lab-figure dr-tangent" aria-labelledby="dr-tan-cap">
+            <div class="dr-tangent-grid">
+              <div id="dr-tangent"></div>
+              <div id="dr-binade9"></div>
+            </div>
+            <figcaption id="dr-tan-cap">Left: log₁₀ x (red) and dtoa's tangent line at x = 1.5 (ink) on the significand range [1, 2]. The shaded gap is how far the estimate overshoots. The dot is the current v from Section 2. Right: binade 2⁹ = [512, 1024) drawn linearly, with each estimator's miss zone computed from its formula.</figcaption>
+          </figure>
+          <p>log₁₀ is concave, so the tangent lies above the curve everywhere: by 0.0313 at x = 1 and by 0.0198 at x = 2. On top of that, the constant is rounded <em>up</em> by 10⁻¹³ to absorb the rounding error of i · 0.30103 (dtoa's own comment gives the reason). Gay's guess is therefore never low, and at most one high. Because it uses the significand, its miss zone in 2⁹ shrinks to [970.73, 1000), just <em>below</em> the power of ten, where B&amp;D's guess is right. Over all normal doubles it misses <strong>0.83%</strong>. In 41 binades the miss zone sits at the very top of a binade that holds no power of ten, because the power lies just above the binade's upper edge.</p>
+        </section>
+
+        <section id="repair">
+          <p class="eyebrow">4 · The repair</p>
+          <h2>One comparison repairs the guess</h2>
+          <p><strong>Burger &amp; Dybvig.</strong> They take 10<sup>|est|</sup> from a table (10⁰ … 10³²⁵). They multiply it into s when est ≥ 0, and into r, m⁺ and m⁻ otherwise. Now (r + m⁺)/s = high / 10<sup>est</sup>, so "did high reach 10<sup>est</sup>?" is the single comparison <code>r + m⁺ ≥ s</code>. It is <code>&gt;</code> when high is excluded, because f is odd.</p>
+          <p>The repair is free because of where the ×10 lives. The digit loop's first act would be to multiply r, m⁺ and m⁻ by 10, and B&amp;D move that multiplication to the call site. If the guess was right, they do it; it was needed anyway. If the guess was one low, fixing the scaling would take one more ×10. That is exactly the ×10 the loop is about to do, so both are skipped. A low guess is actually one multiplication <em>cheaper</em>.</p>
+          <p><strong>Gay.</strong> dtoa's guess is never low, so the repair can only lower it. When 0 ≤ k̂ ≤ 22 it compares in doubles, <code>v &lt; 1e</code>k̂, which is exact because every 10<sup>k</sup> up to 10²² is a double. Otherwise it sets <code>k_check</code>. After building the bignums b and S, with b/S = v/10<sup>k̂</sup>, it tests <code>b &lt; S</code>. If that holds, k drops by one, and b and the margin <code>mhi</code> are multiplied by 10.</p>
+          <figure class="lab-figure dr-repair" aria-labelledby="dr-repair-cap">
+            <div class="lab-controls"><span>v (shared with Section 2):</span><div class="lab-chips" id="dr-repair-chips" role="group" aria-label="Example numbers"></div></div>
+            <div class="dr-repair-grid">
+              <div class="dr-card" id="dr-repair-bd"></div>
+              <div class="dr-card" id="dr-repair-gay"></div>
+            </div>
+            <figcaption id="dr-repair-cap">Both repairs for the v chosen in Section 2. Integers with more than 24 digits are abbreviated, with their bit length shown.</figcaption>
+          </figure>
+          <div class="aside dr-aside" id="dr-1e23">
+            <p><strong>Why floating-point logs alone are not enough.</strong> <span id="dr-1e23-text"></span></p>
+          </div>
+        </section>
+
+        <section id="sweep">
+          <p class="eyebrow">5 · Measured</p>
+          <h2>How often does the guess miss?</h2>
+          <p>Draw random normal doubles (random exponent field, random significand bits), compute each estimator, and subtract the exact target. Every bar is either on the documented side or at zero.</p>
+          <figure class="lab-figure dr-sweep" aria-labelledby="dr-sweep-cap">
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" id="dr-sweep-go">New sweep: 20,000 doubles</button>
+              <button class="lab-button" type="button" id="dr-sweep-more">+ 100,000 more</button>
+              <button class="lab-button" type="button" id="dr-sweep-reset">Reset</button>
+              <span id="dr-sweep-status" role="status"></span>
+            </div>
+            <div id="dr-sweep-chart" class="dr-sweep-chart"></div>
+            <figcaption id="dr-sweep-cap">Estimate − truth, exact. B&amp;D's two estimators are measured against B&amp;D's target (decided by high); Gay's against ⌊log₁₀ v⌋. Every bit pattern of a normal double is equally likely, so every binade gets the same weight. Exhaustive counts over all 2046 × 2⁵² normal doubles: B&amp;D bits miss 16.8%, Gay's tangent 0.83%.</figcaption>
+          </figure>
+          <p>B&amp;D's floating-point <code>log10</code> estimator (their Figure 2) almost never misses on random input. It still misses where it matters: exact powers of ten such as 1000 and 10¹⁰⁰, where log₁₀ is exactly an integer, and the double nearest 10²³. So B&amp;D chose the crudest estimator on purpose, because its misses cost nothing. Gay's estimator is better but needs a real repair, and that repair costs a bignum comparison plus a ×10 when k̂ is outside [0, 22].</p>
+        </section>
+
+        <section id="ledger">
+          <p class="eyebrow">6 · What dtoa adds</p>
+          <h2>A ledger of 2s and 5s</h2>
+          <p>The estimate removes the treadmill. Gay's dtoa then makes the integers of the digit loop smaller. It does this with bookkeeping: before it builds any bignum, it writes each of its three integers as <strong>odd × 2<sup>x</sup> × 5<sup>y</sup></strong> and does arithmetic on the exponents only. The key identity is 10<sup>k</sup> = 2<sup>k</sup> · 5<sup>k</sup>. The 5s of 10<sup>k</sup> all go to one side, so they never need cancelling. The 2s cancel by subtracting counters. Step through it with dtoa's own variable names.</p>
+          <figure class="lab-figure dr-ledger" aria-labelledby="dr-ledger-cap">
+            <div class="lab-controls">
+              <div class="lab-chips" id="dr-ledger-chips" role="group" aria-label="Ledger examples"></div>
+            </div>
+            <div class="lab-controls">
+              <button class="lab-button" type="button" id="dr-ledger-prev">◀ Back</button>
+              <button class="lab-button primary" type="button" id="dr-ledger-next">Next step ▶</button>
+              <span id="dr-ledger-pos" class="dr-pos" aria-live="polite"></span>
+            </div>
+            <div id="dr-ledger-board" class="dr-ledger-board"></div>
+            <div id="dr-ledger-text" class="lab-readout" aria-live="polite"></div>
+            <figcaption id="dr-ledger-cap">Three rows of the classic mode-0 path of <code>dtoa()</code>: b (the numerator), S (the denominator), and <code>mhi</code> (the margin, half an ulp in the same units). Blue bars count factors of 2, red bars count factors of 5; the numbers are the exponents. Changed counters are highlighted.</figcaption>
+          </figure>
+          <h3>The payoff: smaller integers</h3>
+          <p>Burger &amp; Dybvig's paper version keeps every factor. Here are the bit lengths of the denominator after scaling, computed from both implementations: B&amp;D's s, dtoa's S after cancelling common 2s, and dtoa's S after the alignment shift.</p>
+          <div class="dr-table-wrap"><table class="dr-size-table" id="dr-size-table"></table></div>
+          <p>That is an honest saving of about 30%, not an order of magnitude. The alignment shift (<code>dshift</code>) adds a few bits back on purpose: it gives S's top 32-bit word exactly four leading zero bits. That is what makes dtoa's digit extraction, <code>quorem</code>, an "estimate, then fix once" step, just like the exponent. It guesses q̂ = ⌊top word of b / (top word of S + 1)⌋, which never overshoots, subtracts q̂·S, and adds one more if the remainder is still ≥ S.</p>
+          <h3>The fast lane: small integers skip the ledger</h3>
+          <p>If v is an integer (after <code>d2b</code>, the binary exponent is ≥ 0) and k ≤ 14 (<code>Int_max</code>, so v &lt; 10¹⁵), dtoa never touches a bignum. It divides by 10<sup>k</sup> in doubles, subtracts, multiplies by 10, and stops when the remainder is exactly zero. Below 2⁵³ every one of those operations is exact, and such an integer's own digits are its shortest representation.</p>
+          <div class="lab-controls dr-fast-controls">
+            <label for="dr-fast-input">integer v =</label>
+            <input type="text" id="dr-fast-input" size="18" value="123456" spellcheck="false" autocomplete="off">
+            <button class="lab-button" type="button" id="dr-fast-apply">Run</button>
+          </div>
+          <div id="dr-fast" class="lab-readout" aria-live="polite"></div>
+        </section>
+
+        <section id="today">
+          <p class="eyebrow">7 · If you open dtoa.c today</p>
+          <h2>The same idea, one level faster</h2>
+          <p>Everything above is dtoa's <em>classic</em> path: Gay's 1990 paper, and the netlib file before 2016. Since the <strong>20160429</strong> netlib release, dtoa.c defaults to a faster route in mode 0 on machines with 64-bit integers. Only <code>-DNO_BF96</code> or <code>-DNO_LONG_LONG</code> turns it off. The route has four stages:</p>
+          <ol class="lab-steps">
+            <li><strong>Exact k.</strong> A hint table indexed by the binary exponent, plus one comparison against a stored power of ten. It is the two-rulers idea again, now without the tangent line.</li>
+            <li><strong>Exact 64-bit integer digits</strong> when the scaled numbers fit.</li>
+            <li><strong>A 96-bit approximation of 10<sup>−k</sup></strong> with error tracking. It produces the digits when the error bound can decide them.</li>
+            <li><strong>Fallback</strong> (<code>Fast_failed1</code>): the bignum ledger and digit loop from this page.</li>
+          </ol>
+          <p>In that default build, the small-integer lane and the <code>k_check</code> repair are compiled out. One more thing that often confuses readers: mode 0 (shortest output) never uses dtoa's older floating-point <code>try_quick</code> path. That path serves modes 2–5, which ask for a fixed number of digits (<code>ilim ≥ 0</code>), and mode 0 sets <code>ilim = −1</code>.</p>
+          <div class="aside">
+            <p><strong>In one breath.</strong> Dragon4 searched for the decade. A binade is 0.301 decades wide, so the exponent bits narrow it to two candidates. B&amp;D guess low and make the fix free by reusing the digit loop's ×10. Gay guesses high with a tangent line and fixes with a double compare (0 ≤ k̂ ≤ 22) or one bignum compare. dtoa then shrinks the integers with a 2/5 ledger and skips bignums entirely for small integers. One last difference: when the last digit is an exact tie, B&amp;D's paper rounds up and dtoa picks the even digit. Both outputs are shortest and round-trip.</p>
+          </div>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/dragon-descendants.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

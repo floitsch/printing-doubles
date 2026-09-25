@@ -1,0 +1,72 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/dragonbox-clock.html; every class starts with dbc-. */
+
+/* Scoped fixes for shared-class conflicts (see report): styles.css gives
+   .lab-controls a dark bar, and the .lab-figure breakout overflows between
+   1100px and ~1410px viewports. */
+.dbc-page .lab-controls { padding: 0; border-bottom: 0; background: transparent; }
+.dbc-page .lab-controls label { color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }
+.dbc-page .lab-controls output { float: none; color: var(--ink); }
+.dbc-page .lab-controls input[type="range"] { display: inline-block; width: 180px; margin-top: 0; accent-color: var(--red); }
+.dbc-page .lab-figure { margin-inline: calc(-1 * clamp(0px, (100vw - 1110px) / 2, 160px)); }
+
+.dbc-svg-host { width: 100%; }
+.dbc-svg-host svg { display: block; width: 100%; height: auto; overflow: visible; }
+.dbc-t { font-family: var(--mono); fill: var(--ink); }
+.dbc-muted { color: var(--muted); fill: var(--muted); }
+.dbc-blue { fill: var(--blue); color: var(--blue); }
+.dbc-prefix-svg { fill: var(--muted); opacity: .75; }
+
+.dbc-value-controls { padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+.dbc-value-controls input[type="text"] { width: 17ch; }
+.dbc-error { color: var(--red); font-size: 11px; }
+.dbc-whatif { gap: 8px 10px; }
+.dbc-whatif-label { flex-basis: 100%; color: var(--ink); }
+.dbc-whatif-label em { color: var(--red); font-style: normal; }
+.dbc-kout { padding: 6px 8px; background: var(--acid); font: 500 12px var(--mono); }
+.dbc-kout .dbc-muted { background: transparent; }
+
+.dbc-prefix { color: var(--muted); opacity: .8; }
+.dbc-bar { margin: 0 1px; color: var(--red); }
+.lab-readout b, .dbc-reasoning b, .dbc-walk b, .dbc-card b { color: var(--ink); font-weight: 600; }
+
+/* Clock + reasoning side by side, stacked on narrow screens. */
+.dbc-clock-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; align-items: start; }
+.dbc-clock-host { max-width: 460px; margin: 0 auto; }
+.dbc-reasoning { margin: 0; padding: 0; list-style: none; counter-reset: dbc-r; font: 13px/1.55 var(--mono); }
+.dbc-reasoning li { position: relative; margin: 0 0 10px; padding: 8px 10px 8px 34px; border-left: 3px solid var(--blue); background: var(--paper); font-size: 13px; overflow-wrap: anywhere; }
+.dbc-reasoning li::before { counter-increment: dbc-r; content: counter(dbc-r); position: absolute; left: 8px; top: 8px; color: var(--muted); }
+.dbc-reasoning li:last-child { border-left-color: var(--red); }
+.dbc-reasoning strong { color: var(--red); font-weight: 500; }
+.chapter .dbc-tally { margin: 8px 0 0; font: 12px/1.5 var(--mono); color: var(--muted); }
+.dbc-tally strong { color: var(--ink); font-weight: 600; }
+
+.dbc-walk-wrap { overflow-x: auto; }
+.chapter .dbc-walk, .chapter .dbc-tiny { margin: 16px 0 0; font: 12px var(--mono); }
+.chapter .dbc-walk td, .chapter .dbc-tiny td { padding: 6px 8px; white-space: nowrap; }
+.chapter .dbc-walk th, .chapter .dbc-tiny th { padding: 6px 8px; }
+.dbc-walk tr.dbc-current td, .dbc-tiny tr.dbc-current td { background: color-mix(in srgb, var(--acid) 45%, transparent); }
+.dbc-linkbtn { padding: 0; border: 0; background: none; color: var(--red); font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* Edge-case gallery. */
+.dbc-gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 30px calc(-1 * clamp(0px, (100vw - 1110px) / 2, 160px)); }
+.dbc-card { padding: 16px; border: 1px solid var(--line); background: var(--paper); }
+.dbc-card h4 { margin: 0 0 8px; font: 600 19px/1.2 var(--serif); }
+.dbc-card p { margin: 10px 0 12px; font-size: 14px; }
+.dbc-card-figs { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.dbc-card-figs > svg { width: 70%; max-width: 230px; margin: 0 auto; display: block; height: auto; overflow: visible; }
+.dbc-mag svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.dbc-code { white-space: pre; }
+.dbc-code .hl, .dbc-code .dbc-off { display: inline-block; min-width: 100%; }
+.dbc-code .dbc-off { opacity: .45; }
+
+@media (max-width: 860px) {
+  .dbc-clock-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .dbc-gallery { grid-template-columns: 1fr; }
+  .dbc-reasoning li { font-size: 12px; }
+  .dbc-value-controls input[type="text"] { width: 100%; }
+  .dbc-value-controls label { flex-basis: 100%; }
+}

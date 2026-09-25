@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Dragonbox explained on a clock with 1000 marks: after the right zoom, only the last three digits of one number decide the output.">
+  <title>Dragonbox · The 1000-hour clock · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/dragonbox-clock.css">
+  <script type="module" src="./js/dragonbox-clock.js"></script>
+</head>
+<body class="dbc-page">
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Dragonbox / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./dragonbox-window.html">compare with approach B</a></p>
+      <h1>The 1000-hour clock</h1>
+      <p class="chapter-deck">Dragonbox zooms in until the rounding window is between 100 and 1000 units wide. After that, only the last three digits of one number matter. Wrap the number line around a clock with 1000 marks, and the algorithm asks one question: does the window cover 12 o'clock?</p>
+      <p class="lab-pitch">This approach turns the three variables of the real code (<code>r</code>, <code>deltai</code> and <code>dist</code>) into clock geometry. A short ruler section leads in. The clock carries the explanation, including the rare edge cases.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Dragonbox · clock</strong><a href="#window">1 · The window</a><a href="#zoom">2 · Zoom to 100–1000</a><a href="#fold">3 · Fold the ruler</a><a href="#clock">4 · Read the clock</a><a href="#odds">5 · How often is 12 covered?</a><a href="#edges">6 · Edge cases</a><a href="#one-multiply">7 · Only z is computed</a><a href="#powers">8 · Powers of two</a><a href="#notes">9 · Cache and policies</a></aside>
+      <article class="chapter">
+        <section id="window">
+          <p class="eyebrow">1 · Recap</p>
+          <h2>Every double owns a window</h2>
+          <p>A double <var>w</var> stands for every real number that would round back to it. Those numbers form an interval: from halfway to the lower neighbour, to halfway to the upper neighbour. We want the shortest decimal inside that window. If there are several, we want the one closest to <var>w</var>.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is <var>w</var> = <var>f<sub>c</sub></var>·2<sup><var>e</var></sup>, with an integer significand <var>f<sub>c</sub></var> &lt; 2<sup>53</sup>. Its neighbours are usually <var>w</var> ± 2<sup><var>e</var></sup>, so the window is [(<var>f<sub>c</sub></var> − ½)·2<sup><var>e</var></sup>, (<var>f<sub>c</sub></var> + ½)·2<sup><var>e</var></sup>], exactly 2<sup><var>e</var></sup> wide.</p>
+            <p>Under round-half-to-even, the endpoints belong to the window only when <var>f<sub>c</sub></var> is even. A decimal exactly on the midpoint rounds to the neighbour with the even significand.</p>
+            <p>The exception is a power of two (<var>f<sub>c</sub></var> = 2<sup>52</sup>). Its lower neighbour is twice as close, so its window is lopsided. Section 8 covers this case.</p>
+          </div>
+          <figure class="lab-figure" id="dbc-recap-figure">
+            <div class="lab-controls dbc-value-controls" data-dbc-controls></div>
+            <div id="dbc-recap" class="dbc-svg-host"></div>
+            <div class="lab-readout" id="dbc-recap-readout" aria-live="polite"></div>
+            <figcaption>The double (blue dot), its two neighbours, and its window between the midpoints. A filled end means the endpoint is in the window; a hollow end means it is not.</figcaption>
+          </figure>
+        </section>
+
+        <section id="zoom">
+          <p class="eyebrow">2 · The on-ramp</p>
+          <h2>Zoom until the window is 100 to 1000 wide</h2>
+          <p>Multiply everything by 10<sup><var>k</var></sup>. The window's ends become <var>x</var> (left) and <var>z</var> (right), its centre becomes <var>y</var>, and its width becomes δ = 10<sup><var>k</var></sup>·2<sup><var>e</var></sup>. Dragonbox picks the one <var>k</var> that puts δ in [100, 1000):</p>
+          <p class="equation">k = 2 − ⌊e·log<sub>10</sub>2⌋</p>
+          <p>The 2 is Dragonbox's constant κ. At this zoom, draw two sets of ticks on the ruler: a big tick at every multiple of 1000 and a small tick at every multiple of 100. The width guarantees two things:</p>
+          <ul class="lab-steps">
+            <li><strong>δ &lt; 1000, so at most one big tick fits.</strong> A big tick inside the window is a decimal that ends in at least three zeros. It is the shortest candidate, and it is the only one at that length.</li>
+            <li><strong>δ ≥ 100, so at least one small tick fits.</strong> If no big tick fits, the small tick nearest the centre <var>y</var> is inside the window. It has one more digit than a big tick.</li>
+          </ul>
+          <p>That leaves no search. Either a big tick is inside, or the answer is the nearest small tick. Use the buttons to see what goes wrong at other zooms.</p>
+          <figure class="lab-figure">
+            <div class="lab-controls dbc-value-controls" data-dbc-controls></div>
+            <div class="lab-controls dbc-whatif" role="group" aria-label="Hypothetical zoom">
+              <span class="dbc-whatif-label">What if k were different? <em>(hypothetical: Dragonbox never tries another k)</em></span>
+              <button class="lab-button" type="button" data-dk="-1">− zoom out</button>
+              <button class="lab-button primary" type="button" data-dk="0">Dragonbox's k</button>
+              <button class="lab-button" type="button" data-dk="1">+ zoom in</button>
+              <output id="dbc-k-out" class="dbc-kout"></output>
+            </div>
+            <div id="dbc-ruler" class="dbc-svg-host"></div>
+            <div class="lab-readout" id="dbc-ruler-readout" aria-live="polite"></div>
+            <figcaption>The window (blue band) on the scaled number line. Red ticks mark multiples of 100 (short) and 1000 (tall). Labels grey out the leading digits that every visible tick shares.</figcaption>
+          </figure>
+        </section>
+
+        <section id="fold">
+          <p class="eyebrow">3 · The trick</p>
+          <h2>Only the last three digits matter</h2>
+          <p>Whether a big tick falls inside the window does not depend on the leading digits. Moving the window by exactly 1000 moves the ticks by 1000 too, so the picture stays the same. Only <var>z</var> mod 1000 matters. Wrap the ruler around a circle of circumference 1000: every multiple of 1000 lands on one spot (call it 12 o'clock), and the multiples of 100 become ten hour marks.</p>
+          <figure class="lab-figure">
+            <div class="lab-controls dbc-value-controls" data-dbc-controls></div>
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" id="dbc-fold-play">Fold ▶</button>
+              <label for="dbc-fold-range">Fold <input id="dbc-fold-range" type="range" min="0" max="100" value="0"></label>
+            </div>
+            <div id="dbc-fold" class="dbc-svg-host"></div>
+            <div class="lab-readout" id="dbc-fold-readout" aria-live="polite"></div>
+            <figcaption>The ruler from section 2, 2000 units long, centred on the multiple of 1000 nearest the window. As it curls into a circle of circumference 1000, the long labels lose their shared prefix, and only positions 000–999 are left.</figcaption>
+          </figure>
+        </section>
+
+        <section id="clock">
+          <p class="eyebrow">4 · The centrepiece</p>
+          <h2>Read the clock</h2>
+          <p>Dragonbox computes only <var>z</var>, rounded down to an integer <var>z<sub>i</sub></var>. One division by 1000 splits it into a prefix <var>s</var> and a remainder <code>r</code>, the position of the window's right end on the clock. The width's integer part is <code>deltai</code>, so the window is the arc of length δ that ends at <code>r</code>.</p>
+          <ul class="lab-steps">
+            <li><strong>Does the arc cover 12 o'clock?</strong> The arc reaches back past 12 exactly when <code>r &lt; deltai</code>. If it does, <var>s</var>·1000 is inside the window. Strip trailing zeros from <var>s</var> and you have the shortest output.</li>
+            <li><strong>If not, pick the hour mark nearest the arc's middle.</strong> The middle is at about <code>r − deltai/2</code>. Adding 50 and dividing by 100 rounds it to the nearest hour: <code>dist = r − ⌊deltai/2⌋ + 50</code>, and the extra digit is <code>⌊dist/100⌋</code>. The output is <var>s</var> followed by that digit.</li>
+          </ul>
+          <figure class="lab-figure dbc-clock-figure">
+            <div class="lab-controls dbc-value-controls" data-dbc-controls></div>
+            <div class="lab-controls">
+              <button class="lab-button" type="button" id="dbc-prev">◀ previous double</button>
+              <button class="lab-button primary" type="button" id="dbc-next">next double ▶</button>
+              <button class="lab-button" type="button" id="dbc-clear">clear trail</button>
+            </div>
+            <div class="dbc-clock-grid">
+              <div id="dbc-clock" class="dbc-svg-host dbc-clock-host"></div>
+              <div class="dbc-clock-side">
+                <ol class="dbc-reasoning" id="dbc-reasoning" aria-live="polite"></ol>
+                <p class="dbc-tally" id="dbc-tally"></p>
+              </div>
+            </div>
+            <div class="dbc-walk-wrap">
+              <table class="dbc-walk" id="dbc-walk"><caption class="lab-sr-only">Doubles visited with the previous/next buttons</caption><thead><tr><th scope="col">double</th><th scope="col">prefix | r</th><th scope="col">covers 12?</th><th scope="col">output</th></tr></thead><tbody></tbody></table>
+            </div>
+            <figcaption>The blue arc is the window. The hand points at <var>z</var>, and the dot marks the centre <var>y</var>. A red mark is the output: 12 o'clock when the arc covers it, otherwise the nearest hour. Step through neighbouring doubles: each window starts exactly where the previous one ended, so the arcs tile the clock. Older arcs spiral inwards.</figcaption>
+          </figure>
+          <p>Try the 0.3 family: from 0.3, press <em>next double</em>. The arc moves forward by δ ≈ 555 each time. It covers 12, misses, covers, misses: 0.3 → 0.30000000000000004 → 0.3000000000000001 → 0.30000000000000016. The second one is 0.1 + 0.2. Its arc runs from 166.5 to 721.6 and misses 12. The middle is at 444.1, the nearest hour mark is 400, and the extra digit is 4.</p>
+        </section>
+
+        <section id="odds">
+          <p class="eyebrow">5 · Statistics</p>
+          <h2>How often is 12 covered?</h2>
+          <p>Neighbouring arcs tile the clock, so for a random double, the chance that its arc covers 12 is about δ/1000. For doubles in [1, 2), δ ≈ 222, so about 22% get the short output. Across all bit patterns, δ spreads log-uniformly over [100, 1000), and the rate averages to 0.9/ln 10 ≈ 39.1%.</p>
+          <figure class="lab-figure">
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" data-rand="1">+1 random double</button>
+              <button class="lab-button" type="button" data-rand="100">+100</button>
+              <button class="lab-button" type="button" data-rand="1000">+1000</button>
+              <button class="lab-button" type="button" id="dbc-rand-reset">reset</button>
+            </div>
+            <div id="dbc-hist" class="dbc-svg-host"></div>
+            <div class="lab-readout" id="dbc-hist-readout" aria-live="polite"></div>
+            <figcaption>Random doubles with uniformly random bit patterns, grouped by <code>deltai</code>. Each bar shows the share whose arc covers 12. The dashed line is δ/1000, and the headline number should settle near 39%.</figcaption>
+          </figure>
+          <p>Typical human input does much better. For normal doubles, the scaled centre <var>y</var> has 18 or 19 digits, so a big tick is a decimal with at most 16 significant digits. Any decimal you type with at most 15 significant digits is inside the window of the double it parses to, and it is a big tick. So such inputs always take the short branch. The fallback emits 16 or 17 digits.</p>
+        </section>
+
+        <section id="edges">
+          <p class="eyebrow">6 · Edge cases</p>
+          <h2>When an end lands exactly on a mark</h2>
+          <p>The clock works with integer parts: <code>r</code> and <code>deltai</code> drop the fractions of <var>z</var> and δ. That can only mislead when an end of the arc is within one unit of 12, or when the middle is within one unit of halfway between two hour marks. The code detects exactly these cases (<code>r == 0</code> with an integer <var>z</var>, <code>r == deltai</code>, and <code>dist</code> a multiple of 100) and looks closer. They are rare, but real numbers hit them. The magnifier next to each small clock shows ±3 units around the critical spot.</p>
+          <div class="dbc-gallery" id="dbc-gallery"></div>
+          <h3>Why one parity bit is enough</h3>
+          <p>When <code>r == deltai</code>, the integer parts say the left end <var>x</var> = <var>z</var> − δ is right at 12, but the fractional parts decide. Since ⌊<var>x</var>⌋ = <var>z<sub>i</sub></var> − <code>deltai</code> + ⌊frac(<var>z</var>) − frac(δ)⌋, it is either 1000·<var>s</var> or 1000·<var>s</var> − 1. 1000·<var>s</var> is even, so the parity of ⌊<var>x</var>⌋ tells the two apart. Odd means <var>x</var> &lt; 1000·<var>s</var>, and the tick is inside. Even means <var>x</var> ≥ 1000·<var>s</var>: the tick is inside only if <var>x</var> is exactly an integer and the left endpoint is included. Dragonbox gets that parity bit and an "is integer" flag from the low half of one more product, <code>compute_mul_parity(two_fc - 1, cache, beta)</code>. It never computes <var>x</var> itself. The halfway test for <var>y</var> works the same way, with <code>two_fc</code> in place of <code>two_fc - 1</code>.</p>
+          <h3>The smallest doubles, checkable by hand</h3>
+          <p>At the bottom of the range, <var>k</var> = 326 and the scaled numbers have no prefix at all. For <var>n</var>·2<sup>−1074</sup>, the centre is <var>y</var> = 494.0656…·<var>n</var> and the window is <var>y</var> ± 247.03. The arc is 494 long and walks around the clock.</p>
+          <div class="dbc-walk-wrap"><table class="dbc-tiny" id="dbc-tiny"><caption class="lab-sr-only">The twelve smallest positive doubles</caption><thead><tr><th scope="col">n</th><th scope="col">x</th><th scope="col">y</th><th scope="col">z</th><th scope="col">covers a multiple of 1000?</th><th scope="col">chosen</th><th scope="col">output</th></tr></thead><tbody></tbody></table></div>
+          <p>For <var>n</var> = 9, the centre 4446.59… rounds to 4400, not 4500, so the output is 4.4e-323. The window [4199.55…, 4693.62…] contains no multiple of 1000. 4.5e-323 would round-trip too, but 4.4e-323 is closer to <var>y</var>.</p>
+        </section>
+
+        <section id="one-multiply">
+          <p class="eyebrow">7 · Why it is fast</p>
+          <h2>Only z is computed</h2>
+          <p>The clock needs only <code>r</code> (from <var>z</var>) and <code>deltai</code>. Dragonbox computes <var>z<sub>i</sub></var> with one multiplication of the shifted significand by a 128-bit cache entry φ<sub>k</sub>, which is 10<sup>k</sup> normalised to 128 bits and rounded up. The same product's middle 64 bits tell whether <var>z</var> is an integer. δ does not depend on the significand at all: δ = 10<sup>k</sup>·2<sup>e</sup>, so <code>deltai</code> is the cache entry's high word shifted right. Schubfach, whose zoom idea Dragonbox builds on, computes <var>x</var>, <var>y</var> and <var>z</var> with three such multiplications. Dragonbox computes <var>x</var> or <var>y</var> only as a parity bit, in the rare cases from section 6.</p>
+          <p>Here is the regular path of <code>compute_nearest</code> from <code>dragonbox.h</code>, slightly condensed, with the current double's values in the comments. The highlighted lines are the ones that run.</p>
+          <div class="lab-controls dbc-value-controls" data-dbc-controls></div>
+          <pre class="lab-code dbc-code" id="dbc-code" aria-live="polite"></pre>
+          <p>Why κ = 2 and not more? A bigger κ would shrink the chance of the exact-equality cases by another factor of 10, but one constraint is that <var>z<sub>i</sub></var> must fit in a 64-bit word: <var>z<sub>i</sub></var> &lt; 2<sup>53</sup>·10<sup>κ+1</sup>, which is below 2<sup>63</sup> for κ = 2 but not for κ = 3. Schubfach effectively uses κ = 0: a window width in [1, 10), with multiples of 10 as the short candidates.</p>
+        </section>
+
+        <section id="powers">
+          <p class="eyebrow">8 · The exception</p>
+          <h2>Powers of two do not fit the clock</h2>
+          <p>When <var>f<sub>c</sub></var> = 2<sup>52</sup> (and the exponent is not the smallest), the lower neighbour is only half as far away. The window [<var>w</var> − 2<sup><var>e</var>−2</sup>, <var>w</var> + 2<sup><var>e</var>−1</sup>] is lopsided. Its left half is half as wide as its right half. The clock's shortcuts assume <var>y</var> sits in the middle, so Dragonbox takes a separate path, which the source describes as "proceed like Schubfach". It picks <var>k</var> so that the width ¾·2<sup><var>e</var></sup>·10<sup><var>k</var></sup> is in [1, 10), and computes both ends directly from the cache. Since <var>f<sub>c</sub></var> is a power of two, no real multiplication is needed. Then it checks for a multiple of 10 inside. If there is none, it rounds <var>y</var> up to an integer. This affects only 2046 doubles.</p>
+          <figure class="lab-figure">
+            <div class="lab-controls">
+              <div class="lab-chips" id="dbc-pow-chips" role="group" aria-label="Power of two"></div>
+            </div>
+            <div id="dbc-pow" class="dbc-svg-host"></div>
+            <div class="lab-readout" id="dbc-pow-readout" aria-live="polite"></div>
+            <figcaption>The real window (blue) and the part a symmetric window would add (hatched). Red ticks mark multiples of 1 (short) and 10 (tall). For 2<sup>64</sup>, the only multiple of 10 near <var>y</var> lies in the hatched part. It reads back as 2<sup>64</sup> − 2048, so treating this window as symmetric would print the wrong double.</figcaption>
+          </figure>
+        </section>
+
+        <section id="notes">
+          <p class="eyebrow">9 · Closing notes</p>
+          <h2>Cache and policies</h2>
+          <p><strong>The cache.</strong> The table holds φ<sub>k</sub> = ⌈10<sup>k</sup>·2<sup>127−⌊k·log<sub>2</sub>10⌋</sup>⌉ for <var>k</var> from −292 to 326: 619 entries of 128 bits, about 9.9 KB. It is exact for 0 ≤ <var>k</var> ≤ 55. The <em>compact</em> cache policy stores only every 27th entry (23 entries) plus the powers 5<sup>0</sup> to 5<sup>26</sup> (27 64-bit words): 584 bytes instead of 9904. It rebuilds any other entry by multiplying the nearest stored entry below by a power of five, shifting, and adding 1. A rebuilt entry can differ from the full-table entry in the lowest bits, but the algorithm's error analysis covers that, and the output is the same.</p>
+          <p><strong>Policies.</strong> Everything above uses the defaults: round-to-nearest-even for which decimals read back (this sets whether the window's endpoints count), round-to-even for ties between hour marks, trailing zeros removed, and the full cache. Other policies change small pieces. The window can use other nearest rules or the directed modes, which have their own simpler routines. The tie rule can be to-odd, away from zero, toward zero, or <code>do_not_care</code>, which skips the "closest" work and returns any shortest decimal. Trailing zeros can be left in or reported instead of removed, and the sign can be ignored.</p>
+          <p><strong>Removing trailing zeros.</strong> On the short branch, <var>s</var> can end in many zeros (0.1 gives <var>s</var> = 10<sup>15</sup>). The real code strips them without division: it multiplies by modular inverses of powers of 5, rotates, and compares against a threshold, testing 10<sup>8</sup>, 10<sup>4</sup>, 10<sup>2</sup> and 10<sup>1</sup> in turn.</p>
+          <p>Sources: Junekey Jeon, <a href="https://github.com/jk-jeon/dragonbox/blob/master/other_files/Dragonbox.pdf">"Dragonbox: A New Floating-Point Binary-to-Decimal Conversion Algorithm"</a>, and <a href="https://github.com/jk-jeon/dragonbox/blob/master/include/dragonbox/dragonbox.h"><code>dragonbox.h</code></a> (<code>compute_nearest</code>). Every number on this page comes from a BigInt port of that function running in your browser, and the pictures use exact rational arithmetic.</p>
+        </section>
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/dragonbox.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
