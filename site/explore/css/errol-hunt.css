@@ -1,0 +1,118 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/errol-hunt.html; every class is prefixed eh-. */
+
+.eh-figure { min-width: 0; }
+.eh-muted { color: var(--muted); }
+.eh-red { color: var(--red); }
+.eh-error { color: var(--red); }
+.eh-num { font-family: var(--mono); }
+.eh-table td.eh-num { white-space: nowrap; }
+.eh-progress { color: var(--muted); }
+.eh-scroll { max-width: 100%; overflow-x: auto; }
+.eh-sources { color: var(--muted); font-size: 14px !important; }
+
+/* Tables */
+.eh-table { width: 100%; border-collapse: collapse; margin: 8px 0; font: 12px/1.45 var(--mono); }
+.eh-table th { padding: 6px 8px; border-bottom: 1px solid var(--ink); color: var(--muted); font-weight: 500; text-align: left; white-space: nowrap; }
+.eh-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.eh-table tr.eh-stop td { background: color-mix(in srgb, var(--red) 9%, transparent); }
+.eh-table tr.eh-used td { background: color-mix(in srgb, var(--acid) 45%, transparent); }
+.eh-table caption { padding: 0 0 4px; color: var(--blue); font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; text-align: left; }
+
+/* Setup trace */
+.eh-trace { margin: 0; }
+.eh-trace > li { margin-bottom: 12px; font-size: 15px; }
+.eh-trace code { font-size: 12.5px; }
+
+/* Charts */
+.eh-chart { width: 100%; min-height: 120px; }
+.eh-svg { display: block; max-width: 100%; height: auto; font-family: var(--mono); }
+.eh-svg text { fill: var(--ink); }
+.eh-svg .eh-tick { font-size: 10.5px; fill: var(--muted); }
+.eh-svg .eh-label { font-size: 11px; fill: var(--muted); }
+.eh-svg .eh-exact-label { fill: var(--blue); }
+.eh-svg .eh-red-text { fill: var(--red); }
+.eh-svg .eh-count { font-size: 10px; fill: var(--ink); }
+.eh-axis { stroke: var(--ink); stroke-opacity: .5; }
+.eh-grid { stroke: var(--ink); stroke-opacity: .1; }
+.eh-exact { fill: var(--blue-pale); fill-opacity: .22; }
+.eh-sampled { fill: var(--ink); fill-opacity: .18; }
+.eh-bar { fill: var(--red); }
+.eh-bracket { fill: none; stroke: var(--muted); stroke-opacity: .5; stroke-dasharray: 3 3; }
+.eh-hit { fill: transparent; }
+.eh-clickable { cursor: pointer; }
+.eh-clickable:hover .eh-hit { fill: var(--ink); fill-opacity: .05; }
+.eh-selected .eh-hit { fill: var(--acid); fill-opacity: .35; }
+
+/* Inspector */
+.eh-inspect-head { margin: 0 0 6px; font-size: 15px; }
+.eh-more { margin: 4px 0 10px; }
+
+/* Theorem & details */
+.eh-theorem { margin: 26px 0; padding: 16px 20px; border-left: 3px solid var(--ink); background: var(--paper-deep); }
+.eh-theorem p { margin: 0; }
+.eh-details { margin: 22px 0; padding: 12px 18px; border: 1px solid var(--line); background: var(--paper); }
+.eh-details > summary { cursor: pointer; font: 500 13px var(--mono); }
+.eh-details[open] > summary { margin-bottom: 10px; }
+.eh-details li, .eh-details p { font-size: 15px; }
+.eh-needles { margin: 18px 0 0; }
+
+/* Toy clock */
+.eh-toy-grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 22px; align-items: start; }
+.eh-clock { width: 100%; max-width: 340px; }
+.eh-dial { fill: var(--paper); stroke: var(--ink); stroke-opacity: .35; }
+.eh-tickline { stroke: var(--ink); stroke-opacity: .45; }
+.eh-zero { stroke: var(--red); stroke-width: 3; }
+.eh-wedge { fill: var(--red); fill-opacity: .12; }
+.eh-dot { fill: var(--paper); stroke: var(--blue); stroke-width: 1.5; }
+.eh-visited { fill: color-mix(in srgb, var(--blue) 18%, var(--paper)); }
+.eh-current { fill: var(--acid); stroke: var(--ink); stroke-width: 2; }
+.eh-hitdot { fill: var(--red); stroke: var(--red); }
+.eh-svg .eh-dotlabel { font-size: 10px; fill: var(--ink); pointer-events: none; }
+.eh-svg .eh-hitdot + .eh-dotlabel { fill: var(--paper); font-weight: 500; }
+.eh-svg .eh-current + .eh-dotlabel { fill: var(--ink); font-weight: 500; }
+.eh-hop { fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 1.4; }
+.eh-arrowhead { fill: var(--ink); fill-opacity: .7; }
+.eh-toy-caption { min-height: 6.5em; margin: 0 0 10px; font-size: 15px; }
+.eh-recs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.eh-rec td, .eh-rec th { padding: 3px 6px; }
+.eh-toy-tablewrap { margin-top: 18px; }
+
+/* Real binade */
+.eh-params { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 12px; font: 12px var(--mono); color: var(--muted); }
+.eh-params span { overflow-wrap: anywhere; }
+.eh-budget { stroke: var(--red); stroke-dasharray: 5 4; stroke-width: 1.5; }
+.eh-ladder { fill: none; stroke: var(--ink); stroke-opacity: .35; stroke-width: 1; }
+.eh-pos { fill: var(--red); stroke: var(--paper); stroke-width: 1; }
+.eh-neg { fill: var(--blue); stroke: var(--paper); stroke-width: 1; }
+
+/* Rebuild */
+#eh-rebuild-bar { flex: 1 1 160px; min-width: 120px; height: 10px; accent-color: var(--red); }
+.eh-tally-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); }
+.eh-tally-grid > div { padding: 10px 12px; background: var(--paper); }
+.eh-tally-grid dt { color: var(--muted); font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.eh-tally-grid dd { margin: 4px 0 0; font: 500 22px/1.2 var(--mono); }
+.eh-tally-grid dd small { display: block; color: var(--muted); font-size: 11px; }
+
+/* Ledger */
+.eh-ledger { margin: 28px 0; padding: 6px 22px; border: 1px solid var(--ink); background: var(--paper); }
+.eh-ledger dl { margin: 0; }
+.eh-ledger dt { padding-top: 16px; color: var(--red); font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.eh-ledger dd { margin: 4px 0 0; padding-bottom: 14px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.eh-ledger dd:last-child { border-bottom: 0; }
+.eh-ledger-chips { margin: 10px 0 6px; }
+.eh-ledger-out { display: block; margin: 6px 0 10px; font-size: 12px; }
+
+@media (max-width: 760px) {
+  .eh-toy-grid { grid-template-columns: 1fr; }
+  .eh-clock { margin: 0 auto; }
+  .eh-tally-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .eh-ledger { padding: 4px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eh-figure * { transition: none !important; animation: none !important; }
+}
+
+.equation.eh-eq { white-space: normal; }
+.eh-eq span { display: inline-block; white-space: nowrap; }
+.eh-note { margin: 4px 0 0; font-size: 13px !important; }

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Errol explained as a lab notebook: rerun the experiments that led from Errol1 to Errol3 in your browser, then run the offline search that finds the rare inputs where the fast path fails, and rebuild the whole exception table.">
+  <title>Errol · The lab notebook · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/errol-hunt.css">
+  <script type="module" src="./js/errol-hunt.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Errol / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./errol-microscope.html">compare with approach A</a></p>
+      <h1>Errol: the lab notebook</h1>
+      <p class="chapter-deck">Errol prints doubles with about 106 bits of floating-point arithmetic and no run-time check. That design came out of experiments. Rerun them here, in your browser. Then run the search that finds the few inputs where the fast arithmetic is fooled, and rebuild Errol's exception table.</p>
+      <p class="lab-pitch">Tell Errol as a series of measurements. Errol1's failures pile up in one narrow range. Every one of them is an exact midpoint, and exact integers fix those. Without the safety margin, random testing finds nothing. Then comes the hunt for the needles: a Euclid-style search that typically visits a few dozen midpoints out of 2<sup>52</sup> per binade, and reproduces the real 432-entry table.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Errol · lab notebook</strong><a href="#setup">What Errol computes</a><a href="#entry1">Entry 1: Errol1's failures</a><a href="#entry2">Entry 2: all midpoints</a><a href="#entry3">Entry 3: drop the margin</a><a href="#hunt">The hunt</a><a href="#toy">A clock you can check</a><a href="#real">One real binade</a><a href="#table">Rebuild the table</a><a href="#ledger">The ledger</a></aside>
+      <article class="chapter">
+
+        <section id="setup">
+          <p class="eyebrow">Setup</p>
+          <h2>What Errol computes</h2>
+          <p>Errol is a <em>boundary</em> algorithm, like Steele &amp; White's. It never searches decimals one by one. It computes the two edges of the rounding interval, scales both into [1, 10), and peels off decimal digits from both at once. While the two edges agree on a digit, every number in between shares that digit, so it is printed. At the first digit where they differ, one more digit is enough. Errol picks it by rounding the middle of the interval.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double v has two neighbours. The <b>midpoints</b> m<sup>−</sup> and m<sup>+</sup> between v and its neighbours bound the <b>rounding interval</b>: every decimal inside reads back as v. The midpoints themselves belong to v only if v's significand is even (ties go to even).</p>
+            <p>The paper uses three words. <b>Correct</b>: the output lies in the interval, so it round-trips. <b>Optimal</b>: no decimal with fewer digits lies in the interval (shortest). <b>Best</b> (added in the code later): the closest among the shortest.</p>
+          </div>
+          <p>Errol's twist is the arithmetic. It computes the edges in <b>double-double</b>: a value is a pair <code>val + off</code> of two doubles, about 106 bits in total. The edges are therefore <em>almost</em> exact. The rest of this notebook asks what happens in the rare cases where "almost" is not enough.</p>
+          <figure class="lab-figure eh-figure" id="eh-setup">
+            <div class="lab-controls">
+              <div class="lab-chips" id="eh-setup-presets" role="group" aria-label="Preset numbers"></div>
+            </div>
+            <form class="lab-controls" id="eh-setup-form">
+              <label for="eh-setup-input">Number <input type="text" id="eh-setup-input" inputmode="decimal" autocomplete="off" spellcheck="false" size="22" value="3.14"></label>
+              <button type="submit" class="lab-button primary">Trace</button>
+              <span class="eh-error" id="eh-setup-error" role="alert"></span>
+            </form>
+            <div id="eh-setup-out" aria-live="polite"></div>
+            <figcaption>Everything is computed live by a JavaScript port of Errol's double-double path (<code>errol3u_dtoa</code> in <code>lib/errol.c</code>). The port matches the C output bit for bit. Pairs are shown as <code>val + off</code>, and each double is printed by its shortest decimal. For how the digit loop handles the <code>off</code> parts, see <a href="./errol-microscope.html">approach A</a>.</figcaption>
+          </figure>
+        </section>
+
+        <section id="entry1">
+          <p class="eyebrow">Notebook · entry 1</p>
+          <h2>Errol1: safe, but sometimes too long</h2>
+          <p>The double-double arithmetic has an error. The paper derives a bound by hand (its Theorem 4): the computed edges are off by at most <b>79 · 2<sup>−106</sup></b> relative to v. <b>Errol1</b> plays it safe. It shrinks the interval by more than that error: the half-gap is divided by 2 + ε instead of 2, with ε = 8.77·10<sup>−15</sup> (79 · 2<sup>−53</sup>). The shrunk interval is guaranteed to lie inside the true one, so every output is correct.</p>
+          <p>The price: a short decimal in the thin shaved-off strip is lost, and Errol1 then prints a longer one. How often does that happen, and where? The experiment: draw random doubles from every one of the 2,046 binades [2<sup>e</sup>, 2<sup>e+1</sup>), print them with Errol1, and compare the length with the shortest output (JavaScript's <code>toExponential()</code>, whose digit count the language spec requires to be minimal).</p>
+          <figure class="lab-figure eh-figure eh-bench" id="eh-bench-errol1" data-variant="errol1" data-autorun="true">
+            <div class="lab-controls">
+              <label for="eh-bench-errol1-n">Doubles per binade <select id="eh-bench-errol1-n"><option value="200" selected>200</option><option value="1000">1,000</option><option value="2000">2,000</option></select></label>
+              <button type="button" class="lab-button primary" data-run>Run Errol1</button>
+              <span class="eh-progress" data-progress aria-live="polite"></span>
+            </div>
+            <div class="eh-chart" data-chart role="img" aria-label="Errol1 failure rate per binade"></div>
+            <div class="lab-readout" data-readout aria-live="polite"></div>
+            <figcaption>Top: all 2,046 normal binades, with a red mark wherever a sample failed. Bottom: failure rate per binade for 2<sup>40</sup>…2<sup>80</sup> (hover for counts; click a bar to inspect it in entry 2). The shaded band is the range that Errol2 and Errol3 hand to exact integer code. The random draws come from a fixed xorshift64 seed, so every run is reproducible. At 2,000 per binade the counts equal those of the C <code>errol1_dtoa</code> on the same draws.</figcaption>
+          </figure>
+          <p>The result is lopsided. Errol1 is shortest about 99.97% of the time (the paper reports 99.973% on a billion inputs). The failures, however, sit only between 2<sup>54</sup> and about 2<sup>70</sup>, where they reach a fifth of all inputs. Everywhere else the sample shows none. Errol1's own warning flag (it also runs a <em>widened</em> interval and flags disagreement) fires on every real failure, and on about as many false alarms.</p>
+        </section>
+
+        <section id="entry2">
+          <p class="eyebrow">Notebook · entry 2</p>
+          <h2>Every failure is a midpoint</h2>
+          <p>Look at the failures one by one. In [2<sup>54</sup>, 2<sup>55</sup>) the doubles are the multiples of 4, so the midpoints are v − 2 and v + 2. Pick a binade:</p>
+          <figure class="lab-figure eh-figure" id="eh-inspect">
+            <div class="lab-controls">
+              <div class="lab-chips" id="eh-inspect-chips" role="group" aria-label="Binades with failures"><span class="eh-muted">Run entry 1 first.</span></div>
+            </div>
+            <div id="eh-inspect-out" aria-live="polite"></div>
+            <figcaption>Integers are exact (BigInt). "Shortest" is the shortest decimal that reads back as v. The last column checks whether that decimal is exactly one of v's two midpoints.</figcaption>
+          </figure>
+          <p>No failure is a near miss. In every case the shortest decimal sits <em>exactly on</em> the edge of a closed interval (v's significand is even). Shrinking the interval by any amount, however small, loses it. So more precision would not help: Errol1 could use a thousand bits and still fail here. The paper turns this into a theorem.</p>
+          <div class="eh-theorem">
+            <p><b>Theorem 6 (pathological midpoints).</b> If a midpoint is shorter than every decimal strictly inside the interval, then that midpoint is an integer, and it lies in [2<sup>54</sup>, 2<sup>131</sup>].</p>
+          </div>
+          <details class="eh-details">
+            <summary>Why only there? (three short arguments)</summary>
+            <ul>
+              <li><b>Not a fraction.</b> A non-integer midpoint ends in binary <code>…1</code> after the point, so in decimal it ends in <code>…5</code> far to the right. The paper shows it has at least 17 significant digits, never fewer than the 17-digit decimals the interval always contains. Example: the midpoint above 0.1 is 0.100000000000000012490009027033061087131500244140625.</li>
+              <li><b>Not too big.</b> An integer midpoint is an odd number below 2<sup>55</sup> times a power of two. Trailing decimal zeros need factors of five, and an odd number below 2<sup>55</sup> holds at most 23 of them (5<sup>23</sup> &lt; 2<sup>55</sup> &lt; 5<sup>24</sup>). A midpoint of about 40 digits therefore keeps at least 17 significant ones. The paper puts the cut-off at 2<sup>131</sup>.</li>
+              <li><b>Not too small.</b> In [2<sup>53</sup>, 2<sup>54</sup>) the doubles are the even integers and the midpoints the odd ones. An odd integer has no trailing zero, so a midpoint is never shorter than the double next to it.</li>
+            </ul>
+          </details>
+          <p><b>Errol2</b> acts on the theorem. Inputs between 2<sup>53</sup> and 3.4·10<sup>38</sup> (just below 2<sup>128</sup>) no longer use double-double. Their midpoints are integers that fit in 128 bits, so Errol2 computes them exactly and needs no narrowing. The same experiment, with Errol2:</p>
+          <figure class="lab-figure eh-figure eh-bench" id="eh-bench-errol2" data-variant="errol2">
+            <div class="lab-controls">
+              <label for="eh-bench-errol2-n">Doubles per binade <select id="eh-bench-errol2-n"><option value="200" selected>200</option><option value="1000">1,000</option><option value="2000">2,000</option></select></label>
+              <button type="button" class="lab-button primary" data-run>Run Errol2</button>
+              <span class="eh-progress" data-progress aria-live="polite"></span>
+            </div>
+            <div class="eh-chart" data-chart role="img" aria-label="Errol2 failure rate per binade"></div>
+            <div class="lab-readout" data-readout aria-live="polite"></div>
+            <figcaption>Same axes, same random doubles as entry 1. The integer part is a port of <code>errol2_dtoa</code>.</figcaption>
+          </figure>
+          <p>The spike is gone. Outside the integer range, Errol2 still narrows. That leaves a theoretical chance of losing a short decimal, but in a billion random inputs the paper saw none.</p>
+        </section>
+
+        <section id="entry3">
+          <p class="eyebrow">Notebook · entry 3</p>
+          <h2>Drop the safety margin</h2>
+          <p>Narrowing costs time: Errol1 and Errol2 track four edges instead of two. Narrowing also only protects against something random testing can no longer see. So <b>Errol3</b> drops it and uses the double-double midpoints as they are. The error can now push a computed edge past a short decimal that lies extremely close to the true edge. Errol3 can then print a decimal just outside the interval (wrong), or miss a short one just inside (too long). Here is Errol3's fast path without its table, as the code calls it (<code>errol3u</code>). Integers are handled as in Errol2, and [16, 2<sup>53</sup>] goes to an exact fixed-point routine.</p>
+          <figure class="lab-figure eh-figure eh-bench" id="eh-bench-errol3u" data-variant="errol3u">
+            <div class="lab-controls">
+              <label for="eh-bench-errol3u-n">Doubles per binade <select id="eh-bench-errol3u-n"><option value="200" selected>200</option><option value="1000">1,000</option><option value="2000">2,000</option></select></label>
+              <button type="button" class="lab-button primary" data-run>Run Errol3 without table</button>
+              <span class="eh-progress" data-progress aria-live="polite"></span>
+            </div>
+            <div class="eh-chart" data-chart role="img" aria-label="Errol3 without table: failure rate per binade"></div>
+            <div class="lab-readout" data-readout aria-live="polite"></div>
+            <div class="lab-controls eh-needles">
+              <button type="button" class="lab-button" id="eh-needles">Now test 342 hand-picked doubles instead</button>
+            </div>
+            <div class="lab-readout" id="eh-needles-out" aria-live="polite" hidden></div>
+            <figcaption>The hand-picked doubles come from the search in the next section (binade 2<sup>227</sup>).</figcaption>
+          </figure>
+          <p>Random testing finds nothing, but that is not proof. With 2<sup>63</sup> positive doubles, a few hundred bad inputs would be invisible to any random test. The 342 hand-picked doubles show that they exist. Errol3's answer is to <b>find every such input ahead of time</b>, print it slowly and exactly once, and store the result in a table. That table, <code>enum3.h</code>, is checked before the fast path runs. The rest of the page is about how to find them.</p>
+        </section>
+
+        <section id="hunt">
+          <p class="eyebrow">The hunt</p>
+          <h2>From "near a short decimal" to "near zero on a clock"</h2>
+          <p>Brute force is out of the question: the double-double path covers 1,975 binades with 2<sup>52</sup> doubles each. The search only needs <em>candidates</em>, though: midpoints with a short decimal so close that the arithmetic error could matter. For binades above 2<sup>128</sup>, the midpoints are integers, and the condition becomes modular arithmetic.</p>
+          <ol class="lab-steps">
+            <li><b>The midpoints form a progression.</b> In [2<sup>e</sup>, 2<sup>e+1</sup>) they are m<sub>k</sub> = 2<sup>e</sup> + (2k + 1) · 2<sup>e−53</sup> for k = 0 … 2<sup>52</sup> − 1.</li>
+            <li><b>Short means many trailing zeros.</b> A decimal only matters if it is shorter than 17 digits, because 17 digits always fit in the interval. Numbers in this binade have about 0.301·(e + 1) digits, so a decimal with at most 16 significant digits is a multiple of 10<sup>n</sup>, with n = ⌊(e + 1) log<sub>10</sub> 2⌋ − 15.</li>
+            <li><b>Split 10<sup>n</sup> = 2<sup>n</sup> · 5<sup>n</sup>.</b> Every m<sub>k</sub> is a multiple of 2<sup>n</sup> already, so divide it out: M<sub>k</sub> = m<sub>k</sub> / 2<sup>n</sup> = M<sub>0</sub> + k·α with α = 2<sup>e−52−n</sup>. The short decimals become the multiples of τ = 5<sup>n</sup>.</li>
+            <li><b>Near means a small residue.</b> Midpoint k is a suspect only if M<sub>k</sub> mod τ lies within ±Δ of 0. The budget Δ covers the error bound with room to spare. In ulps it is 179 · 2<sup>−52</sup> ≈ 4·10<sup>−14</sup> of the gap between doubles (the code's constant for large binades).</li>
+          </ol>
+          <div class="equation eh-eq"><span>find every k &lt; 2<sup>52</sup> with</span> <span>|(M<sub>0</sub> + k·α) mod τ| ≤ Δ</span></div>
+          <p>Picture a clock with τ ticks. The midpoints step around it, α ticks at a time, and the short decimals all sit at 12 o'clock. We want every step that lands within Δ of 12.</p>
+          <details class="eh-details">
+            <summary>The mirror case: binades below 2<sup>5</sup> (non-integer midpoints)</summary>
+            <p>Below 2<sup>53</sup> the midpoints have binary fractions. The code multiplies them by 10<sup>−e+53</sup>, which makes them integers without changing their digits. Now the factor that comes for free is 5<sup>n</sup> instead of 2<sup>n</sup>, and the condition becomes "residue mod 2<sup>n</sup> near 0". It is the same clock with τ = 2<sup>n</sup>, and the same search, with budget 79 · 2<sup>−52</sup> ulp. (In <code>test/main.c</code> α, τ and M<sub>0</sub> also carry a common factor 2<sup>51</sup>.) The search covers binades 2<sup>−1074</sup> … 2<sup>4</sup> and 2<sup>128</sup> … 2<sup>1023</sup>: exactly where Errol3 uses double-double. Everything in between goes to exact code.</p>
+          </details>
+        </section>
+
+        <section id="toy">
+          <p class="eyebrow">The hunt · by hand</p>
+          <h2>A clock you can check with a pencil</h2>
+          <p>Shrink everything. Take a toy format with 5 significant bits in [1024, 2048): the values are 1024 + 64j, the midpoints 1056 + 64k (k = 0 … 15). Call a decimal "short" if it has two significant digits: a multiple of 100. The error budget is ±4. Every midpoint and every multiple of 100 is divisible by 4, so divide by 4. The midpoints become 264 + 16k, the multiples of 100 become multiples of 25, and the budget becomes ±1. That is a <b>25-tick clock with step α = 16</b>.</p>
+          <figure class="lab-figure eh-figure" id="eh-toy">
+            <div class="lab-controls">
+              <button type="button" class="lab-button" id="eh-toy-prev">← Back</button>
+              <button type="button" class="lab-button primary" id="eh-toy-next">Next →</button>
+              <button type="button" class="lab-button" id="eh-toy-play">Play</button>
+              <span class="eh-muted" id="eh-toy-count" aria-live="polite"></span>
+            </div>
+            <div class="eh-toy-grid">
+              <div class="eh-toy-clock" id="eh-toy-clock" role="img"></div>
+              <div class="eh-toy-side">
+                <p class="eh-toy-caption" id="eh-toy-caption" aria-live="polite"></p>
+                <div id="eh-toy-records"></div>
+              </div>
+            </div>
+            <details class="eh-details eh-toy-tablewrap">
+              <summary>All 16 midpoints (the brute-force check)</summary>
+              <div id="eh-toy-table"></div>
+            </details>
+            <figcaption>Residues are taken in −12 … 12, with 0 at the top. The shaded wedge is the budget ±1. The records, the path and the hits come from the same BigInt search that the next figure runs on real binades.</figcaption>
+          </figure>
+          <p>Two ideas make this fast. First, the <b>records</b>: the steps k·α whose residue gets closer to 0 than any shorter step, kept in one list for each side. Each new record is the newest record on one side plus an earlier one from the other side. That is the bookkeeping of Euclid's algorithm, or of the continued fraction of α/τ. The number of records depends on that continued fraction, not on 2<sup>52</sup>: across all real binades the median is under 200. Second, the <b>descent</b>: from the current residue, add the largest record of the opposite sign that does not overshoot by more than we are away. The residue ping-pongs across 0 and shrinks every hop. Once one hit is found, adding each record that stays within the budget reaches all the others (the paper's Theorems 9 and 10).</p>
+        </section>
+
+        <section id="real">
+          <p class="eyebrow">The hunt · real scale</p>
+          <h2>One real binade, 2<sup>52</sup> midpoints, a few dozen hops</h2>
+          <p>Now the real thing. For [2<sup>227</sup>, 2<sup>228</sup>) the clock has τ = 5<sup>53</sup> ≈ 1.1·10<sup>37</sup> ticks, the step is α = 2<sup>122</sup>, and the budget is Δ = 179 · 2<sup>70</sup> ≈ 2.1·10<sup>23</sup> ticks. The chart shows each hop of the descent, measured in ulps: how far the midpoint is from the nearest multiple of 10<sup>n</sup>, as a fraction of the gap between doubles.</p>
+          <figure class="lab-figure eh-figure" id="eh-real">
+            <div class="lab-controls">
+              <div class="lab-chips" id="eh-real-presets" role="group" aria-label="Preset binades"></div>
+            </div>
+            <form class="lab-controls" id="eh-real-form">
+              <label for="eh-real-input">Binade 2^<input type="number" id="eh-real-input" min="-1074" max="1023" step="1" value="227"></label>
+              <button type="submit" class="lab-button primary">Search</button>
+              <span class="eh-error" id="eh-real-error" role="alert"></span>
+            </form>
+            <div class="eh-params" id="eh-real-params"></div>
+            <div class="eh-chart" id="eh-real-chart" role="img"></div>
+            <div class="lab-readout" id="eh-real-readout" aria-live="polite"></div>
+            <div class="lab-controls">
+              <button type="button" class="lab-button primary" id="eh-real-test">Test the suspects</button>
+            </div>
+            <div id="eh-real-tests" aria-live="polite"></div>
+            <figcaption>The search is a BigInt port of <code>proof_enum</code> in <code>test/proof.c</code>, with the parameters of <code>test/main.c</code>. "Test" runs the unprotected fast path (<code>errol3u</code>) on both neighbours of each suspect midpoint. It then checks the output against the shortest decimal and reads it back.</figcaption>
+          </figure>
+          <p>A few dozen hops replace 4.5·10<sup>15</sup> checks. On this binade, 340 of the 342 suspects print fine; the budget is generous. Two do not: one is a correct but 17-digit output where 16 digits fit, and the other is a 16-digit output that reads back as a <em>different</em> double. Both bit patterns appear in <code>enum3.h</code>.</p>
+        </section>
+
+        <section id="table">
+          <p class="eyebrow">The hunt · everything</p>
+          <h2>Rebuild the whole table</h2>
+          <p>Run the search on all 1,975 binades and test every suspect. This is what <code>test/main.c</code> does with <code>--enum3</code>. On a laptop it takes roughly 10–30 seconds, and it runs in a background worker.</p>
+          <figure class="lab-figure eh-figure" id="eh-rebuild">
+            <div class="lab-controls">
+              <button type="button" class="lab-button primary" id="eh-rebuild-run">Rebuild the table</button>
+              <button type="button" class="lab-button" id="eh-rebuild-stop" disabled>Stop</button>
+              <progress id="eh-rebuild-bar" max="1975" value="0" aria-label="Binades searched"></progress>
+            </div>
+            <div class="eh-tally" id="eh-rebuild-tally" aria-live="polite"></div>
+            <figcaption>The table also receives DBL_MAX by hand: the fast path overflows there. Comparison is against the 432 bit patterns of <code>enum3.h</code> (HEAD 5364de4), embedded in this page.</figcaption>
+          </figure>
+          <p>Every failing input the search finds is in the table, and every table entry is found. That checks the <em>pipeline</em>: the search, the test and the table agree. It does not check that the budget Δ is large enough. If the hand-derived error bound were wrong, a real failure could lie outside every suspect's budget, and this rebuild would agree with the table just the same.</p>
+        </section>
+
+        <section id="ledger">
+          <p class="eyebrow">The ledger</p>
+          <h2>What was claimed, and what it rests on</h2>
+          <div class="eh-ledger">
+            <dl>
+              <dt>Claimed</dt>
+              <dd>Errol3 is <b>correct</b> (round-trips) and <b>optimal</b> (shortest) for every double. <b>Closest</b> was never guaranteed. The March 2016 commit that added "best" selection says Errol "provides a best effort to choose the best output but does not guarantee a correct selection".</dd>
+              <dt>Rests on</dt>
+              <dd>The error bound 79 · 2<sup>−106</sup> (paper, Theorem 4), which sets Δ, and the hand proofs of the necessary conditions (Theorems 7–8) and of the search (Theorems 9–10). None of this is machine-checked. Rebuilding the table above verifies the pipeline, not the soundness of Δ. (This page's tests compare the search with brute force on 3,000 small random clocks and find the same hits every time. That supports Theorems 9–10 but says nothing about Δ.)</dd>
+              <dt>Tied to</dt>
+              <dd>The exact sequence of floating-point operations in <code>errol.c</code>: round-to-nearest doubles, no fused multiply-add, no extended precision. A port that rounds differently even once needs its own table. (This page's ports of <code>errol1</code>, <code>errol2</code> and <code>errol3u</code> match the C bit for bit on 212,000 test inputs.)</dd>
+              <dt>Table size</dt>
+              <dd>The paper's introduction says 141 inputs, and §6.4 says 45. The repository regenerated the table in 2016 together with the best-selection change. The current <code>enum3.h</code> has 432 entries: 286 outputs that do not round-trip, 145 that are too long, and DBL_MAX.</dd>
+              <dt>Not searched</dt>
+              <dd>The exact paths: <code>errol_fixed</code> for [16, 2<sup>53</sup>] and <code>errol_int</code> for (2<sup>53</sup>, 3.4·10<sup>38</sup>). The reference <code>errol_int</code> has bugs that random testing does not reach:
+                <span class="lab-chips eh-ledger-chips" id="eh-ledger-chips" role="group" aria-label="Run the reference integer path"></span>
+                <span class="lab-readout eh-ledger-out" id="eh-ledger-out" aria-live="polite">Pick an input to run the port of <code>errol_int</code>.</span>
+                When the answer has one digit, the output is empty and one byte is written before the buffer (GitHub issue #12). A rounded-up 9 becomes <code>:</code> without a carry. The two gaps are also swapped (the low edge uses the upper gap). That matters only at powers of two, where the gaps differ: 2<sup>64</sup> prints a decimal that reads back as a different double.</dd>
+              <dt>Speed</dt>
+              <dd>The first version of the paper reported Errol3 about 2× faster than Grisu3. The benchmark had built Grisu3 without optimizations. The README correction (the error was spotted by Grisu3's author) says about 2× <em>slower</em>, and the updated paper says 2.4× slower than Grisu3 with a bignum fallback, and 5.2× faster than Dragon4.</dd>
+            </dl>
+          </div>
+          <p>None of these bugs is a flaw in the idea. The idea is to replace a run-time check with an offline search over a clock, backed by exact arithmetic where coincidences are provably exact. It is sound in outline, and it is the one part of Errol that no other algorithm in this series shares. For the zoom onto a single boundary and the double-double digit loop, read <a href="./errol-microscope.html">approach A</a>.</p>
+          <p class="eh-sources">Sources: Andrysco, Jhala, Lerner, <a href="https://cseweb.ucsd.edu/~mandrysc/pub/dtoa.pdf">“Printing Floating-Point Numbers: A Faster, Always Correct Method”</a>, POPL 2016 (corrected PDF); reference code <a href="https://github.com/marcandrysco/Errol">github.com/marcandrysco/Errol</a> at 5364de4 (<code>lib/errol.c</code>, <code>lib/enum3.h</code>, <code>test/proof.c</code>, <code>test/main.c</code>); <a href="https://github.com/marcandrysco/Errol/issues/12">issue #12</a>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/errol.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
