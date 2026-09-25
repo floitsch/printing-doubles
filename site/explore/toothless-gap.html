@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Toothless, an unpublished continued-fraction printer, explained with a toy float: shrink the fraction budget until a question falls into the gap between the stored stand-in and the true power ratio, then see why at full size nothing can.">
+  <title>Toothless · Nothing lives in the gap · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/toothless-gap.css">
+  <script type="module" src="./js/toothless-gap.js"></script>
+</head>
+<body class="tgap">
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Toothless / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./toothless-trace.html">compare with approach B</a></p>
+      <h1>Toothless: nothing lives in the gap</h1>
+      <p class="chapter-deck">Toothless prints doubles exactly, without big integers, by using a stored fraction in place of the exact power ratio. The stored fraction is wrong. This page shows why that never matters: every decision is a side question, and no question is small enough to fit between the stored fraction and the truth.</p>
+      <p class="lab-pitch">Starve a toy version's cache until a tiny float prints wrong, catch the culprit fraction sitting in the gap between stand-in and truth, then show with one line of Farey arithmetic why the real 63-bit table leaves that gap empty for every question a double can ask.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Toothless · the gap</strong><a href="#question">A side question</a><a href="#lie">The stand-in lies</a><a href="#wedge">The wedge</a><a href="#why">Why it is empty</a><a href="#lab">The toy lab</a><a href="#real">Real scale</a><a href="#status">Status</a></aside>
+      <article class="chapter">
+
+        <section id="question">
+          <p class="eyebrow">Every decision</p>
+          <h2>Every decision is a side question</h2>
+          <p>To print a double, an algorithm compares decimal candidates with the double's rounding boundaries. The boundaries are powers of two and the candidates are powers of ten, so the comparison needs the ratio of a power of two to a power of ten. For 6.62607015e-34 that ratio is 10<sup>50</sup>/2<sup>166</sup>. Written exactly, that takes big integers.</p>
+          <p><strong>Toothless</strong> never works out that ratio. It only asks yes/no questions of one kind:</p>
+          <div class="equation">y/x above or below α = 2<sup>e</sup>/10<sup>k</sup>?</div>
+          <p>It answers each question with a stored <em>stand-in</em> num/den for α, with num and den below 2<sup>63</sup>. The stand-in is not α. The whole trick is that the difference never changes an answer.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A float v has a <b>rounding interval</b>: from the midpoint with its lower neighbour (m⁻) to the midpoint with its upper neighbour (m⁺). A decimal inside it reads back as v. The printer wants the shortest such decimal and, among those, the closest to v.</p>
+            <p>A decimal exactly on a midpoint rounds to the neighbour with the even significand. So the interval includes its ends when v's significand is even and excludes them when it is odd.</p>
+          </div>
+          <h3>A toy float</h3>
+          <p>To make the numbers checkable by hand, this page uses a toy format with 8-bit significands: v = f · 2<sup>e</sup> with f from 128 to 255. Take</p>
+          <div class="equation">v = 183 · 2<sup>−18</sup> = 0.000698089599609375</div>
+          <p>Its upper neighbour is 184 · 2<sup>−18</sup> = 0.000701904296875, and the midpoint between them is m⁺ = 367 · 2<sup>−19</sup> = 0.0006999969482421875. The short decimal 0.0007 is very close to that midpoint. Which side of it is 0.0007 on?</p>
+          <figure class="lab-figure tgap-figure" id="tgap-line">
+            <div class="tgap-svgbox" id="tgap-line-svg" role="img" aria-label="Number line with the toy floats 182, 183 and 184 times 2 to the minus 18, their midpoints, and the decimal 0.0007 just above the midpoint between 183 and 184."></div>
+            <figcaption>Toy floats (blue) and their midpoints (dashed). The inset magnifies the region around m⁺: 0.0007 lies 0.0000000030517578125 above it, so it belongs to 184 · 2<sup>−18</sup>. Positions are exact.</figcaption>
+          </figure>
+          <p>Write both sides as integers. 0.0007 = 700 · 10<sup>−6</sup> and m⁺ = 367 · 2<sup>−19</sup>, so</p>
+          <div class="equation">0.0007 ≤ m⁺ &nbsp;⟺&nbsp; 700 · 2<sup>19</sup> ≤ 367 · 10<sup>6</sup> &nbsp;⟺&nbsp; α = 2<sup>19</sup>/10<sup>6</sup> ≤ 367/700</div>
+          <p>Here α = 2<sup>19</sup>/10<sup>6</sup> = 8192/15625 = 0.524288. Check by hand: 367 · 15625 = 5,734,375 and 700 · 8192 = 5,734,400. The first is smaller, so 367/700 lies <em>below</em> α. The answer is <strong>no</strong>: 0.0007 is above m⁺ and does not belong to 183 · 2<sup>−18</sup>.</p>
+          <p>In this page, x is always the decimal-side integer (700) and y the binary-side integer (367). The question asks whether the lattice point (x, y) lies above or below the ray y = α · x.</p>
+          <h3>All the questions look like this</h3>
+          <p>Toothless (the C reference is <code>continued.c</code>) scales the double's boundaries so they share the stand-in's exponent, then makes four kinds of decisions. Each one compares a decimal-side integer X with a binary-side integer Y times the stand-in:</p>
+          <div class="tgap-table-wrap">
+            <table class="tgap-table">
+              <thead><tr><th>Step</th><th>Decimal side X</th><th>Binary side Y</th><th>Question</th></tr></thead>
+              <tbody>
+                <tr><td>Top digits R = ⌊m⁺ scaled⌋</td><td>candidate n</td><td>upper boundary</td><td>does n fit below m⁺?</td></tr>
+                <tr><td>Stop test (shortest length)</td><td>digit prefix R</td><td>lower boundary</td><td>has the prefix reached m⁻?</td></tr>
+                <tr><td>Round down the last digit</td><td>2R − 10<sup>j</sup></td><td>2 · significand</td><td>is the next-lower candidate closer to v?</td></tr>
+                <tr><td>Tie check</td><td>2R − 10<sup>j</sup></td><td>2 · significand</td><td>exactly halfway?</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>For doubles, every X and Y is below 2<sup>59</sup>. The stand-in only has to give the same answers as α to fractions that small. That is a much weaker demand than being close to α.</p>
+        </section>
+
+        <section id="lie">
+          <p class="eyebrow">Starve the cache</p>
+          <h2>The stand-in lies</h2>
+          <p>Toothless keeps one stand-in per power of ten. The toy cache stores the best fraction whose denominator stays below 2<sup>B</sup>, where B is the <b>budget</b> in bits. The real table uses a budget of 63 bits. First, starve the toy: B = 8.</p>
+          <p>The best stand-in for α = 8192/15625 with a denominator below 256 is <b>54/103</b> = 0.5242718…, a little <em>below</em> α. Ask the same question against it: 367 · 103 = 37,801 and 700 · 54 = 37,800. Now 367/700 is <em>above</em> the stand-in, and the answer is <strong>yes, 0.0007 fits</strong>. That is wrong.</p>
+          <p>It breaks two outputs. Toy Toothless prints 183 · 2<sup>−18</sup> as <code>0.0007</code>, which reads back as 184 · 2<sup>−18</sup>. For 184 · 2<sup>−18</sup> the same fraction is the question "has 0.0007 reached my lower boundary?". The wrong "no" makes 184 print <code>0.000702</code> instead of its correct shortest output <code>0.0007</code>.</p>
+          <p>The culprit is the question fraction itself. 367/700 = 0.5242857… lies <em>between</em> the stand-in 54/103 and α. A fraction in that gap is the only kind whose answer can flip.</p>
+          <figure class="lab-figure tgap-figure" id="tgap-card">
+            <div class="lab-controls">
+              <span class="tgap-label" id="tgap-card-label">Budget B</span>
+              <div class="lab-chips" id="tgap-card-chips" role="group" aria-labelledby="tgap-card-label"></div>
+            </div>
+            <div class="tgap-card" id="tgap-card-body" aria-live="polite"></div>
+            <figcaption>The toy cache stores whichever end of the budget-limited bracket around α is closer (see <a href="#why">why it is empty</a>). Every output here comes from running the toy algorithm in your browser. The correct shortest outputs are 0.000698 for 183 · 2<sup>−18</sup> and 0.0007 for 184 · 2<sup>−18</sup>.</figcaption>
+          </figure>
+          <p>A bigger budget fixes it. At B = 9 the stand-in is 259/494, a little above α: 367 · 494 = 181,298 is less than 700 · 259 = 181,300, so the answer is "no" again, as it should be. B = 6 also gets it right, but only by luck. Its stand-in 32/61 sits above α, so 367/700 is not in its gap, but the gap still holds 43/82.</p>
+        </section>
+
+        <section id="wedge">
+          <p class="eyebrow">The main picture</p>
+          <h2>The wedge between two rays</h2>
+          <p>Draw every question as a lattice point (x, y). The truth is the ray y = α · x, and the stand-in is a second ray through the origin, tilted by a tiny angle. Between them is a thin wedge, the <b>gap</b>. A point outside the wedge is on the same side of both rays, so the stand-in gives the true answer. Only a point strictly inside the wedge gets a wrong answer.</p>
+          <p>The two rays are far too close to tell apart on a normal plot, so the figure is <b>sheared</b>: every point moves vertically by −α · x. The true ray becomes the horizontal axis, and the vertical position of a point is y − α · x, how far it sits above or below the truth. For each x only the nearest lattice point is shown (the others are at least ½ away). Crosses mark the questions that the toy floats between 2<sup>−11</sup> and 2<sup>−8</sup>, the ones that use this entry, actually ask at the chosen budget.</p>
+          <figure class="lab-figure tgap-figure" id="tgap-wedge">
+            <div class="lab-controls">
+              <label for="tgap-wedge-b">Budget B <input type="range" id="tgap-wedge-b" min="4" max="14" step="1" value="8"> <output id="tgap-wedge-b-out" for="tgap-wedge-b">8</output></label>
+              <span class="tgap-label" id="tgap-wedge-win-label">x range</span>
+              <div class="lab-chips" id="tgap-wedge-win" role="group" aria-labelledby="tgap-wedge-win-label"></div>
+            </div>
+            <div class="tgap-canvasbox" id="tgap-wedge-box">
+              <canvas id="tgap-wedge-canvas" aria-describedby="tgap-wedge-readout"></canvas>
+              <div class="tgap-tip" id="tgap-wedge-tip" hidden></div>
+            </div>
+            <ul class="tgap-legend" aria-label="Legend">
+              <li><i class="tgap-key tgap-key-truth"></i>true ray (α)</li>
+              <li><i class="tgap-key tgap-key-stand"></i>stand-in ray</li>
+              <li><i class="tgap-key tgap-key-gap"></i>gap (wedge)</li>
+              <li><i class="tgap-key tgap-key-in"></i>lattice point inside the gap</li>
+              <li><i class="tgap-key tgap-key-q"></i>question asked by a toy float</li>
+              <li><i class="tgap-key tgap-key-horizon"></i>question horizon</li>
+            </ul>
+            <div class="lab-readout" id="tgap-wedge-readout" aria-live="polite"></div>
+            <figcaption>α = 8192/15625 (the toy's k = 6 entry). The question horizon, x = 8,130 (off to the right in the narrowest range), is the largest denominator any toy float puts to this entry at any budget from 2 to 18 (the page's test checks all of them). The vertical axis is stretched by the factor shown in the readout. Hover or tap a point for its fraction.</figcaption>
+          </figure>
+          <p>Slide B and watch the first point inside the wedge, marked with a ring. It moves right as the budget grows: 54/103 at B = 5, 367/700 at B = 7 and 8, 313/597 at B = 9, 8505/16222 from B = 10 to 12 (widen the x range to see the later ones). Once the first intruder lies beyond the question horizon, no question this entry can be asked has a wrong answer. At B = 14 the denominator 15625 fits, so the toy stores α itself and there is no gap at all.</p>
+          <p>At B = 9 one of the crosses sits in the wedge. That is the float 143 · 2<sup>−18</sup>, whose rounding question 572/1091 gets a wrong answer. The toy prints <code>0.000545</code> for it instead of <code>0.000546</code>.</p>
+        </section>
+
+        <section id="why">
+          <p class="eyebrow">One line of arithmetic</p>
+          <h2>Why the gap is empty</h2>
+          <p>Being clean from B = 10 to 12 was luck. The guarantee comes from how the stand-in is built. Toothless's generator takes it from the continued fraction of α. The Stern–Brocot walk below gives the same fractions with nothing but additions: start with the bracket 0/1 &lt; α &lt; 1/0, and repeatedly replace one end by the <b>mediant</b> (a + c)/(b + d), keeping α inside. Stop when the next mediant's denominator would reach 2<sup>B</sup>.</p>
+          <p>Every bracket a/b &lt; α &lt; c/d on the way has <b>bc − ad = 1</b>. That is true for 0/1 and 1/0, and replacing an end by the mediant keeps it. Then:</p>
+          <div class="tgap-lemma">
+            <p><strong>Lemma.</strong> If a/b &lt; c/d with bc − ad = 1, every fraction x/y strictly between them has y ≥ b + d.</p>
+            <p><strong>Proof.</strong> cy − dx ≥ 1 and bx − ay ≥ 1 are positive integers, so y = y(bc − ad) = b(cy − dx) + d(bx − ay) ≥ b + d.</p>
+          </div>
+          <p>The walk stops because b + d ≥ 2<sup>B</sup>. So nothing strictly inside the final bracket has a denominator below 2<sup>B</sup>. The stand-in is one end of that bracket and α lies inside it, so the gap between them is clean up to 2<sup>B</sup>. For the toy's k = 6 entry, B = 13 gives b + d = 8,461, beyond the horizon of 8,130. That is a guarantee, not luck.</p>
+          <figure class="lab-figure tgap-figure" id="tgap-sb">
+            <div class="lab-controls">
+              <label for="tgap-sb-b">Budget B <select id="tgap-sb-b"></select></label>
+              <button type="button" class="lab-button" id="tgap-sb-reset">Reset</button>
+              <button type="button" class="lab-button" id="tgap-sb-step">Step</button>
+              <button type="button" class="lab-button primary" id="tgap-sb-run">Run to budget</button>
+            </div>
+            <div class="tgap-svgbox" id="tgap-sb-svg" role="img" aria-label="The current bracket around alpha on a number line, zoomed to the bracket."></div>
+            <div class="lab-readout" id="tgap-sb-readout" aria-live="polite"></div>
+            <figcaption>L means α is left of the mediant, so the mediant becomes the right end; R the reverse. The runs of equal letters are the continued-fraction terms of α = 8192/15625 = [0; 1, 1, 9, 1, 3, 1, 5, 26]. The budget cuts the walk inside a run. The stopping point is then a <i>semiconvergent</i> rather than a convergent, and the lemma holds all the same.</figcaption>
+          </figure>
+          <p>A tag fills the one hole the lemma leaves: a question <em>exactly on</em> the stand-in. The table stores whether the stand-in is above α ("higher") or below it ("lower"), and <code>continued.c</code> moves the boundary products by one unit so that such a point gets α's answer. For example, with a lower stand-in it adds 1 to p⁻ = lower boundary × num. In the real table α is never a small fraction itself, because its reduced denominator is 5<sup>k</sup> ≥ 5<sup>28</sup> &gt; 2<sup>64</sup>. So a question can never land exactly on α either.</p>
+        </section>
+
+        <section id="lab">
+          <p class="eyebrow">The toy lab</p>
+          <h2>Starve the whole cache</h2>
+          <p>Now run toy Toothless on every toy float: f from 128 to 255 (columns) and e from −30 to 20 (rows), 6,528 floats in all. Each result is checked against an exact shortest-then-closest reference. The slider sets the budget for every cache entry at once.</p>
+          <figure class="lab-figure tgap-figure" id="tgap-lab">
+            <div class="lab-controls">
+              <label for="tgap-lab-b">Budget B <input type="range" id="tgap-lab-b" min="2" max="18" step="1" value="9"> <output id="tgap-lab-b-out" for="tgap-lab-b">9</output></label>
+            </div>
+            <div class="tgap-bands" id="tgap-lab-bands" aria-hidden="true"></div>
+            <div class="tgap-canvasbox tgap-labbox" id="tgap-lab-box">
+              <canvas id="tgap-lab-canvas" aria-describedby="tgap-lab-summary"></canvas>
+              <div class="tgap-tip" id="tgap-lab-tip" hidden></div>
+            </div>
+            <ul class="tgap-legend" aria-label="Legend">
+              <li><i class="tgap-key tgap-key-ok"></i>correct</li>
+              <li><i class="tgap-key tgap-key-bad"></i>wrong: a question fell into a gap</li>
+              <li><i class="tgap-key tgap-key-tie"></i>wrong: a question landed exactly on α (toy only)</li>
+              <li><i class="tgap-key tgap-key-sel"></i>selected</li>
+            </ul>
+            <p class="lab-readout" id="tgap-lab-summary" aria-live="polite"></p>
+            <div class="tgap-faillist" id="tgap-lab-fails"></div>
+            <div class="tgap-card" id="tgap-lab-card" aria-live="polite"></div>
+            <figcaption>Rows run from e = 20 (top) to e = −30 (bottom); columns run from f = 128 (left) to 255. Click a red cell, or use the buttons, to see its culprit question. Bands: <b>broken</b> means some output is wrong; <b>lucky</b> means every output is right, but some gap still holds a fraction below the toy's question horizon 2<sup>14</sup>; <b>guaranteed</b> means every entry's gap is clean past 2<sup>14</sup>. The largest denominator any toy question has, at any budget, is 12,310.</figcaption>
+          </figure>
+          <p>Wrong answers come in three kinds. Some outputs read back as a different float. Some are longer than necessary. Some are the right length but not the closest. There is one toy-only kind, drawn dark: the question lands exactly on α. That can happen only when α's denominator 5<sup>k</sup> is small, which is never the case for an inexact entry of the real table.</p>
+          <p>The budget where the errors stop (11) is below the guaranteed one (14). Random testing would find nothing wrong from 11 on. The real table is a long way from that edge, as the next section shows.</p>
+        </section>
+
+        <section id="real">
+          <p class="eyebrow">Real scale</p>
+          <h2>63 bits of stand-in, 59 bits of question</h2>
+          <p>The real table in <code>fraction_values.h</code> has 325 entries, for k = 0 … 324. Entries 0 to 27 are α itself, since 5<sup>27</sup> &lt; 2<sup>63</sup>, so they have no gap. The other 297 are stand-ins with 63-bit numerators and denominators. The page loads the table and checks each entry with BigInt arithmetic:</p>
+          <figure class="lab-figure tgap-figure" id="tgap-real">
+            <div class="tgap-svgbox" id="tgap-real-svg" role="img" aria-label="Chart of the 297 inexact table entries: the bit length of the smallest denominator inside each gap. All lie at or above 63 bits; questions are below 59 bits."></div>
+            <ul class="tgap-legend" aria-label="Legend">
+              <li><i class="tgap-key tgap-key-dot"></i>closest 63-bit fraction to α</li>
+              <li><i class="tgap-key tgap-key-hollow"></i>not the closest (the other bracket end is closer)</li>
+              <li><i class="tgap-key tgap-key-horizon"></i>question horizon (59 bits)</li>
+            </ul>
+            <div class="lab-readout" id="tgap-real-readout" aria-live="polite">Checking the table…</div>
+            <figcaption>Each dot is one inexact entry k. Its height is log<sub>2</sub> of the denominator of the simplest fraction strictly between the stand-in and α, which is the first possible intruder. Computed in your browser from the table as shipped.</figcaption>
+          </figure>
+          <p><b>Questions.</b> A double's significand has 53 bits, so its boundaries 2f ± 1 have 54 bits (a power of two uses 4f + 2, which is 2<sup>54</sup> + 2). The shift that aligns them with the stand-in's exponent is 0 to 3. The page runs the worst case of every exponent: <span id="tgap-real-bits">the shifted boundaries and R stay below 2<sup>58</sup>, and only the doubled rounding test needs 59 bits (it stays below 2<sup>59</sup>)</span>. So no question has a denominator of 2<sup>59</sup> or more, and every intruder has at least 2<sup>63</sup>. That leaves about 4 bits of headroom.</p>
+          <p><b>Negative exponents.</b> For small numbers <code>continued.c</code> uses the stored fraction upside down, den/num as a stand-in for 1/α. Swapping numerator and denominator turns a bracket with bc − ad = 1 into another one, so the same argument holds. The bound that matters there is the intruders' numerators, and those are at least 2<sup>62.06</sup>.</p>
+          <p><b>One-sided, not closest.</b> The draft paper argues that no small fraction can be closer to α than the stand-in, because each entry is "the best approximation". That is stronger than what the table satisfies. For <span class="tgap-num" id="tgap-real-notclosest">114</span> entries, the other end of the bracket is closer to α. For <span class="tgap-num" id="tgap-real-notbest">46</span> of them, that closer fraction even has a <em>smaller</em> denominator. At k = 31, for example, a fraction with a 62-bit denominator on the other side of α is closer. It doesn't matter. The argument needs only that nothing lies <em>between</em> the stand-in and α, and that is the bracket property every entry has.</p>
+        </section>
+
+        <section id="status">
+          <p class="eyebrow">Honest status</p>
+          <h2>What is checked, and what is not</h2>
+          <div class="tgap-status">
+            <p><strong>Toothless is unpublished.</strong> The sources are a C reference (<code>continued.c</code>), the table and its generator, and an unfinished 2017 draft by the site's author. Treat the algorithm as argued and heavily tested, <em>not proven</em>.</p>
+            <ul>
+              <li><b>Checked on this page:</b> the gap lemma (one line, above), and that all 297 inexact entries are ends of a 63-bit Farey bracket with every intruder at 2<sup>63</sup> or more. The toy results are exhaustive: all 6,528 toy floats at every budget.</li>
+              <li><b>Incomplete in the draft:</b> the proof has TODOs, and the minimality lemma appears twice, one copy labelled "(gemini)". The correctness argument relies on "best approximation", which 46 entries don't satisfy in the draft's own sense (the one-sided version above is what holds). The draft's rule for which semiconvergents are best approximations (0 &lt; c &lt; a<sub>k</sub>/2) is the reverse of the standard result, which needs c &gt; a<sub>k+1</sub>/2.</li>
+              <li><b>Only in code:</b> the tie rules (with a "higher" entry, a rounding test that lands exactly on the stand-in steps down once more; an exact entry rounds half to even) and the power-of-two fix-up after rounding. No version of the proof covers them.</li>
+              <li><b>Evidence, not proof:</b> independent ports of <code>continued.c</code> match shortest-closest output (Python <code>repr</code>, JavaScript <code>Number.prototype.toString</code>) on millions of doubles, including constructed near-boundary cases. Random tests are weak evidence here. A cache rebuilt with only 50-bit fractions also passes 100,000 random doubles, yet it prints some constructed hard cases wrong.</li>
+            </ul>
+          </div>
+          <p>To follow one real double through <code>continued.c</code> with the real table, and for the full list of claims, see <a href="./toothless-trace.html">approach B</a>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="./toothless-trace.html"><span>Approach B</span><strong>Follow one double →</strong></a><a href="../chapters/toothless.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

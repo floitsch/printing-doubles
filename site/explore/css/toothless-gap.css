@@ -1,0 +1,104 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/toothless-gap.html; every class is prefixed tgap-. */
+
+.tgap { --tgap-good: #1d7f4a; --tgap-good-pale: #cfe9d6; --tgap-warn: #b7791f; --tgap-gap: rgba(239, 75, 53, .16); }
+
+.tgap-figure { position: relative; }
+.tgap-svgbox { width: 100%; }
+.tgap-svgbox svg { display: block; width: 100%; height: auto; font-family: var(--mono); }
+.tgap-svgbox svg text { font-size: 11px; fill: var(--ink); }
+.tgap-label { color: var(--ink); }
+
+.tgap-table-wrap { margin: 24px 0; overflow-x: auto; }
+.tgap-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tgap-table th, .tgap-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.tgap-table th { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tgap-table td:nth-child(2) { color: var(--red); }
+.tgap-table td:nth-child(3) { color: var(--blue); }
+
+/* Card (section 2 and lab) */
+.tgap-card { margin-top: 12px; padding: 14px 16px; border-left: 3px solid var(--blue); background: var(--paper); font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+.tgap-card:empty { display: none; }
+.chapter .tgap-card p { margin: 4px 0; font-size: inherit; }
+.tgap-card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; }
+.tgap-card dt { color: var(--muted); }
+.tgap-card dd { margin: 0; }
+.tgap-ok { color: var(--tgap-good); font-weight: 500; }
+.tgap-bad { color: var(--red); font-weight: 500; }
+.tgap-card h4 { margin: 0 0 8px; font: 600 15px var(--sans); }
+.tgap-card svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 10px 0 4px; }
+.tgap-card svg text { font: 11px var(--mono); fill: var(--ink); }
+
+/* Canvas figures */
+.tgap-canvasbox { position: relative; width: 100%; }
+.tgap-canvasbox canvas { display: block; width: 100%; touch-action: manipulation; }
+.tgap-labbox canvas { width: auto; max-width: 100%; margin: 0 auto; cursor: pointer; image-rendering: pixelated; }
+.tgap-tip { position: absolute; z-index: 3; max-width: 260px; padding: 7px 9px; border: 1px solid var(--ink); background: var(--paper); font: 12px/1.45 var(--mono); pointer-events: none; box-shadow: 0 2px 8px rgba(20, 32, 43, .18); }
+
+.tgap-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0; list-style: none; font: 12px var(--mono); color: var(--muted); }
+.tgap-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.tgap-key { display: inline-block; width: 14px; height: 10px; }
+.tgap-key-truth { height: 2px; background: var(--ink); }
+.tgap-key-stand { height: 2px; background: var(--blue); }
+.tgap-key-gap { background: var(--tgap-gap); border: 1px solid rgba(239, 75, 53, .4); }
+.tgap-key-in { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+.tgap-key-q { width: 10px; height: 10px; background: linear-gradient(45deg, transparent 42%, var(--ink) 42% 58%, transparent 58%), linear-gradient(-45deg, transparent 42%, var(--ink) 42% 58%, transparent 58%); }
+.tgap-key-horizon { width: 2px; height: 14px; background: repeating-linear-gradient(var(--tgap-good) 0 3px, transparent 3px 6px); }
+.tgap-key-ok { background: var(--paper-deep); border: 1px solid var(--line); }
+.tgap-key-bad { background: var(--red); }
+.tgap-key-tie { background: var(--ink); }
+.tgap-key-sel { border: 2px solid var(--ink); background: var(--acid); }
+.tgap-key-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+.tgap-key-hollow { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--blue); background: var(--paper); }
+
+.tgap-badge { display: inline-block; margin-left: 4px; padding: 2px 7px; font: 500 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+.tgap-badge-good { background: var(--tgap-good); color: #fff; }
+.tgap-badge-bad { background: var(--red); color: #fff; }
+.tgap-badge-exact { background: var(--ink); color: var(--paper); }
+.tgap-badge-lucky { background: var(--tgap-warn); color: #fff; }
+
+/* Lemma box */
+.tgap-lemma { margin: 26px 0; padding: 16px 20px; border: 1px solid var(--ink); background: var(--paper); }
+.chapter .tgap-lemma p { margin: 6px 0; font-size: 16px; }
+
+/* Stern–Brocot readout */
+.tgap-path { display: inline; font: 500 14px var(--mono); letter-spacing: .06em; overflow-wrap: anywhere; }
+.tgap-run-a { color: var(--ink); background: color-mix(in srgb, var(--blue) 14%, transparent); }
+.tgap-run-b { color: var(--ink); background: color-mix(in srgb, var(--red) 14%, transparent); }
+
+/* Lab bands */
+.tgap-bands { display: grid; grid-template-columns: repeat(17, minmax(0, 1fr)); gap: 2px; margin: 0 0 12px; }
+.tgap-band { display: flex; flex-direction: column; align-items: center; padding: 3px 0; border: 0; font: 10px/1.25 var(--mono); color: var(--ink); background: var(--paper-deep); cursor: pointer; }
+.tgap-band b { font-weight: 500; font-size: 11px; }
+.tgap-band.tgap-broken { background: color-mix(in srgb, var(--red) 30%, var(--paper)); }
+.tgap-band.tgap-lucky { background: color-mix(in srgb, var(--tgap-warn) 30%, var(--paper)); }
+.tgap-band.tgap-guaranteed { background: var(--tgap-good-pale); }
+.tgap-band[aria-current="true"] { outline: 2px solid var(--ink); outline-offset: -2px; }
+.tgap-faillist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tgap-faillist button { padding: 4px 7px; border: 1px solid var(--red); background: var(--paper); color: var(--ink); font: 11px var(--mono); cursor: pointer; }
+.tgap-faillist button.tgap-tiebtn { border-color: var(--ink); }
+.tgap-faillist button[aria-pressed="true"], .tgap-faillist button:hover { background: var(--acid); }
+.tgap-faillist span { font: 11px var(--mono); color: var(--muted); align-self: center; }
+
+/* Status box */
+.tgap-status { margin: 24px 0; padding: 20px 24px; border: 2px solid var(--red); background: var(--paper); }
+.chapter .tgap-status p, .chapter .tgap-status li { font-size: 15px; }
+.tgap-status ul { margin: 10px 0 0; padding-left: 20px; }
+.tgap-status li { margin: 8px 0; }
+.tgap-num { font-family: var(--mono); }
+
+@media (max-width: 680px) {
+  .tgap-bands { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+  .tgap-card dl { grid-template-columns: minmax(0, 1fr); }
+  .tgap-card dt { margin-top: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tgap * { transition: none !important; }
+}
+.chapter .tgap-small { color: var(--muted); font-size: 12px; }
+.tgap .equation { white-space: normal; font-size: clamp(14px, 1.8vw, 20px); line-height: 1.7; }
+.chapter .tgap-legend li { margin: 0; font-size: 12px; line-height: 1.4; }
+.chapter .tgap-legend sup { font-size: 9px; }
+@media (max-width: 680px) {
+  .tgap-svgbox svg text { font-size: 12px; }
+}
