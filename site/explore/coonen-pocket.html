@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Coonen's binary-to-decimal conversion shrunk to a 6-bit input, 3 digits and a 12-bit register, checked by hand, then broken by switching off its safeguards.">
+  <title>Coonen · Pocket Coonen · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/coonen-pocket.css">
+  <script type="module" src="./js/coonen-pocket.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="coonen-pocket-main">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Coonen / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./coonen-microscope.html">compare with approach A</a></p>
+      <h1>Pocket Coonen</h1>
+      <p class="chapter-deck">Shrink the number formats until every value fits on a sticky note. Check Coonen's single multiply by hand, then switch off his safeguards one at a time and watch real doubles come out wrong.</p>
+      <p class="lab-pitch">A toy version (6-bit input, 3 digits, 12-bit register) makes the three tricks easy to check with a phone calculator. A mapping table then carries them up to binary64, and a fuzzer finds real counterexamples when one safeguard is removed.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Pocket Coonen</strong><a href="#recipe">The recipe</a><a href="#pocket">Pocket formats</a><a href="#card-a">A · Wobbly power of ten</a><a href="#card-b">B · The halfway trap</a><a href="#card-c">C · Pointing the right way</a><a href="#yours">Your own sticky note</a><a href="#scale-up">Back to binary64</a><a href="#real">Real doubles</a><a href="#break">Switch off a safeguard</a><a href="#promise">What you get</a></aside>
+      <article class="chapter">
+
+        <section id="recipe">
+          <p class="eyebrow">1 · The recipe</p>
+          <h2>Scale once, round once</h2>
+          <p class="lead">Coonen's Algorithm B (1984) answers a different question than the shortest-digit printers. The caller chooses the number of digits <var>N</var>, as with <code>printf("%.16e")</code>, and gets exactly <var>N</var> digits back. It does not search for the shortest string.</p>
+          <ol class="lab-steps">
+            <li><strong>Estimate the decade.</strong> LOGX = ⌊log<sub>10</sub> x⌋. The cheap estimate can be one too low, but never too high. <span class="coonen-pocket-tag">B2</span></li>
+            <li><strong>Pick the scale.</strong> SCALE = N − LOGX − 1, so x · 10<sup>SCALE</sup> has N digits before the point. <span class="coonen-pocket-tag">B3</span></li>
+            <li><strong>Multiply</strong> by z ≈ 10<sup>SCALE</sup> in a register wider than the input (or divide by 10<sup>−SCALE</sup> when SCALE is negative). <span class="coonen-pocket-tag">B4 · Algorithm S</span></li>
+            <li><strong>Round to an integer</strong> in the current rounding mode. That integer is the N digits. <span class="coonen-pocket-tag">B5</span></li>
+            <li><strong>Check the length.</strong> If the integer has N + 1 digits, LOGX was too low: add 1 and go back to step 2, at most once. <span class="coonen-pocket-tag">B6</span></li>
+          </ol>
+          <p>Everything interesting happens in step 3. For doubles the register has 64 bits: wider than the 53-bit input, but not infinitely wide. Both the power of ten and the product can therefore be slightly off. Coonen adds three safeguards:</p>
+          <ul>
+            <li><strong>Chop, then set a sticky bit.</strong> This keeps the multiply from adding any error of its own.</li>
+            <li><strong>Round z in the right direction.</strong> This makes “round up” and “round down” keep their promise.</li>
+            <li><strong>The B6 length check.</strong> This guarantees exactly N digits.</li>
+          </ul>
+          <p>One error source remains: the power of ten itself. It is exact up to 10<sup>27</sup> and only a tiny bit off beyond that.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double is an integer significand of at most 53 bits times a power of two. A p-bit register holds an integer exactly only if the integer has at most p bits.</p>
+            <p>10<sup>k</sup> = 2<sup>k</sup> · 5<sup>k</sup>, and the 2<sup>k</sup> is only an exponent. So 10<sup>k</sup> is exact in p bits exactly when 5<sup>k</sup> &lt; 2<sup>p</sup>.</p>
+            <p>IEEE 754 has four rounding modes: to nearest (a tie goes to the even neighbour), toward 0, toward +∞ and toward −∞. The last three are the <em>directed</em> modes.</p>
+          </div>
+        </section>
+
+        <section id="pocket">
+          <p class="eyebrow">2 · Pocket formats</p>
+          <h2>Shrink everything to fit a sticky note</h2>
+          <p>With doubles, the numbers in step 3 have 17 to 20 digits. We make every format smaller while keeping the same relationships. Then every intermediate value is a three- or four-digit number:</p>
+          <ul>
+            <li><strong>Input:</strong> a 6-bit significand (32 to 63) times 2<sup>e</sup>. A double has 53 bits.</li>
+            <li><strong>Output:</strong> N = 3 digits, the smallest N with 10<sup>1−N</sup> &lt; 2<sup>−6</sup>. The same rule gives 17 for doubles.</li>
+            <li><strong>Register:</strong> 12 bits. A 3-digit integer is below 1000 &lt; 2<sup>10</sup>, so at least 2 bits are left after the binary point.</li>
+            <li><strong>Exact powers of ten:</strong> 10<sup>0</sup> to 10<sup>5</sup>, because 5<sup>5</sup> = 3125 &lt; 2<sup>12</sup> = 4096 &lt; 5<sup>6</sup> = 15625.</li>
+          </ul>
+          <figure class="lab-figure">
+            <div id="coonen-pocket-register" class="coonen-pocket-register" role="img" aria-label="A 12-bit register holding 915.25: ten integer bits and two fraction bits."></div>
+            <div class="coonen-pocket-table-wrap" id="coonen-pocket-powers"></div>
+            <figcaption>Top: the 12-bit register. An integer below 1000 fills at most 10 cells, so at least two cells remain for the “½” bit and one more bit below it. Bottom: the toy powers of ten. From 10<sup>6</sup> on, 5<sup>k</sup> needs more than 12 bits, so the register keeps a rounded value. Which way it rounds (nearest, up or down) is a choice we will need in card C.</figcaption>
+          </figure>
+        </section>
+
+        <section id="card-a">
+          <p class="eyebrow">3 · Card A</p>
+          <h2>A wobbly power of ten misrounds</h2>
+          <p>Once z is rounded, the product is off by a factor (1 + δ). This usually does not matter. It matters only when the exact product lies close to a rounding boundary.</p>
+          <figure class="lab-figure coonen-pocket-card" data-card="a">
+            <div class="lab-controls coonen-pocket-stepper"></div>
+            <ol class="coonen-pocket-lines" aria-live="polite"></ol>
+            <div class="coonen-pocket-line"></div>
+            <figcaption>Number line around the result. Black diamond: the exact x · 10<sup>6</sup>. Blue: values in the 12-bit register. Red: the rounded result. The dashed red line marks the halfway point where rounding to nearest decides between the two integers. Short blue ticks show the numbers the register can hold (quarters).</figcaption>
+          </figure>
+        </section>
+
+        <section id="card-b">
+          <p class="eyebrow">4 · Card B</p>
+          <h2>The halfway trap and the sticky bit</h2>
+          <p>Here z is exact. Rounding twice (the product to the register, then the register to an integer) can still go wrong. Coonen's fix: chop the product, and if anything was chopped off, set the last bit.</p>
+          <figure class="lab-figure coonen-pocket-card" data-card="b">
+            <div class="lab-controls coonen-pocket-stepper"></div>
+            <ol class="coonen-pocket-lines" aria-live="polite"></ol>
+            <div class="coonen-pocket-line"></div>
+            <figcaption>The register can hold 640.5 and 640.75 but not the exact 640.625, which lies halfway between them. A red cross is a wrong final answer.</figcaption>
+          </figure>
+          <div class="aside"><p>Today this trick is called <strong>round to odd</strong>: chop, and force the last bit to 1 if anything was lost. It makes a second rounding safe as long as that rounding is at least two bits coarser. Coonen's register always has those two bits spare. Coonen does not use the name.</p></div>
+        </section>
+
+        <section id="card-c">
+          <p class="eyebrow">5 · Card C</p>
+          <h2>Pointing the right way</h2>
+          <p>In a directed mode the promise is one-sided. “Toward +∞” must never print a value below x. A z rounded to nearest may be a little too small, and then the result can land on the wrong side. Coonen rounds z itself in the direction the result must move (step S0). This card also needs the sticky bit.</p>
+          <figure class="lab-figure coonen-pocket-card" data-card="c">
+            <div class="lab-controls coonen-pocket-stepper"></div>
+            <ol class="coonen-pocket-lines" aria-live="polite"></ol>
+            <div class="coonen-pocket-line"></div>
+            <figcaption>When rounding toward +∞, the decision line is the integer 885 itself: anything strictly above it must become 886.</figcaption>
+          </figure>
+          <p>The S0 rule in full: work out whether the result must grow in magnitude (toward +∞ with x &gt; 0, or toward −∞ with x &lt; 0). If so, round z up; otherwise round z down. When SCALE &lt; 0 we divide by z, so flip that choice. To nearest, z is simply rounded to nearest.</p>
+        </section>
+
+        <section id="yours">
+          <p class="eyebrow">6 · Your own sticky note</p>
+          <h2>Run the pocket algorithm on any toy number</h2>
+          <p>Pick a 6-bit significand and an exponent. Switch the safeguards on or off and compare with the correctly rounded answer. The chips list every toy input (significands 32–63, exponents −30 to 20) that the current settings get wrong.</p>
+          <figure class="lab-figure" id="coonen-pocket-toy">
+            <div class="lab-controls">
+              <label>significand <input id="toy-m" type="number" min="32" max="63" step="1" value="60" inputmode="numeric"></label>
+              <label>× 2^ <input id="toy-e" type="number" min="-30" max="20" step="1" value="-16" inputmode="numeric"></label>
+              <label>mode <select id="toy-mode"><option value="nearest">to nearest</option><option value="zero">toward 0</option><option value="up">toward +∞</option><option value="down">toward −∞</option></select></label>
+              <label>product <select id="toy-sticky"><option value="on">chop + sticky (Coonen)</option><option value="chop">chop only</option><option value="round">round in the mode</option></select></label>
+              <label><input id="toy-dz" type="checkbox" checked> directed z</label>
+            </div>
+            <ol class="coonen-pocket-lines coonen-pocket-lines-all" id="toy-lines" aria-live="polite"></ol>
+            <div class="coonen-pocket-line" id="toy-line"></div>
+            <p class="coonen-pocket-survey" id="toy-survey"></p>
+            <div class="lab-chips" id="toy-misses" aria-label="Toy inputs that the current settings get wrong"></div>
+          </figure>
+        </section>
+
+        <section id="scale-up">
+          <p class="eyebrow">7 · Back to binary64</p>
+          <h2>Every toy number has a double-sized twin</h2>
+          <p>The three tricks are the same. Only the sizes change, and so does how much the error from z can matter:</p>
+          <div class="coonen-pocket-table-wrap">
+            <table class="coonen-pocket-map">
+              <thead><tr><th scope="col"></th><th scope="col">Pocket</th><th scope="col">binary64</th><th scope="col">Why</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Input significand</th><td>6 bits</td><td>53 bits</td><td></td></tr>
+                <tr><th scope="row">Digits N</th><td>3</td><td>17</td><td>smallest N with 10<sup>1−N</sup> &lt; 2<sup>−p</sup></td></tr>
+                <tr><th scope="row">Register</th><td>12 bits</td><td>64 bits</td><td>IEEE double-extended (x87)</td></tr>
+                <tr><th scope="row">Spare bits under an N-digit integer</th><td>≥ 2 (10<sup>3</sup> &lt; 2<sup>10</sup>)</td><td>≥ 7 (10<sup>17</sup> &lt; 2<sup>57</sup>)</td><td>room for the ½ bit and the sticky bit</td></tr>
+                <tr><th scope="row">Exact powers of ten</th><td>10<sup>0</sup> … 10<sup>5</sup></td><td>10<sup>0</sup> … 10<sup>27</sup></td><td>5<sup>k</sup> &lt; 2<sup>p</sup></td></tr>
+                <tr><th scope="row">Correctly rounded when</th><td>−5 ≤ SCALE ≤ 5</td><td>−27 ≤ SCALE ≤ 27 (for N = 17: results from 10<sup>−11</sup> to 10<sup>44</sup>)</td><td>z exact ⇒ one rounding only</td></tr>
+                <tr><th scope="row">Larger powers come from</th><td>a table, each rounded once</td><td>Algorithm Q: 10<sup>27</sup>, 10<sup>55</sup>, 10<sup>108</sup>, 10<sup>206</sup> and at most 3 multiplies</td><td>δ ≤ 2<sup>−12</sup> vs δ ≤ 3.5 · 2<sup>−64</sup></td></tr>
+                <tr class="coonen-pocket-contrast"><th scope="row">Worst extra error, to nearest</th><td><strong>10<sup>3</sup> · 2<sup>−12</sup> ≈ 0.24</strong> of the last digit</td><td><strong>10<sup>17</sup> · 3.5 · 2<sup>−64</sup> ≈ 0.019</strong> of the last digit</td><td>error ≈ (N-digit integer) × δ</td></tr>
+                <tr><th scope="row">Misrounded, to nearest</th><td id="map-toy-rate">…</td><td>about 1 in 1000 random doubles, all outside 10<sup>−11</sup> … 10<sup>44</sup></td><td>measure it below</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="aside"><p><strong>Don't carry the toy's error rate over to doubles.</strong> The toy's extra error can reach 0.24 of a digit. Coonen's bound for doubles is <strong>0.019</strong>, more than ten times smaller: the 64-bit register has 11 bits more than the input, while the toy has only 6 bits more. The toy is built to fail often, so that the failures are easy to find.</p></div>
+        </section>
+
+        <section id="real">
+          <p class="eyebrow">8 · Real doubles</p>
+          <h2>The same moves at full size</h2>
+          <p>This is the same simulator with a 64-bit register, Coonen's real Algorithm L for the decade and Algorithm Q for the powers of ten. Things to try:</p>
+          <ul>
+            <li><strong>0.1:</strong> the log estimate is one too low, so B6 retries.</li>
+            <li><strong>1.0439</strong> and <strong>0.5308290954995201:</strong> the sticky bit decides the last digit.</li>
+            <li><strong>1.0408207851369739e-12:</strong> z = 10<sup>28</sup> is rounded, and the result is not correctly rounded.</li>
+          </ul>
+          <figure class="lab-figure" id="coonen-pocket-real">
+            <div class="lab-controls">
+              <div class="lab-chips" id="real-presets"></div>
+              <label>x <input id="real-x" type="text" value="0.1" size="22" spellcheck="false" autocomplete="off"></label>
+              <label>N <select id="real-n"></select></label>
+              <label>mode <select id="real-mode"><option value="nearest">to nearest</option><option value="zero">toward 0</option><option value="up">toward +∞</option><option value="down">toward −∞</option></select></label>
+            </div>
+            <ol class="coonen-pocket-lines coonen-pocket-lines-all" id="real-lines" aria-live="polite"></ol>
+            <div class="coonen-pocket-line" id="real-line"></div>
+            <figcaption>The number line shows the last pass, zoomed in to one unit around the result. When z is rounded, the gap between the exact value and x · z is usually far smaller than a pixel.</figcaption>
+          </figure>
+        </section>
+
+        <section id="break">
+          <p class="eyebrow">9 · Switch off a safeguard</p>
+          <h2>Break it on purpose</h2>
+          <p>Every odd-looking detail exists because of a concrete failure. Pick a safeguard to remove, and the fuzzer converts random doubles with N = 17. It checks each result against Coonen's promises:</p>
+          <ul>
+            <li>correctly rounded whenever z is exact;</li>
+            <li>never on the wrong side in a directed mode;</li>
+            <li>exactly N digits;</li>
+            <li>at most 0.519 ulp of error to nearest, 1.054 ulp when directed;</li>
+            <li>17 digits read back to the same double.</li>
+          </ul>
+          <p>Results that are not correctly rounded, where z was rounded, are counted separately. Those are allowed.</p>
+          <figure class="lab-figure" id="coonen-pocket-fuzz">
+            <div class="lab-controls">
+              <div class="lab-chips" id="fuzz-off" role="group" aria-label="Safeguard to switch off"></div>
+            </div>
+            <div class="lab-controls">
+              <label>mode <select id="fuzz-mode"><option value="nearest">to nearest</option><option value="zero">toward 0</option><option value="up">toward +∞</option><option value="down">toward −∞</option></select></label>
+              <label>sample <select id="fuzz-region"></select></label>
+              <button class="lab-button primary" id="fuzz-run" type="button">Run fuzzer</button>
+              <button class="lab-button" id="fuzz-stop" type="button" disabled>Stop</button>
+            </div>
+            <p class="coonen-pocket-fuzz-note" id="fuzz-note"></p>
+            <div class="coonen-pocket-counters" id="fuzz-counters" aria-live="polite"></div>
+            <ul class="coonen-pocket-examples" id="fuzz-examples"></ul>
+            <div id="fuzz-detail" class="coonen-pocket-detail" aria-live="polite"></div>
+            <figcaption>Random positive doubles, drawn from a seeded generator so a link reproduces the same run. Each conversion is compared with an exact BigInt reference. Choose a counterexample to see the two runs side by side.</figcaption>
+          </figure>
+          <p>A safeguard you cannot switch off here is the <strong>lower bound in Algorithm L</strong>. The estimate e.f ≤ log<sub>2</sub> x, and log<sub>10</sub> 2 is chopped, bumped up by one unit when e.f &lt; 0. As a result LOGX is never too high. Coonen explains why this matters: if LOGX could also be too high, B6 would have to retry in both directions, and a value very close to a power of ten could then bounce between two scales forever.</p>
+        </section>
+
+        <section id="promise">
+          <p class="eyebrow">10 · What you get</p>
+          <h2>Accurate enough, by design</h2>
+          <ul>
+            <li><strong>Fixed N, not shortest.</strong> Algorithm B prints exactly the N digits you asked for. A shortest printer would need an outer loop over N with a read-back test.</li>
+            <li><strong>Correctly rounded whenever −27 ≤ SCALE ≤ 27.</strong> For 17 digits that means results from 10<sup>−11</sup> to 10<sup>44</sup>. This range is the source of Table 3 in IEEE 754-1985.</li>
+            <li><strong>Bounded error elsewhere.</strong> To nearest, the extra error is at most 0.019 of the last digit. In the directed modes the result is always on the correct side, with at most 0.054 extra. This is a deliberate trade: no bignums, a four-entry table and one multiply.</li>
+            <li><strong>17 digits always read back.</strong> Coonen's budget (§3.4) is 0.9 × (0.5 + 0.019) + 0.5017 ≈ 0.97 of a binary ulp, which is less than 1. The fuzzer's round-trip counter stays at zero.</li>
+          </ul>
+          <p>Approach A, <a href="./coonen-microscope.html">the scaling microscope</a>, explains the same algorithm by zooming in on the multiply for any double.</p>
+          <div class="aside"><p><strong>Source notes.</strong> This page follows Chapter 7 of Coonen's 1984 dissertation (Algorithms B, L, S and Q). The local transcription has OCR errors in the Q table. The entries are 10<sup>108</sup> = 0.DA01EE641A708DEA<sub>16</sub> · 2<sup>359</sup> and 10<sup>206</sup> = 0.9F79A169BD203E41<sub>16</sub> · 2<sup>685</sup>, not “10<sup>110</sup> · 2<sup>366</sup>” and “10<sup>210</sup> · 2<sup>698</sup>”. The simulator recomputes all four entries from exact powers of ten, and the tests check them against these hex values. The log estimate uses LOG2 = 0.4D104D42<sub>16</sub> and 32 fraction bits of e.f.</p></div>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/coonen.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

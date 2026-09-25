@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Two competing explanations for every binary-to-decimal conversion algorithm, side by side, so the better one can be chosen.">
+  <title>Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs">Explanation lab</p>
+      <h1>Two ways to explain each algorithm</h1>
+      <p class="chapter-deck">For every algorithm, two independent teams proposed ways to make it click. Here are the two strongest ideas, each built as a complete, self-contained page. Read both and keep the one that teaches better.</p>
+      <p class="lab-pitch">Each page assumes the floating-point primer: binary grid, ulp, the rounding interval between the midpoints, round-trip, shortest and closest. The existing chapter is linked under each pair for comparison.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Algorithms</strong>
+        <a href="#coonen">Coonen</a><a href="#dragon">Dragon4</a><a href="#descendants">Gay &amp; Burger–Dybvig</a><a href="#grisu">Grisu</a><a href="#errol">Errol</a><a href="#ryu">Ryū</a><a href="#schubfach">Schubfach</a><a href="#dragonbox">Dragonbox</a><a href="#zmij">Żmij</a><a href="#xjb">xjb</a><a href="#teju">Tejú Jaguá</a><a href="#uscale">Unrounded scaling</a><a href="#toothless">Toothless</a>
+      </aside>
+      <article class="chapter">
+        <section class="lab-algo" id="coonen">
+          <p class="eyebrow">1984 · fixed number of digits</p>
+          <h2>Coonen</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./coonen-microscope.html"><span>Approach A · explorable</span><strong>The scaling microscope</strong><em>One multiply by a power of ten, one rounding. Zoom in on the scaled value and watch a provably tiny error band decide the last digit.</em></a>
+            <a class="lab-card" href="./coonen-pocket.html"><span>Approach B · by hand, then break it</span><strong>Pocket Coonen</strong><em>Shrink every format until each number fits on a sticky note, check the whole algorithm by hand, then switch off safeguards and watch a fuzzer break it.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/coonen.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="dragon">
+          <p class="eyebrow">1990 · exact big integers</p>
+          <h2>Dragon4</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./dragon-mask.html"><span>Approach A · White's mask</span><strong>The mask</strong><em>One digit cell, a dot for the remainder and two shadows that grow tenfold per digit. Printing stops when the dot falls into a shadow.</em></a>
+            <a class="lab-card" href="./dragon-microscope.html"><span>Approach B · microscope + worksheet</span><strong>Long division with an error budget</strong><em>Zoom into the number line one decimal at a time, then do Dragon4 by hand as schoolbook long division with one extra column.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/dragon.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="descendants">
+          <p class="eyebrow">1990–96 · making Dragon practical</p>
+          <h2>Gay's dtoa and Burger &amp; Dybvig</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./descendants-rulers.html"><span>Approach A · explorable</span><strong>Binade meets decade</strong><em>The binary exponent already knows the decimal exponent to within one. A two-ruler explorable of the estimate and its one-comparison repair.</em></a>
+            <a class="lab-card" href="./descendants-machine.html"><span>Approach B · code reading</span><strong>The four-integer machine</strong><em>Step through Burger &amp; Dybvig with rule switches that break it, then follow your number along a route map through dtoa().</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/dragon-descendants.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="grisu">
+          <p class="eyebrow">2010 · 64-bit approximation with a proof check</p>
+          <h2>Grisu</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./grisu-blur.html"><span>Approach A · explorable</span><strong>Blurry fences</strong><em>Every computed boundary is blurred by one unit. Grisu3 either proves its answer or declares the race too close to call.</em></a>
+            <a class="lab-card" href="./grisu-pocket.html"><span>Approach B · mechanics first</span><strong>Park the binary point</strong><em>Why 64-bit integers suffice, the whole of Grisu3 on 16-bit floats checkable by hand, then a step-through debugger for doubles.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/grisu.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="errol">
+          <p class="eyebrow">2016 · double-double arithmetic</p>
+          <h2>Errol</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./errol-microscope.html"><span>Approach A · explorable</span><strong>When are 106 bits not enough?</strong><em>Zoom to 10⁻³² on a boundary: safe cases, near misses and exact hits, followed by the double-double digit loop.</em></a>
+            <a class="lab-card" href="./errol-hunt.html"><span>Approach B · lab notebook</span><strong>Hunting the needles</strong><em>Rediscover the design experiment by experiment, then find every problem input with a Euclid-style walk around a clock.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/errol.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="ryu">
+          <p class="eyebrow">2018 · fixed-width integers</p>
+          <h2>Ryū</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./ryu-leap-chop.html"><span>Approach A · explorable</span><strong>Leap, then chop</strong><em>One multiply lands on three exact integers. Chop their last digits while a round number still fits between them.</em></a>
+            <a class="lab-card" href="./ryu-pocket.html"><span>Approach B · by hand, then break it</span><strong>Pocket Ryū</strong><em>The whole algorithm on half-precision floats you can check with a calculator, then try to break it by shrinking the stored powers of five.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/ryu.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="schubfach">
+          <p class="eyebrow">2018–21 · pigeonhole principle</p>
+          <h2>Schubfach</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./schubfach-rulers.html"><span>Approach A · explorable</span><strong>Two rulers</strong><em>Choose the decimal scale from the interval's width: one ruler can't miss, the next can't catch two. Four candidates, no loop.</em></a>
+            <a class="lab-card" href="./schubfach-pocket.html"><span>Approach B · game, then arithmetic</span><strong>Discover it yourself</strong><em>Play the printer on half-precision floats until the optimal strategy emerges, then see how round-to-odd keeps the fast version exact.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/schubfach.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="dragonbox">
+          <p class="eyebrow">2020–22 · one multiplication</p>
+          <h2>Dragonbox</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./dragonbox-clock.html"><span>Approach A · explorable</span><strong>The 1000-hour clock</strong><em>Only the last three digits matter. Fold the ruler into a clock: does the window's arc cover twelve o'clock?</em></a>
+            <a class="lab-card" href="./dragonbox-window.html"><span>Approach B · window, knob, code</span><strong>Three digits decide</strong><em>A magnified window on the last three digits, a κ knob that connects it to Schubfach, and a stepper through the real code.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/dragonbox.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="zmij">
+          <p class="eyebrow">2025–26 · removing work</p>
+          <h2>Żmij</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./zmij-dial.html"><span>Approach A · pictures</span><strong>The fraction dial</strong><em>One multiply gives an odometer and a dial. The carry out of a 64-bit add is the round-up. A decision map shows why it's always right.</em></a>
+            <a class="lab-card" href="./zmij-pipeline.html"><span>Approach B · machine view</span><strong>From bits to characters</strong><em>Follow one double through the whole pipeline: move the decimal point, one multiply, three parallel questions, sixteen digits at once.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/zmij.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="xjb">
+          <p class="eyebrow">2025–26 · local last digit</p>
+          <h2>xjb</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./xjb-ruler.html"><span>Approach A · geometry first</span><strong>The last-digit ruler</strong><em>Freeze everything but the last digit: one ruler, ten ticks, one bar, three possible outcomes.</em></a>
+            <a class="lab-card" href="./xjb-registers.html"><span>Approach B · code first</span><strong>Twelve lines, one multiply</strong><em>A debugger walk through the real core. Each register is mirrored on a small ruler, so the geometry emerges from the bits.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/xjb.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="teju">
+          <p class="eyebrow">2024–25 · generated constants</p>
+          <h2>Tejú Jaguá</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./teju-ruler.html"><span>Approach A · runtime first</span><strong>Exact floors on a decade ruler</strong><em>Follow a double through the kernel. It trusts its integer floors completely, and the last section shows why it may.</em></a>
+            <a class="lab-card" href="./teju-generator.html"><span>Approach B · generator first</span><strong>Break the multiplier</strong><em>Slide a line until a fast multiply-and-shift gives a wrong floor, then let the generator prove all 617 real constants in your browser.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/teju-jagua.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="uscale">
+          <p class="eyebrow">2026 · Russ Cox</p>
+          <h2>Unrounded scaling</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./uscale-window.html"><span>Approach A · explorable</span><strong>Four zones, one window</strong><em>An unrounded number keeps just enough to decide any rounding later. Scale the interval's edges into a decimal window and read off the answer.</em></a>
+            <a class="lab-card" href="./uscale-machine.html"><span>Approach B · machine view</span><strong>One primitive, three programs</strong><em>Why one 64×64 multiply is almost always enough, then Short, FixedWidth and Parse running with every variable shown.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/unrounded-scaling.html">Current chapter →</a></p>
+        </section>
+        <section class="lab-algo" id="toothless">
+          <p class="eyebrow">Unpublished · continued fractions · proof incomplete</p>
+          <h2>Toothless</h2>
+          <div class="lab-pair">
+            <a class="lab-card" href="./toothless-gap.html"><span>Approach A · toy lab</span><strong>Nothing lives in the gap</strong><em>Shrink the fraction budget until a tiny float prints wrong, and watch the culprit fraction drop into the gap between stand-in and truth.</em></a>
+            <a class="lab-card" href="./toothless-trace.html"><span>Approach B · real data</span><strong>Follow one double</strong><em>The real 63-bit table, every comparison with its margin, a rebuild-the-cache budget toggle, and an honest ledger of what is checked.</em></a>
+          </div>
+          <p class="lab-existing"><a href="../chapters/toothless.html">Current chapter →</a></p>
+        </section>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="../chapters/index.html">All chapters</a></p></footer>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Play the shortest-decimal game on half-precision floats, discover that four checks always suffice (that is Schubfach), then see how the 64-bit version answers those checks exactly with one table value and round to odd.">
+  <title>Schubfach · Pocket Schubfach · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/schubfach-pocket.css">
+  <script type="module" src="./js/schubfach-pocket.js"></script>
+</head>
+<body class="sfp-page">
+  <a class="skip-link" href="#play">Skip to the game</a>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Schubfach / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./schubfach-rulers.html">compare with approach A</a></p>
+      <h1>Pocket Schubfach</h1>
+      <p class="chapter-deck">Play the shortest-decimal game on 16-bit floats until you find a strategy that never needs more than four checks. That strategy is Schubfach. Then switch to 64-bit doubles and see how the fast version makes those four checks exact without big numbers.</p>
+      <p class="lab-pitch">Discover it yourself. In Act 1 the reader plays the algorithm by hand on half precision, where every number has 4–5 digits, and the page then shows that the best play is exactly Schubfach's. In Act 2, “the honest ruler”, the reader sees how multiplying by 4 and rounding to odd let one 126-bit table value and three multiplications give exact answers. Truncation and a naive sticky bit are shown failing live.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Schubfach</strong>
+        <a href="#job">The job</a>
+        <a href="#play">Act 1 · The game</a>
+        <a href="#strategy">The strategy you found</a>
+        <a href="#honest">Act 2 · The honest ruler</a>
+        <a href="#odd">Round to odd</a>
+        <a href="#table">One table value</a>
+        <a href="#traps">When the ruler lies</a>
+        <a href="#fuzz">Fuzz it</a>
+        <a href="#bound">Why 126 bits suffice</a>
+        <a href="#code">The whole algorithm</a>
+      </aside>
+      <article class="chapter">
+
+        <section id="job">
+          <p class="eyebrow">Before you play</p>
+          <h2>The job</h2>
+          <p class="lead">To print a floating-point number, pick the decimal with the fewest significant digits that reads back as the same number. If several are equally short, pick the one closest to the number. If two are equally close, pick the one whose last digit is even.</p>
+          <div class="lab-remember">
+            <strong>Remember: the rounding interval</strong>
+            <p>Every float <var>v</var> has two neighbours. A decimal between <var>v</var> and the midpoint to either neighbour reads back as <var>v</var>. The set of such decimals is <var>v</var>'s <em>rounding interval</em>.</p>
+            <p>A decimal exactly <em>on</em> a midpoint is a tie. Reading back rounds ties to the neighbour with an even significand, so the endpoints belong to <var>v</var> exactly when its significand <var>c</var> is even. Closed <span class="sfp-key sfp-key-closed" aria-hidden="true">[ ]</span> for even <var>c</var>, open <span class="sfp-key sfp-key-open" aria-hidden="true">( )</span> for odd <var>c</var>.</p>
+            <p>At a power of two the neighbour below is only half as far away as the one above, so the interval is lopsided: it reaches ¼ gap down and ½ gap up.</p>
+          </div>
+          <div class="lab-remember">
+            <strong>Remember: half precision</strong>
+            <p><em>binary16</em> is a real IEEE 754 format with 1 sign bit, 5 exponent bits and 10 fraction bits. GPUs and machine-learning code use it. A value is <var>v</var> = <var>c</var>·2<sup><var>q</var></sup> with an 11-bit significand (1024 ≤ <var>c</var> ≤ 2047 for normal numbers) and −24 ≤ <var>q</var> ≤ 5. That is about 3.3 decimal digits; the largest value is 65504.</p>
+            <p>Doubles work the same way with 53-bit significands. Half precision just keeps the numbers small enough to reason about in your head.</p>
+          </div>
+        </section>
+
+        <section id="play">
+          <p class="eyebrow">Act 1 · Pocket Schubfach</p>
+          <h2>Find the shortest decimal</h2>
+          <p>Each round converts a number to half precision and draws its rounding interval on a ruler. Choose a tick spacing and click ticks to <strong>check</strong> them. A check tells you whether that decimal reads back as the same half-precision number, and it costs one point. Then <strong>print</strong> one of the ticks you checked.</p>
+          <p>You see what the printer sees: the stored number <var>v</var> and how wide its interval is, but not exactly where the ends are. The interval appears once you print. A correct answer scores 10 minus the number of checks, and a wrong answer scores 0. The printer plays by the same rules and counts every check it makes.</p>
+          <figure class="lab-figure sfp-game" id="game" aria-labelledby="game-caption">
+            <div class="sfp-game-top">
+              <div class="lab-chips sfp-rounds" id="round-chips" role="group" aria-label="Rounds"></div>
+              <p class="sfp-score" id="score" aria-live="polite"></p>
+            </div>
+            <div class="sfp-round-head" id="round-head"></div>
+            <div class="lab-controls">
+              <span id="ruler-label">Tick spacing</span>
+              <div class="lab-chips" id="ruler-chips" role="group" aria-labelledby="ruler-label"></div>
+            </div>
+            <div class="sfp-ruler" id="ruler"></div>
+            <div class="sfp-actions" id="actions" aria-live="polite"></div>
+            <div class="sfp-debrief" id="debrief" tabindex="-1" hidden></div>
+            <form class="lab-controls sfp-free" id="free-form">
+              <label>Your own number <input type="text" id="free-input" size="14" placeholder="e.g. 0.7 or 2/3" autocomplete="off" spellcheck="false"></label>
+              <button class="lab-button" type="submit">Play it</button>
+              <span class="sfp-free-msg" id="free-msg" role="status"></span>
+            </form>
+            <figcaption id="game-caption">The blue bar at the top right shows the interval's width at the ruler's scale. After you print, the shaded band shows the rounding interval (<span class="sfp-key sfp-key-closed">[ ]</span> closed, <span class="sfp-key sfp-key-open">( )</span> open) and the faint dots show <var>v</var>'s neighbours. The blue dot is the stored number <var>v</var>. Red ticks are decimals, and ticks with more trailing zeros are drawn taller. Tab to a tick and press Enter to check it.</figcaption>
+          </figure>
+        </section>
+
+        <section id="strategy">
+          <p class="eyebrow">The reveal</p>
+          <h2>The strategy you found is Schubfach</h2>
+          <details class="sfp-spoiler" id="spoiler">
+            <summary>Show the winning strategy <span>(opens by itself when you finish round 7)</span></summary>
+            <p>Look back at the “ticks inside” counts the debriefs showed you. Every round had the same pattern. One ruler had <strong>at most one</strong> tick inside the interval, and the next finer ruler had <strong>at least one</strong>. That is the pigeonhole principle, <em>Schubfachprinzip</em> in German, and it gives the algorithm its name.</p>
+            <ol class="lab-steps">
+              <li><strong>Choose the ruler from the width, not from the digits of <var>v</var>.</strong> Let <var>k</var> be the decade of the interval's width: 10<sup><var>k</var></sup> ≤ width &lt; 10<sup><var>k</var>+1</sup>. The width is 2<sup><var>q</var></sup> (or ¾·2<sup><var>q</var></sup> at a power of two), so <var>k</var> depends only on the exponent.</li>
+              <li><strong>Pigeonhole.</strong> The <em>fine</em> ruler with spacing 10<sup><var>k</var></sup> must have a tick inside, because the interval is at least one spacing wide. The <em>coarse</em> ruler with spacing 10<sup><var>k</var>+1</sup> can have at most one, because the interval is narrower than its spacing. Every coarser ruler's ticks are also ticks of the coarse ruler. So if anything shorter exists, it is that single coarse tick, and its trailing zeros show how short it really is.</li>
+              <li><strong>Check the two coarse ticks next to <var>v</var></strong>: <var>u′</var> just below and <var>w′</var> just above. If one is inside, print it. That is the whole search for short answers.</li>
+              <li><strong>Otherwise, check the two fine ticks next to <var>v</var></strong>: <var>u</var> = ⌊<var>V</var>⌋ and <var>w</var> = <var>u</var> + 1, where <var>V</var> is <var>v</var> measured in fine-ruler units. The fine ticks inside have no multiple of 10 between them, so they all have the same length. Only the two next to <var>v</var> can be the closest. At least one of them is inside. If both are, print the closer; on an exact tie, print the even one.</li>
+              <li><strong>Every check respects the endpoints:</strong> a tick exactly on an end counts only when <var>c</var> is even.</li>
+            </ol>
+            <p>There is no digit loop and never more than four checks. The debriefs counted Schubfach's checks in exactly this order: <var>u′</var>, then <var>w′</var>, then <var>u</var> and <var>w</var>.</p>
+            <pre class="lab-code" aria-label="Schubfach, exact version"><code>k = floor(log10(width))              // from q alone
+V = v * 10^-k;  s = floor(V)         // v in fine-ruler units
+if s >= 10:                          // coarse ruler, spacing 10^(k+1)
+  if inside(10*floor(s/10))      -> print it   // u'
+  if inside(10*floor(s/10) + 10) -> print it   // w'
+u = s;  w = s + 1                    // fine ruler, spacing 10^k
+if inside(u) and not inside(w)   -> print u
+if inside(w) and not inside(u)   -> print w
+print whichever of u, w is closer to V (tie: the even one)</code></pre>
+            <figure class="lab-figure sfp-verify">
+              <div class="lab-controls"><button class="lab-button primary" type="button" id="verify-all">Check all 31,743 half-precision numbers</button></div>
+              <div class="lab-readout" id="verify-out" aria-live="polite">Runs the four-check strategy on every positive finite binary16 value. Each result is compared with a brute-force search that scans every ruler from coarse to fine.</div>
+              <figcaption>Runs in your browser with exact rational arithmetic (BigInt).</figcaption>
+            </figure>
+          </details>
+        </section>
+
+        <section id="honest">
+          <p class="eyebrow">Act 2 · The honest ruler</p>
+          <h2>Now with 17 digits</h2>
+          <p>Doubles use the same four checks. The fine ruler just has 16- or 17-digit ticks. For <var>v</var> = 0.3, for example, <var>k</var> = −17 and the interval spans 29999999999999996.11… to 30000000000000001.66… fine ticks.</p>
+          <p>The catch is the arithmetic. Computing <var>Vℓ</var>, <var>V</var> and <var>Vr</var> (the interval ends and <var>v</var>, times 10<sup>−<var>k</var></sup>) exactly takes a big-number library. For some doubles that means hundreds of digits. But the algorithm never needs these values. It only needs yes/no answers to five questions, and each question compares one of them with an integer or a half-integer:</p>
+          <div class="equation sfp-eq">Vℓ ⪯ u′ &nbsp;·&nbsp; w′ ⪯ Vr &nbsp;·&nbsp; Vℓ ⪯ u &nbsp;·&nbsp; w ⪯ Vr &nbsp;·&nbsp; V ⋚ (u+w)/2</div>
+          <p>Here ⪯ is ≤ for a closed interval and &lt; for an open one. Multiply everything by 4 and every right-hand side becomes an <strong>even integer</strong>: 4<var>u′</var>, 4<var>w′</var>, 4<var>u</var>, 4<var>w</var> and 2(<var>u</var>+<var>w</var>). So for each of 4<var>Vℓ</var>, 4<var>V</var> and 4<var>Vr</var> we only need to know one of two things: that it lies exactly on some even integer (and which one), or that it lies strictly between two neighbouring even integers (and which two).</p>
+        </section>
+
+        <section id="odd">
+          <p class="eyebrow">Keeping just enough</p>
+          <h2>Round to odd</h2>
+          <p>Giulietti's paper packs exactly that information into one integer with a rounding it calls <em>round to odd</em>:</p>
+          <div class="equation sfp-eq">ro(x) = x if x is an even integer, otherwise the odd integer between x's two even neighbours</div>
+          <p>In code this is ⌊<var>x</var>⌋ with its lowest bit set whenever <var>x</var> is not an integer: truncate, then keep a “something was cut off” bit. That is the same idea as the sticky bit in IEEE hardware, but applied to an integer estimate, not to a float's significand. An even result is an exact mark; an odd result says “strictly inside this half-cell”. Every comparison with an even integer 2<var>h</var> therefore comes out the same for ro(<var>x</var>) as for <var>x</var>. As a bonus, ⌊ro(4<var>V</var>)/4⌋ = ⌊<var>V</var>⌋ = <var>s</var>, so the fine anchor falls out of the same number.</p>
+          <figure class="lab-figure" id="ro-demo">
+            <div class="lab-controls">
+              <label for="ro-x">x (true value)</label>
+              <input type="range" id="ro-x" min="0.5" max="7.5" step="0.05" value="4.35">
+              <output id="ro-x-out" for="ro-x"></output>
+            </div>
+            <div id="ro-svg"></div>
+            <div class="lab-readout" id="ro-readout" aria-live="polite"></div>
+            <figcaption>Even marks (2, 4, 6) are the comparison targets. Round to odd keeps <var>x</var> on an even mark only when it really is there. Truncation drops the fraction and so can put a value that is just above a target onto the target.</figcaption>
+          </figure>
+        </section>
+
+        <section id="table">
+          <p class="eyebrow">Making it fast</p>
+          <h2>One table value, three multiplications</h2>
+          <p>Schubfach reads the three estimates off three products. <var>v</var> = <var>c</var>·2<sup><var>q</var></sup>, so the interval ends and <var>v</var> are <var>c̄ℓ</var>·2<sup><var>q</var>−2</sup>, <var>c̄</var>·2<sup><var>q</var>−2</sup> and <var>c̄r</var>·2<sup><var>q</var>−2</sup>, with integer <var>c̄</var> = 4<var>c</var>, <var>c̄r</var> = 4<var>c</var>+2 and <var>c̄ℓ</var> = 4<var>c</var>−2 (4<var>c</var>−1 at a power of two). For the factor 10<sup>−<var>k</var></sup> it uses a table of 617 entries, one per possible <var>k</var>:</p>
+          <div class="equation sfp-eq">g = ⌊10<sup>−k</sup> · 2<sup>−r</sup>⌋ + 1, &nbsp; r = ⌊log₂ 10<sup>−k</sup>⌋ − 125, &nbsp; so 2<sup>125</sup> &lt; g &lt; 2<sup>126</sup></div>
+          <p><var>g</var> is a 126-bit <em>over</em>estimate of 10<sup>−<var>k</var></sup>, scaled up by a power of two. With the shift <var>h</var> = <var>q</var> + ⌊log₂ 10<sup>−<var>k</var></sup>⌋ + 2 (always 2 to 5), each estimate is one product, a 64-bit integer times the 126-bit <var>g</var>:</p>
+          <div class="equation sfp-eq">4V′ = (c̄ · 2<sup>h</sup>) · g / 2<sup>127</sup></div>
+          <p>The product has at most 186 bits, in three bands. Bits 127 and up are ⌊4<var>V′</var>⌋. Bits 64–126 decide the sticky bit. Bits 0–63 are ignored: that is where the tiny excess of <var>g</var> ends up. This slightly modified rounding is the paper's ro′. <a href="#bound">Why ignoring those bits is safe</a> comes last. First, see the three rounding choices on real doubles.</p>
+        </section>
+
+        <section id="traps">
+          <p class="eyebrow">Truncate, naive sticky, or round to odd</p>
+          <h2>When the ruler lies</h2>
+          <p>The figure runs the 64-bit algorithm with each of three ways to turn a product into an estimate. Each row shows one quarter ruler. Solid marks are the exact positions an even estimate can claim. Each odd mark, drawn as a grey bar, stands for the whole open half-cell around it.</p>
+          <ul>
+            <li><strong>1.4430606624460001e122</strong>: <var>Vℓ</var> = 14430606624460000.046…, just above the coarse tick <var>u′</var> = 14430606624460000. The interval is closed (<var>c</var> is even). Truncation turns 4<var>Vℓ</var> into exactly 4<var>u′</var>, so <var>u′</var> seems to be on the closed end and is accepted. The printer outputs 1.443060662446e122, which is a different double.</li>
+            <li><strong>18014398509481988</strong> (= 2<sup>54</sup> + 4, <var>c</var> odd, so the interval (…986, …990) is open): here <var>k</var> = 0 and <var>g</var> = 2<sup>125</sup> + 1. The “+1” leaves dust in the low bits even though 4<var>Vr</var> is an exact even integer. A naive sticky bit over all the low bits calls it inexact, so the excluded end …990 passes the test. The printer outputs 18014398509481990, which reads back as 18014398509481992.</li>
+            <li><strong>1476640867921609.25</strong>: <var>V</var> is exactly halfway between two fine ticks. A naive sticky bit breaks this tie the wrong way and prints …609.3 where round to odd prints …609.2.</li>
+          </ul>
+          <figure class="lab-figure" id="honest-fig">
+            <div class="lab-controls">
+              <div class="lab-chips" id="x-chips" role="group" aria-label="Example doubles"></div>
+            </div>
+            <form class="lab-controls" id="x-form">
+              <label>Any double <input type="text" id="x-input" size="24" autocomplete="off" spellcheck="false"></label>
+              <button class="lab-button" type="submit">Show</button>
+              <span id="x-msg" role="status"></span>
+            </form>
+            <div class="lab-controls">
+              <span id="mode-label">Estimate by</span>
+              <div class="lab-chips" id="mode-chips" role="group" aria-labelledby="mode-label"></div>
+            </div>
+            <div class="sfp-honest-head lab-readout" id="honest-head"></div>
+            <div id="quarter-rows"></div>
+            <div class="sfp-tests" id="honest-tests"></div>
+            <details class="sfp-bits" id="bits-details">
+              <summary>Show the three products bit by bit</summary>
+              <div id="bits"></div>
+            </details>
+            <figcaption>The blue dot is the true value, the red marker is the estimate. The dashed lines are the comparison targets (4<var>u′</var>, 4<var>u</var>, 2(<var>u</var>+<var>w</var>), …) that fall inside a row's window. Labels give <var>V</var>-values, showing only the last digits.</figcaption>
+          </figure>
+        </section>
+
+        <section id="fuzz">
+          <p class="eyebrow">Measure it</p>
+          <h2>Fuzz it</h2>
+          <p>How often does each shortcut go wrong? The fuzzer below draws random bit patterns (positive, finite) and prints each double three ways. It compares every result with your browser's own <code>String(v)</code>, which is also shortest-then-closest. Nothing is precomputed: the counts come from this run.</p>
+          <figure class="lab-figure" id="fuzz-fig">
+            <div class="lab-controls">
+              <label>Doubles <select id="fuzz-n"><option value="10000">10,000</option><option value="50000" selected>50,000</option><option value="200000">200,000</option></select></label>
+              <button class="lab-button primary" type="button" id="fuzz-run">Run the fuzzer</button>
+              <span id="fuzz-progress" role="status"></span>
+            </div>
+            <div class="sfp-table-wrap"><table class="sfp-fuzz-table" id="fuzz-table">
+              <thead><tr><th scope="col">Estimate by</th><th scope="col">Wrong output</th><th scope="col">Doesn't read back</th><th scope="col">Example</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+            <figcaption>“Wrong output” means a different decimal from the correct shortest-then-closest one. “Doesn't read back” counts the subset that parses to a different double.</figcaption>
+          </figure>
+          <p>Truncation fails often. The naive sticky bit fails rarely: it only goes wrong when an interval end, or <var>v</var> itself, lands exactly on a comparison target (an endpoint on a tick, or an exact tie). Rare failures are the dangerous kind, because testing easily misses them. Round to odd with the 64-bit cutoff never fails, and not only on this sample, as the next section explains.</p>
+        </section>
+
+        <section id="bound">
+          <p class="eyebrow">The proof obligation</p>
+          <h2>Why 126 bits suffice</h2>
+          <p>ro′ ignores bits 0–63. That is only safe if two things hold for every double.</p>
+          <ol>
+            <li><strong>The error is tiny.</strong> <var>g</var> exceeds the exact scaled power by less than one unit, so <var>V′</var> − <var>V</var> &lt; 2<sup>−68</sup>. The same holds for <var>Vℓ</var> and <var>Vr</var>. When 2<var>V</var> is an exact integer, all of the excess lands below bit 64 (in the product's units), and ro′ correctly reports “exact”.</li>
+            <li><strong>Inexact values are never that close.</strong> If 2<var>V</var> is <em>not</em> an integer, its distance to the nearest integer must be larger than the region ro′ ignores. Otherwise a genuinely inexact value could be mistaken for an exact one.</li>
+          </ol>
+          <p>The second point is not something you can check by trying every double. Dmitry Nadezhin proved it with a certified program in the ACL2 theorem prover (<a href="https://github.com/nadezhin/verify-todec">verify-todec</a>; Result 20 in <a href="https://fmt.dev/papers/Schubfach4.pdf">the paper</a>). Over all doubles, 2<var>V</var>, 2<var>Vℓ</var> and 2<var>Vr</var> are either integers or more than 2<sup>−64</sup> away from every integer. Together with the 2<sup>−68</sup> error bound, this makes ro′(4<var>V′</var>) equal to the exact ro(4<var>V</var>), and likewise for <var>Vℓ</var> and <var>Vr</var>. The four checks then give exactly the answers they would give with infinite precision. The figure above prints, for each example, how far 2<var>V</var> actually is from an integer.</p>
+          <div class="aside"><p>Two longs per table entry and three 64×126-bit multiplications replace the bignums. The multiplications share one <var>g</var> and run with no loop and no fallback path. In Java each product takes three 64-bit hardware multiplications (two of them multiply-high), and the lowest 64 bits of the product are never computed at all.</p></div>
+        </section>
+
+        <section id="code">
+          <p class="eyebrow">Putting it together</p>
+          <h2>The whole algorithm</h2>
+          <p>This follows OpenJDK's <code>DoubleToDecimal</code>, as a plain shortest printer (the paper's M = 1 variant). Every comparison is between 64-bit integers.</p>
+          <pre class="lab-code"><code>out = c &amp; 1                       // 1: open interval
+cb  = 4*c;  cbr = cb + 2
+cbl = (c == 2^52 &amp;&amp; q &gt; -1074) ? cb - 1 : cb - 2
+k   = floor(log10(width))           // q*661971961083 &gt;&gt; 41 (minus a constant at powers of two)
+h   = q + floor(log2(10^-k)) + 2    // 2..5
+g   = G[-k]                         // 126 bits, from the 617-entry table
+vbl = rop(g, cbl &lt;&lt; h)              // ro(4*Vl)
+vb  = rop(g, cb  &lt;&lt; h)              // ro(4*V)
+vbr = rop(g, cbr &lt;&lt; h)              // ro(4*Vr)
+s   = vb &gt;&gt; 2                        // floor(V)
+if s &gt;= 10:
+  sp10 = 10*(s / 10);  tp10 = sp10 + 10
+  upin = vbl + out &lt;= 4*sp10         // u' inside?
+  wpin = 4*tp10 + out &lt;= vbr         // w' inside?
+  if upin != wpin: return (upin ? sp10 : tp10) * 10^k
+t   = s + 1
+uin = vbl + out &lt;= 4*s               // u inside?
+win = 4*t + out &lt;= vbr               // w inside?
+if uin != win: return (uin ? s : t) * 10^k
+return (vb &lt; 4*s+2 || (vb == 4*s+2 &amp;&amp; s even) ? s : t) * 10^k
+
+rop(g, cp): p = g*cp                // at most 186 bits
+            return (p &gt;&gt; 127) | (bits 64..126 of p != 0)</code></pre>
+          <p>Finally, strip trailing zeros from the result. Only a coarse hit can have them: 0.1, for example, comes out as 10000000000000000·10<sup>−17</sup>.</p>
+          <div class="aside"><p>Java's <code>Double.toString</code> is the paper's M = 2 variant: it always prints at least two digits. So it tests <code>s ≥ 100</code> and handles the two smallest subnormals specially, which is why Java prints 4.9E-324 where JavaScript prints 5e-324. Bolz's <code>schubfach_64.cc</code> is the plain variant shown here.</p></div>
+          <p>Sources: R. Giulietti, <a href="https://fmt.dev/papers/Schubfach4.pdf">The Schubfach way to render doubles</a> (§8 for the algorithm, §9 for the arithmetic); OpenJDK <a href="https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/jdk/internal/math/DoubleToDecimal.java">DoubleToDecimal.java</a>; A. Bolz, <a href="https://github.com/abolz/Drachennest/blob/master/src/schubfach_64.cc">schubfach_64.cc</a>; D. Nadezhin, <a href="https://github.com/nadezhin/verify-todec">verify-todec</a>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/schubfach.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="xjb explained as geometry: scale a double so that all but its last digit is an integer, then decide the last digit on a ruler with ten ticks and one bar.">
+  <title>xjb · The last-digit ruler · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/xjb-ruler.css">
+  <script type="module" src="./js/xjb-ruler.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / xjb / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./xjb-registers.html">compare with approach B</a></p>
+      <h1>The last-digit ruler</h1>
+      <p class="chapter-deck">xjb fixes every digit of the output except the last. What is left is a ruler with ten ticks and one bar, and only three things can happen on it.</p>
+      <p class="lab-pitch">Geometry first: one picture (a cell with ten ticks, a dot and a bar) carries the whole decision. The code appears only at the end, as three integer compares that read the same picture.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>xjb · the ruler</strong><a href="#zoom">1 · Pick the zoom</a><a href="#ruler">2 · The ruler</a><a href="#outcomes">3 · Three outcomes</a><a href="#powers">4 · Powers of two</a><a href="#code">5 · How the code does it</a><a href="#proof">6 · Proved or tested</a></aside>
+      <article class="chapter">
+
+        <section id="zoom">
+          <p class="eyebrow">1 · Setup</p>
+          <h2>Zoom until the bar is one to ten ticks wide</h2>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is <i>v</i> = <i>c</i>·2<sup><i>q</i></sup> with an integer <i>c</i> (53 bits for normal numbers). Its neighbours are 2<sup><i>q</i></sup> away. The one exception is the neighbour below a power of two, which is only half as far.</p>
+            <p>Every real number closer to <i>v</i> than to a neighbour reads back as <i>v</i>. Those numbers form the <b>rounding interval</b>, which this page draws as a <b>bar</b>. The two ends of the bar are midpoints between doubles. They belong to <i>v</i> only if <i>c</i> is even, because ties round to even.</p>
+          </div>
+          <p>Printing <i>v</i> means choosing a decimal inside the bar. It should have as few digits as possible and, among those, be the one closest to <i>v</i>. A decimal whose last digit sits at 10<sup><i>j</i></sup> lies on a grid with spacing 10<sup><i>j</i></sup>. If the grid is too coarse, it has no point in the bar. If it is too fine, it has dozens.</p>
+          <p>xjb chooses the grid the same way Schubfach does: <b><i>k</i> = ⌊<i>q</i>·log<sub>10</sub>2⌋</b>. This is the one integer with 10<sup><i>k</i></sup> ≤ 2<sup><i>q</i></sup> &lt; 10<sup><i>k</i>+1</sup>. The bar is 2<sup><i>q</i></sup> wide, so it covers at least one step of the 10<sup><i>k</i></sup> grid and less than one step of the 10<sup><i>k</i>+1</sup> grid.</p>
+          <figure class="lab-figure xjb-ruler-figure" aria-labelledby="xjb-ruler-zoom-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="xjb-ruler-zoom-chips" role="group" aria-label="Example double"></div>
+              <button class="lab-button" type="button" id="xjb-ruler-zoom-random">Random double</button>
+            </div>
+            <div id="xjb-ruler-zoom" class="xjb-ruler-svg-host"></div>
+            <p class="xjb-ruler-zoom-note" id="xjb-ruler-zoom-note" aria-live="polite"></p>
+            <figcaption id="xjb-ruler-zoom-caption">The same bar (blue band) against four decimal grids. Grid points inside the bar are red. The 10<sup><i>k</i>+1</sup> grid never has more than one point inside, and the 10<sup><i>k</i></sup> grid always has between one and ten.</figcaption>
+          </figure>
+          <p>That settles the search. Any shorter decimal lies on the coarse grid, and the coarse grid has at most one point in the bar. If it has one, that point is the answer; removing trailing zeros may make it shorter still. If it has none, the answer has its last digit at 10<sup><i>k</i></sup>, and we pick the fine-grid point nearest to <i>v</i>.</p>
+        </section>
+
+        <section id="ruler">
+          <p class="eyebrow">2 · The picture</p>
+          <h2>Everything but the last digit is an integer</h2>
+          <p>Now scale <i>v</i> by 10<sup>−<i>k</i>−1</sup>, one decade past the last digit. The result splits into an integer <b><i>m</i></b> and a fraction <b><i>n</i></b> in [0, 1):</p>
+          <p class="equation"><i>v</i> · 10<sup>−<i>k</i>−1</sup> = <i>m</i> + <i>n</i></p>
+          <p><i>m</i> holds every digit of the output except the last one. In these units the coarse grid is the integers, so its only candidates near <i>v</i> are <i>m</i> and <i>m</i>+1. The fine grid is the tenths between them. That gives the <b>ruler</b>: one cell from <i>m</i> to <i>m</i>+1, with ten ticks.</p>
+          <p>The bar runs from <i>n</i> − <i>h</i> to <i>n</i> + <i>h</i>, where <b><i>h</i> = 2<sup><i>q</i>−1</sup>·10<sup>−<i>k</i>−1</sup></b>. The half-width <i>h</i> depends only on the exponent <i>q</i>, never on <i>c</i>, and it always lies in [0.05, 0.5). So the bar is at least one tick wide and always narrower than the whole cell.</p>
+          <figure class="lab-figure xjb-ruler-figure xjb-ruler-main" aria-labelledby="xjb-ruler-main-caption">
+            <form class="lab-controls" id="xjb-ruler-form">
+              <label for="xjb-ruler-input">Double</label>
+              <input type="text" id="xjb-ruler-input" size="16" spellcheck="false" autocomplete="off" placeholder="0.1+0.2, 2^64, 5e-324, pi">
+              <button class="lab-button primary" type="submit">Show</button>
+              <span class="xjb-ruler-error" id="xjb-ruler-error" role="alert"></span>
+            </form>
+            <div class="lab-controls">
+              <div class="lab-chips" id="xjb-ruler-chips" role="group" aria-label="Presets"></div>
+            </div>
+            <div class="lab-controls">
+              <button class="lab-button" type="button" id="xjb-ruler-prev" aria-label="Previous double">◀ prev double</button>
+              <button class="lab-button" type="button" id="xjb-ruler-next" aria-label="Next double">next double ▶</button>
+              <button class="lab-button" type="button" id="xjb-ruler-random">Random double</button>
+              <label><input type="checkbox" id="xjb-ruler-neighbours" checked> neighbours’ bars</label>
+            </div>
+            <div class="xjb-ruler-strip" id="xjb-ruler-strip"></div>
+            <div id="xjb-ruler-svg" class="xjb-ruler-svg-host"></div>
+            <div class="xjb-ruler-player">
+              <div class="xjb-ruler-player-buttons">
+                <button class="lab-button" type="button" id="xjb-ruler-back">Back</button>
+                <button class="lab-button" type="button" id="xjb-ruler-step">Step</button>
+                <button class="lab-button primary" type="button" id="xjb-ruler-play">Play</button>
+              </div>
+              <ol class="xjb-ruler-stepchips" id="xjb-ruler-stepchips" aria-label="Steps"></ol>
+            </div>
+            <p class="xjb-ruler-narration" id="xjb-ruler-narration" aria-live="polite"></p>
+            <div class="xjb-ruler-cases" id="xjb-ruler-cases"></div>
+            <dl class="xjb-ruler-readout" id="xjb-ruler-readout"></dl>
+            <figcaption id="xjb-ruler-main-caption">The cell of <i>m</i> with its ten ticks, plus half a cell of each neighbouring cell. The blue dot is <i>v</i> and the blue bar is its rounding interval. A filled end is included (<i>c</i> even) and a hollow end is excluded (<i>c</i> odd). Red ticks are candidates inside the bar, and the red marker is the printed result. The faded bars belong to the doubles just below and just above.</figcaption>
+          </figure>
+          <p>Try <b>◀ prev double</b> on 0.1+0.2 to reach 0.3. The two are neighbouring doubles, and their bars meet exactly at a midpoint. Every point of the ruler belongs to exactly one bar. So the bar of 0.30000000000000004 cannot reach any end of the cell, and the output needs all 17 digits.</p>
+        </section>
+
+        <section id="outcomes">
+          <p class="eyebrow">3 · The decision</p>
+          <h2>Left end, right end, or the nearest tick</h2>
+          <p>The coarse candidates are the two ends of the cell, and at most one of them can be inside the bar. xjb checks them first and otherwise takes the nearest tick. Here <i>d</i> is the output with its last digit at 10<sup><i>k</i></sup>, so the printed value is <i>d</i>·10<sup><i>k</i></sup>.</p>
+          <ol class="lab-steps xjb-ruler-rules">
+            <li><b>Down.</b> If the left end <i>m</i> is inside (<i>n</i> &lt; <i>h</i>, or <i>n</i> = <i>h</i> when <i>c</i> is even), print <i>d</i> = 10<i>m</i>. The last digit is dropped.</li>
+            <li><b>Up.</b> If the right end <i>m</i>+1 is inside (1 − <i>n</i> &lt; <i>h</i>, or equal when <i>c</i> is even), print <i>d</i> = 10(<i>m</i>+1). This is a carry.</li>
+            <li><b>Nearest.</b> Otherwise print <i>d</i> = 10<i>m</i> + round(10<i>n</i>). No membership test is needed.</li>
+          </ol>
+          <p>Four facts make these three lines enough:</p>
+          <ul class="xjb-ruler-facts">
+            <li><b>Never both ends.</b> The bar is 2<i>h</i> &lt; 1 wide, so it cannot reach both <i>m</i> and <i>m</i>+1.</li>
+            <li><b>The nearest tick is always inside.</b> It is at most half a tick (0.05) from <i>v</i>, and the bar extends at least 0.05 on each side. The two distances can never both be exactly 0.05, so an open end does not matter.</li>
+            <li><b>Ties are rare.</b> 10<i>n</i> ends in exactly .5 only when <i>n</i> = ¼ or ¾ (paper, §3.7.1). Then 2.5 rounds to 2 and 7.5 rounds to 8, which is ties-to-even. Try the preset 2⁵⁰+¼: its open bar contains the ticks 2 and 3 at equal distance, and 2 wins.</li>
+            <li><b>Trailing zeros go.</b> In the down and up cases <i>d</i> ends in 0, and possibly more zeros. For 0.3, <i>d</i> = 30000000000000000 becomes 3·10<sup>−1</sup>. Because at most one coarse point exists, the stripped result is the shortest possible. In the nearest case every candidate has the same length, so the nearest one is right.</li>
+          </ul>
+          <div class="aside"><p>This is Schubfach’s decision rule, restated for the scaled number. xjb produces exactly Schubfach’s output: the shortest decimal that reads back, the closest one among those, and ties to even. What differs is how few operations the rule costs (see <a href="#code">section 5</a>).</p></div>
+        </section>
+
+        <section id="powers">
+          <p class="eyebrow">4 · The rare case</p>
+          <h2>At a power of two, the bar is lopsided</h2>
+          <p>At <i>v</i> = 2<sup><i>e</i></sup> the binade changes. The double below is only half as far away as the double above, so the bar reaches <i>h</i>/2 to the left and <i>h</i> to the right. A symmetric bar would overhang on the left into the lower neighbour’s territory, and a decimal printed there reads back as the wrong double.</p>
+          <p>xjb makes three adjustments for these 2046 doubles:</p>
+          <ul class="xjb-ruler-facts">
+            <li>It picks the zoom from the true width ¾·2<sup><i>q</i></sup>, using <i>k</i> = ⌊log<sub>10</sub>(¾·2<sup><i>q</i></sup>)⌋. This keeps the bar at least one tick wide. The result differs from the ordinary <i>k</i> for <span class="xjb-ruler-stat" data-stat="kShifted"></span> of the 2046 powers.</li>
+            <li>The down test uses <i>h</i>/2. The up test is unchanged.</li>
+            <li>If the nearest tick falls off the short left end, it takes the next tick up. That tick is always inside, because the bar is still at least one tick wide.</li>
+          </ul>
+          <figure class="lab-figure xjb-ruler-figure" aria-labelledby="xjb-ruler-pow-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="xjb-ruler-pow-chips" role="group" aria-label="Power of two"></div>
+              <label for="xjb-ruler-pow-exp">2^</label>
+              <input type="number" id="xjb-ruler-pow-exp" min="-1022" max="1023" step="1" value="64" style="width:6em">
+              <button class="lab-button" type="button" id="xjb-ruler-pow-prevtrap">◀ prev trap</button>
+              <button class="lab-button" type="button" id="xjb-ruler-pow-nexttrap">next trap ▶</button>
+            </div>
+            <div class="lab-controls">
+              <div class="lab-chips" role="group" aria-label="Bar shape">
+                <button type="button" id="xjb-ruler-pow-true" aria-pressed="true">true bar (xjb)</button>
+                <button type="button" id="xjb-ruler-pow-sym" aria-pressed="false">symmetric bar (naive)</button>
+              </div>
+              <button class="lab-button primary" type="button" id="xjb-ruler-pow-read">Read it back</button>
+            </div>
+            <div class="xjb-ruler-strip" id="xjb-ruler-pow-strip"></div>
+            <div id="xjb-ruler-pow-svg" class="xjb-ruler-svg-host"></div>
+            <div class="lab-readout" id="xjb-ruler-pow-readout" aria-live="polite"></div>
+            <figcaption id="xjb-ruler-pow-caption">The ruler for a power of two. With the naive symmetric bar (red, dashed), the thin blue line underneath shows where the true bar begins. The faded bar on the left belongs to the double below, which is half as wide because doubles are twice as dense below 2<sup><i>e</i></sup>. “Prev/next trap” jumps to powers where the naive rule prints a wrong string.</figcaption>
+          </figure>
+          <p>2<sup>64</sup> = 18446744073709551616 is the classic trap. With a symmetric bar the left end <i>m</i> appears to be inside, and the naive rule prints 18446744073709550000. That is 1616 below 2<sup>64</sup>, but the true bar reaches only 1024 down, so the string reads back as 2<sup>64</sup> − 2048. For 2<sup>89</sup> the true bar is barely more than one tick wide. The nearest tick, 1, falls off the short end, and xjb takes 2 instead.</p>
+          <p>If every power of two went through the regular path (ordinary <i>k</i>, symmetric bar), <span class="xjb-ruler-stat" data-stat="symmetricWrong"></span> of the 2046 would print a string that reads back as a different double. xjb’s round-up rule changes the digit for <span class="xjb-ruler-stat" data-stat="bumped"></span> of the 2046 powers.</p>
+          <div class="aside"><p><b>Tested, not proved.</b> In xjb’s code, powers of two take a separate, rarely used branch. It uses only the top 64 bits of the table entry and a coarse comparison of about 9 bits. The paper gives no proof for this branch. It is justified by exhaustive testing: all 2046 powers of two were compared against Schubfach. The paper’s printed Algorithm 1 also applies the up test only to regular numbers. The repository README calls this a mistake and gives the corrected version, which this page follows. One more detail: xjb also sends 2<sup>−1022</sup> down this branch, although its lower neighbour is just as far away as its upper one. The narrower bar does no harm there.</p></div>
+        </section>
+
+        <section id="code">
+          <p class="eyebrow">5 · From picture to code</p>
+          <h2>One multiply, three compares</h2>
+          <p>Everything on the ruler comes from a single 64×128-bit multiplication. A table stores 10<sup>−<i>k</i>−1</sup> as a 128-bit fixed-point number, rounded up. The significand <i>c</i> is shifted a few bits and multiplied by this entry. In the top 128 bits of the product, the high part is <i>m</i> and the next 64 bits are <i>n</i>·2<sup>64</sup>, which the source calls <code>dot_one</code>. The paper proves that the rounded table still gives the exact <i>m</i> and a <code>dot_one</code> accurate enough for every decision.</p>
+          <p>The half-width costs no second multiply. <i>h</i> = 2<sup><i>q</i>−1</sup>·10<sup>−<i>k</i>−1</sup> is the same table entry shifted right by 1 to 4 bits, because the shift depends only on <i>q</i>. The code adds 1 when <i>c</i> is even. This turns “&gt;” into “≥”, which is exactly what a closed bar needs.</p>
+          <figure class="lab-figure xjb-ruler-figure" aria-labelledby="xjb-ruler-code-caption">
+            <div class="xjb-ruler-regs" id="xjb-ruler-regs" aria-live="polite"></div>
+            <figcaption id="xjb-ruler-code-caption">The regular path of <code>xjb64</code> (src/ftoa.cpp) for the double currently shown on the ruler in section 2. The hex values come from a BigInt model of the code, and each one is shown next to the ruler quantity it approximates.</figcaption>
+          </figure>
+          <p>After that the three questions are 64-bit compares. <code>~dot_one</code> ≈ (1 − <i>n</i>)·2<sup>64</sup>, so the up test is the same kind of compare as the down test. The nearest tick is the top word of 10·<code>dot_one</code> + ½, plus a tiny bias of 6/2<sup>64</sup>. The value <i>n</i> = ¼ is detected exactly, so 2.5 goes down to 2. The code never assembles <i>d</i>: it prints <i>m</i> + up and then appends the digit unless an end was hit. So no division by 10 is needed, and apart from the rare power-of-two check the regular path has no branches. For the line-by-line register walk, see <a href="./xjb-registers.html">approach B</a>.</p>
+          <p>For comparison, a textbook Schubfach multiplies three times (for <i>v</i> and for both ends of the bar) and then divides by 10. The mathematics above is Schubfach’s. xjb contributes the restructuring into one multiply, a free half-width, and independent outputs. It is not the only algorithm that scales once and reads the last digit from a fixed-point fraction: yy_double and <a href="../chapters/zmij.html">Żmij</a> use related ideas, and the xjb authors credit them.</p>
+        </section>
+
+        <section id="proof">
+          <p class="eyebrow">6 · Honesty box</p>
+          <h2>What is proved, what is tested</h2>
+          <div class="xjb-ruler-proof">
+            <div>
+              <strong>Proved, with a computer checking each exponent</strong>
+              <ul>
+                <li>The 128-bit rounded table gives the exact <i>m</i>. About 113 bits would be enough.</li>
+                <li>The compares of <code>half_ulp</code> with <code>dot_one</code> decide membership exactly, including the equality cases.</li>
+                <li>Ties happen only at <i>n</i> = ¼ or ¾, and <code>dot_one</code> = 2<sup>62</sup> detects <i>n</i> = ¼ exactly.</li>
+                <li>The rounding of the last digit, including its +6 bias, is correct for every double except 10 listed ones, which were checked individually.</li>
+              </ul>
+            </div>
+            <div>
+              <strong>Exhaustively or extensively tested</strong>
+              <ul>
+                <li>The power-of-two branch: all 2046 values.</li>
+                <li>The binary32 variant: all 2<sup>32</sup> floats. The paper admits that one step of the float proof is incomplete.</li>
+                <li>The complete double pipeline: random doubles and edge cases, compared against Schubfach.</li>
+                <li>The current source’s parameters differ slightly from the paper’s pseudocode. Tests cover the difference; it has not been proved again.</li>
+              </ul>
+            </div>
+          </div>
+          <p>The figures on this page do not run xjb’s code. They compute the ruler from exact rationals (BigInt). The page’s own tests compare them with JavaScript’s <code>String(v)</code> on 20 000 random doubles and all 2046 powers of two, and with an exact shortest-decimal oracle on 1500 more. They also check the register model in section 5 against the exact decisions.</p>
+          <p class="xjb-ruler-sources">Sources: J. Xiang, T. Wang, “xjb: Fast Float to String Algorithm”, <i>Computers</i> 15(5):280, 2026, <a href="https://doi.org/10.3390/computers15050280">doi:10.3390/computers15050280</a>. Code and proof scripts: <a href="https://github.com/xjb714/xjb">github.com/xjb714/xjb</a> (<code>src/ftoa.cpp</code>, <code>py_test/</code>).</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/xjb.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

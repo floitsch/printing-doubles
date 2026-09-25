@@ -1,0 +1,187 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/coonen-microscope.html. Everything is scoped under .coonen-microscope. */
+
+.coonen-microscope {
+  --cm-green: #1f8a4c;
+  --cm-green-pale: color-mix(in srgb, #1f8a4c 14%, transparent);
+  --cm-orange: #c86a00;
+}
+
+.coonen-microscope .cm-inline { display: inline; margin: 0; font: inherit; letter-spacing: 0; text-transform: none; color: inherit; }
+.coonen-microscope .cm-note { color: var(--muted); font-size: 14px; }
+.coonen-microscope .cm-mono { font-family: var(--mono); overflow-wrap: anywhere; }
+.coonen-microscope .cm-red { fill: var(--red); color: var(--red); }
+.coonen-microscope .cm-blue { fill: var(--blue); color: var(--blue); }
+.coonen-microscope .cm-green { fill: var(--cm-green); color: var(--cm-green); }
+.coonen-microscope .cm-muted { fill: var(--muted); color: var(--muted); }
+
+/* ---------- shared-class repairs: styles.css also defines a dark .lab-controls, and the
+   symmetric .lab-figure breakout overflows the viewport below ~1600px next to the TOC. */
+.coonen-microscope .lab-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 0; border: 0; background: none; }
+.coonen-microscope .lab-controls label { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }
+.coonen-microscope .lab-controls output { float: none; min-width: 2ch; color: var(--red); }
+.coonen-microscope .lab-controls input[type="range"] { display: inline-block; width: 140px; margin: 0; accent-color: var(--red); }
+.coonen-microscope .lab-controls select { margin-left: 0; padding: 7px 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 500 13px var(--mono); }
+@media (max-width: 1599px) {
+  .coonen-microscope .lab-figure { margin-inline: 0; }
+}
+
+/* ---------- controls */
+.coonen-microscope .cm-input { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.coonen-microscope .cm-input input { width: min(260px, 60vw); }
+.coonen-microscope .cm-error { min-height: 0; margin: -8px 0 8px; color: var(--red); font: 12px var(--mono); }
+.coonen-microscope .cm-error:empty { display: none; }
+.coonen-microscope .cm-presets { margin-bottom: 14px; }
+.coonen-microscope .cm-stepbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.coonen-microscope .cm-passes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 11px var(--mono); }
+.coonen-microscope .cm-passes .lab-button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.coonen-microscope .cm-stepper { display: flex; gap: 6px; margin-left: auto; }
+.coonen-microscope .cm-zoom { display: inline-flex; gap: 4px; }
+.coonen-microscope .cm-current { color: var(--muted); font: 11px var(--mono); }
+
+/* ---------- cards */
+.coonen-microscope .cm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.coonen-microscope .cm-card { min-width: 0; padding: 14px 14px 12px; border: 1px solid var(--line); background: var(--paper); transition: opacity .25s, box-shadow .25s; }
+.coonen-microscope .cm-card-wide { grid-column: 1 / -1; }
+.coonen-microscope .cm-card.cm-dim { opacity: .28; }
+.coonen-microscope .cm-card.cm-current-card { box-shadow: 0 0 0 2px var(--ink); }
+.coonen-microscope .cm-card h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0 0 6px; font: 600 19px/1.15 var(--serif); letter-spacing: -.01em; }
+.coonen-microscope .cm-card h3 > .cm-num { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--ink); border-radius: 50%; font: 500 11px var(--mono); }
+.coonen-microscope .cm-card h3 small { color: var(--muted); font: 500 9px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.coonen-microscope .cm-card p { margin: 6px 0; font-size: 13px; line-height: 1.5; }
+.coonen-microscope .cm-card .cm-why { color: var(--muted); font-size: 12.5px; }
+.coonen-microscope .cm-card .cm-mono { font-size: 12px; }
+.coonen-microscope .cm-card .cm-big { font: 500 14px/1.5 var(--mono); overflow-wrap: anywhere; }
+.coonen-microscope .cm-card .cm-big strong, .coonen-microscope .cm-dl strong { color: var(--red); font-weight: 500; }
+.coonen-microscope .cm-card .cm-out { margin: 10px 0; color: var(--red); font: 500 18px/1.3 var(--mono); overflow-wrap: anywhere; }
+.coonen-microscope .cm-card .cm-verdict { font-size: 12.5px; }
+.coonen-microscope .cm-frac { color: var(--muted); }
+
+.coonen-microscope .cm-lrow { display: flex; gap: 10px; align-items: center; }
+.coonen-microscope .cm-lrow p { flex: 1; margin: 0; }
+.coonen-microscope .cm-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 6px 0; font: 12px/1.45 var(--mono); }
+.coonen-microscope .cm-dl dt { color: var(--muted); }
+.coonen-microscope .cm-dl dd { margin: 0; overflow-wrap: anywhere; }
+.coonen-microscope .cm-dl small { color: var(--muted); font-size: 10.5px; }
+.coonen-microscope .cm-chord { flex: 0 0 104px; width: 104px; height: auto; }
+.coonen-microscope .cm-chord-line { stroke: var(--muted); stroke-width: 1; fill: none; stroke-dasharray: 3 2; }
+.coonen-microscope .cm-chord-curve { stroke: var(--blue); stroke-width: 1.6; fill: none; }
+.coonen-microscope .cm-chord-gap { stroke: var(--red); stroke-width: 2; }
+.coonen-microscope .cm-chord-dot { fill: var(--ink); }
+.coonen-microscope .cm-tiny { font: 8px var(--mono); fill: var(--muted); }
+
+.coonen-microscope .cm-badge { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 6px; border: 1px solid currentColor; font: 500 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.coonen-microscope .cm-ok { color: var(--cm-green); background: var(--cm-green-pale); }
+.coonen-microscope .cm-warn { color: var(--cm-orange); background: color-mix(in srgb, var(--cm-orange) 10%, transparent); }
+.coonen-microscope .cm-bad { color: #fff; background: var(--red); border-color: var(--red); }
+.coonen-microscope .cm-neutral { color: var(--muted); }
+
+.coonen-microscope .cm-bricks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 8px 0; }
+.coonen-microscope .cm-brick { display: inline-flex; flex-direction: column; align-items: center; padding: 3px 7px; border: 1px solid var(--ink); font: 500 13px/1.2 var(--mono); }
+.coonen-microscope .cm-brick b { font-weight: 500; }
+.coonen-microscope .cm-brick small { font-size: 9px; color: var(--muted); }
+.coonen-microscope .cm-brick-exact { background: var(--cm-green-pale); }
+.coonen-microscope .cm-brick-round { background: color-mix(in srgb, var(--acid) 55%, var(--paper)); }
+.coonen-microscope .cm-times { font: 12px var(--mono); color: var(--muted); }
+.coonen-microscope .cm-fit small { display: block; color: var(--muted); font: 10.5px var(--mono); }
+.coonen-microscope .cm-fitbar { position: relative; height: 8px; margin: 6px 0 3px; background: var(--paper-deep); }
+.coonen-microscope .cm-fitbar i { position: absolute; inset: 0 auto 0 0; }
+.coonen-microscope .cm-fitbar .cm-fits { background: var(--cm-green); }
+.coonen-microscope .cm-fitbar .cm-overflows { background: var(--cm-orange); }
+.coonen-microscope .cm-fitbar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+
+.coonen-microscope .cm-register { display: grid; grid-template-columns: repeat(64, minmax(0, 1fr)); gap: 1px; margin: 8px 0 4px; }
+.coonen-microscope .cm-register i { height: 14px; }
+.coonen-microscope .cm-register i.i.one { background: var(--blue); }
+.coonen-microscope .cm-register i.i.zero { background: color-mix(in srgb, var(--blue) 22%, var(--paper)); }
+.coonen-microscope .cm-register i.f.one { background: var(--muted); }
+.coonen-microscope .cm-register i.f.zero { background: color-mix(in srgb, var(--muted) 22%, var(--paper)); }
+.coonen-microscope .cm-register i.st { background: var(--acid); outline: 1px solid var(--ink); }
+.coonen-microscope .cm-legend { color: var(--muted); font: 10.5px var(--mono); }
+
+/* ---------- key swatches (captions) */
+.coonen-microscope .cm-key { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 2px; vertical-align: -1px; }
+.coonen-microscope .cm-key-y { border-radius: 50%; background: var(--blue); }
+.coonen-microscope .cm-key-p { transform: rotate(45deg) scale(.8); border: 1.5px solid var(--ink); background: var(--paper); }
+.coonen-microscope .cm-key-band { background: color-mix(in srgb, var(--acid) 70%, transparent); border: 1px solid var(--ink); }
+.coonen-microscope .cm-key-r { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid var(--ink); }
+.coonen-microscope .cm-key-int { background: var(--blue); }
+.coonen-microscope .cm-key-frac { background: var(--muted); }
+.coonen-microscope .cm-key-sticky { background: var(--acid); outline: 1px solid var(--ink); }
+
+/* ---------- SVG figures */
+.coonen-microscope .cm-svgbox { width: 100%; min-width: 0; }
+.coonen-microscope .cm-svgbox svg { display: block; width: 100%; height: auto; overflow: visible; }
+.coonen-microscope .cm-svg text { font-family: var(--mono); }
+.coonen-microscope .cm-lens-title { font: 500 10px var(--mono); fill: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.coonen-microscope .cm-label { font: 11px var(--mono); fill: var(--ink); }
+.coonen-microscope .cm-label.cm-red { fill: var(--red); }
+.coonen-microscope .cm-label.cm-blue { fill: var(--blue); }
+.coonen-microscope .cm-label.cm-green { fill: var(--cm-green); }
+.coonen-microscope .cm-label.cm-muted { fill: var(--muted); }
+.coonen-microscope .cm-axis { stroke: var(--ink); stroke-width: 1.5; }
+.coonen-microscope .cm-axis-thin { stroke: var(--line); stroke-width: 1; }
+.coonen-microscope .cm-tick { stroke: var(--ink); stroke-width: 1; }
+.coonen-microscope .cm-grid { stroke: var(--muted); stroke-width: 1; opacity: .8; }
+.coonen-microscope .cm-decision { stroke: var(--red); stroke-width: 1.6; stroke-dasharray: 5 4; }
+.coonen-microscope .cm-band { fill: color-mix(in srgb, var(--acid) 62%, transparent); stroke: var(--ink); stroke-width: 1; }
+.coonen-microscope .cm-y { fill: var(--blue); stroke: var(--paper); stroke-width: 1.5; }
+.coonen-microscope .cm-p { fill: var(--paper); stroke: var(--ink); stroke-width: 1.8; }
+.coonen-microscope .cm-r { fill: var(--ink); }
+.coonen-microscope .cm-leader { stroke: var(--muted); stroke-width: .8; stroke-dasharray: 2 2; }
+.coonen-microscope .cm-arrow { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.coonen-microscope .cm-printed { fill: var(--red); }
+.coonen-microscope .cm-correct { fill: none; stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.coonen-microscope .cm-lensmark { fill: none; stroke: var(--ink); stroke-width: 1; }
+.coonen-microscope .cm-connector { fill: none; stroke: var(--muted); stroke-width: .8; stroke-dasharray: 3 3; }
+
+.coonen-microscope .cm-zone { fill: var(--cm-green-pale); }
+.coonen-microscope .cm-bars { fill: color-mix(in srgb, var(--cm-orange) 70%, transparent); stroke: none; }
+.coonen-microscope .cm-boundline { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 4 3; }
+.coonen-microscope .cm-hover { stroke: var(--ink); stroke-width: 1; }
+
+.coonen-microscope .cm-catch { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.coonen-microscope .cm-wedge { fill: color-mix(in srgb, var(--red) 16%, transparent); }
+.coonen-microscope .cm-frame { fill: none; stroke: var(--line); }
+.coonen-microscope .cm-dot { fill: var(--blue); opacity: .5; }
+.coonen-microscope .cm-dot-exact { fill: var(--cm-green); opacity: .5; }
+.coonen-microscope .cm-dot-bad { fill: var(--red); stroke: var(--ink); stroke-width: 1; }
+.coonen-microscope .cm-statlist { font-size: 13px; }
+.coonen-microscope .cm-statlist dd.cm-red { color: var(--red); }
+.coonen-microscope .cm-found { margin-top: 12px; font: 12px var(--mono); }
+.coonen-microscope .cm-found p { margin: 0 0 6px; font: 12px var(--mono); }
+
+.coonen-microscope .cm-seg-print { fill: color-mix(in srgb, var(--red) 55%, var(--paper)); }
+.coonen-microscope .cm-seg-read { fill: color-mix(in srgb, var(--blue) 45%, var(--paper)); }
+.coonen-microscope .cm-seg-extra { fill: var(--ink); }
+.coonen-microscope .cm-onbar { fill: var(--ink); font-weight: 500; }
+.coonen-microscope .cm-limit { stroke: var(--ink); stroke-width: 2; }
+.coonen-microscope .cm-limit-bad { stroke: var(--red); }
+
+/* ---------- sticky table */
+.coonen-microscope .cm-tablebox { overflow-x: auto; }
+.coonen-microscope .cm-table { margin: 0; background: var(--paper); }
+.coonen-microscope .cm-table caption { padding: 8px 10px; text-align: left; font: 12px var(--mono); color: var(--muted); caption-side: top; overflow-wrap: anywhere; }
+.coonen-microscope .cm-table th[scope="row"] { font: 500 13px var(--sans); text-transform: none; }
+.coonen-microscope .cm-table td { font-size: 13px; }
+.coonen-microscope .cm-sticky-note { margin: 10px 0 0; font-size: 14px; }
+.coonen-microscope .cm-row-main { background: color-mix(in srgb, var(--acid) 22%, transparent); }
+
+.coonen-microscope .cm-details { margin: 30px 0; padding: 14px 18px; border: 1px solid var(--line); background: var(--paper-deep); }
+.coonen-microscope .cm-details summary { cursor: pointer; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.coonen-microscope .cm-details p { font-size: 15px; }
+
+.coonen-microscope .lab-code { white-space: pre; }
+
+@media (max-width: 900px) {
+  .coonen-microscope .cm-catch { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .coonen-microscope .cm-equation { white-space: normal; font-size: 16px; line-height: 1.8; }
+  .coonen-microscope .cm-equation span { display: block; }
+  .coonen-microscope .cm-stepper { margin-left: 0; }
+  .coonen-microscope .lab-code { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coonen-microscope .cm-card { transition: none; }
+}

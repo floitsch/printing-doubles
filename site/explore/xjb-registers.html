@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Single-step xjb's binary64 core like a debugger: one 64×128 multiply, a half-gap read off the same table word, and three unsigned comparisons decide the shortest decimal.">
+  <title>xjb · Twelve lines, one multiply · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/xjb-registers.css">
+  <script type="module" src="./js/xjb-registers.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / xjb / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./xjb-ruler.html">compare with approach A</a></p>
+      <h1>Twelve lines, one multiply</h1>
+      <p class="chapter-deck">Step through xjb’s real binary64 core like a debugger. Each register shows what it means before it shows its hex. The whole rounding decision comes down to three comparisons on 64-bit words the code already has.</p>
+      <p class="lab-pitch">Code first. The reader single-steps the actual (lightly simplified) <code>xjb64</code> source. Every register is translated into a fraction of the last-digit cell and mirrored on a tiny ruler, so the geometry emerges from the registers instead of being taught up front.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>xjb · registers</strong><a href="#puzzle">Two neighbours</a><a href="#plan">The plan in one line</a><a href="#stepper">Step through xjb64</a><a href="#powers">The power-of-two branch</a><a href="#shape">Why this shape is fast</a><a href="#evidence">Proved vs tested</a></aside>
+      <article class="chapter">
+
+        <section id="puzzle">
+          <p class="eyebrow">1 · The puzzle</p>
+          <h2>Two neighbours: one digit and seventeen</h2>
+          <p class="lead">Type <code>0.3</code> and JavaScript prints <code>0.3</code>. Type <code>0.1 + 0.2</code> and it prints <code>0.30000000000000004</code>. The two results are adjacent doubles: their bit patterns differ by exactly one.</p>
+          <div class="xr-pair" id="xr-pair" aria-live="off"><!-- filled by JS --></div>
+          <p>xjb runs exactly the same twelve lines for both numbers, without branching. The registers hold different values, of course, but the decisive difference is a single unsigned comparison that comes out true for one number and false for the other. By the end of the stepper below you will know which one and why.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is exactly <em>v</em> = <em>c</em> · 2<sup><em>q</em></sup>, with an integer significand <em>c</em> (53 bits for normal numbers) and a binary exponent <em>q</em>. Its neighbours are 2<sup><em>q</em></sup> away. The one exception is the neighbour below an exact power of two, which is only half as far away.</p>
+            <p>Every decimal closer to <em>v</em> than halfway to either neighbour reads back as <em>v</em>. That is the <strong>rounding interval</strong>. Its ends count too when <em>c</em> is even, because a tie between two doubles rounds to the even significand.</p>
+            <p>Shortest printing picks the decimal in that interval with the fewest digits. If several have that length, it takes the one closest to <em>v</em>.</p>
+          </div>
+        </section>
+
+        <section id="plan">
+          <p class="eyebrow">2 · The plan</p>
+          <h2>Put the decimal point one digit early</h2>
+          <p>Let <em>k</em> = ⌊<em>q</em> · log<sub>10</sub> 2⌋. Then 10<sup><em>k</em></sup> ≤ 2<sup><em>q</em></sup> &lt; 10<sup><em>k</em>+1</sup>, so the gap between neighbouring doubles is between 1 and 10 units of 10<sup><em>k</em></sup>. No useful output digit is finer than the 10<sup><em>k</em></sup> place. xjb scales by one decade more than that, and splits the result:</p>
+          <p class="equation">v · 10<sup>−k−1</sup> = m + n</p>
+          <p>Here <strong>m</strong> is an integer and 0 ≤ <em>n</em> &lt; 1. <strong>m</strong> holds every digit except the last one (15 or 16 digits for a normal double). <strong>n</strong> is the position inside the cell from <em>m</em> to <em>m</em>+1, whose tenths are the candidate last digits. The half-gap in the same units is <em>H</em> = 2<sup><em>q</em>−1</sup> · 10<sup>−<em>k</em>−1</sup>. It depends only on <em>q</em>, and always lies in [0.05, 0.5): at least half a tick, and less than half the cell. That leaves exactly three outcomes:</p>
+          <ol class="lab-steps">
+            <li><strong>down</strong>: the interval reaches <em>m</em>, so drop the last digit;</li>
+            <li><strong>up</strong>: the interval reaches <em>m</em> + 1, so carry and drop the last digit;</li>
+            <li>otherwise print <em>m</em> followed by the <strong>nearest tick</strong>, round(10<em>n</em>). It is always inside, because the interval covers at least one tick.</li>
+          </ol>
+          <p>This is Schubfach’s decision, re-parametrised, and xjb’s README states that its outputs are identical to Schubfach’s. What xjb changes is how cheaply the machine obtains <em>m</em>, <em>n</em> and <em>H</em>. That is what the code does. (<a href="./xjb-ruler.html">Approach A</a> builds this ruler picture first; here it appears as a side effect of the registers.)</p>
+        </section>
+
+        <section id="stepper">
+          <p class="eyebrow">3 · The code</p>
+          <h2>Step through <code>xjb64</code></h2>
+          <p>Pick a number and press <strong>Step</strong>. The <kbd>←</kbd>/<kbd>→</kbd> keys also work while the figure has focus. The presets cover every branch: nearest digit, carry up, drop down, both kinds of tie, a subnormal, and two powers of two, which leave for their own branch at the end.</p>
+          <figure class="lab-figure xr-fig xr-debugger" id="xr-debugger" tabindex="-1">
+            <div class="lab-controls xr-input-row">
+              <label for="xr-preset">Preset</label>
+              <select id="xr-preset"></select>
+              <form class="xr-form" id="xr-form">
+                <label for="xr-input">or type</label>
+                <input id="xr-input" type="text" inputmode="text" spellcheck="false" autocomplete="off" size="16" aria-describedby="xr-input-help">
+                <button class="lab-button" type="submit">Load</button>
+              </form>
+              <span class="xr-nav">
+                <button class="lab-button" type="button" id="xr-prev-double" title="previous double (one bit pattern lower)">◀ double</button>
+                <button class="lab-button" type="button" id="xr-next-double" title="next double (one bit pattern higher)">double ▶</button>
+              </span>
+            </div>
+            <p class="xr-help" id="xr-input-help">Accepts decimals, <code>0.1+0.2</code>, <code>2^89</code>, <code>3*2^-24</code>, <code>pi</code>, or a bit pattern like <code>0x3FD3333333333334</code>.</p>
+            <p class="xr-error" id="xr-error" role="alert" hidden></p>
+            <div class="lab-controls xr-step-row">
+              <button class="lab-button" type="button" id="xr-first" aria-label="Go to the first line">|◀ Start</button>
+              <button class="lab-button" type="button" id="xr-back">◀ Back</button>
+              <button class="lab-button primary" type="button" id="xr-step">Step ▶</button>
+              <button class="lab-button" type="button" id="xr-last" aria-label="Run to the end">End ▶|</button>
+              <span class="xr-counter" id="xr-counter" aria-live="polite"></span>
+              <label class="xr-hex-toggle"><input type="checkbox" id="xr-hex"> show hex</label>
+            </div>
+            <div class="xr-code-wrap">
+              <pre class="lab-code xr-code" id="xr-code" aria-label="xjb64 core, current line highlighted"></pre>
+            </div>
+            <div class="xr-explain lab-readout" id="xr-explain" aria-live="polite"></div>
+            <div class="xr-lower">
+              <div class="xr-regs" id="xr-regs" aria-label="Registers"></div>
+              <div class="xr-visuals">
+                <div class="xr-panel">
+                  <p class="xr-panel-title">Ruler: the cell from <em>m</em> to <em>m</em>+1, drawn from the registers</p>
+                  <div id="xr-ruler"></div>
+                </div>
+                <div class="xr-panel">
+                  <p class="xr-panel-title" id="xr-strip-title">Bits</p>
+                  <div id="xr-strip"></div>
+                </div>
+              </div>
+            </div>
+            <figcaption>Code lightly simplified from <code>xjb64</code> in <a href="https://github.com/xjb714/xjb/blob/main/src/ftoa.cpp"><code>src/ftoa.cpp</code></a> (xjb714/xjb, commit 80cc895, © xjb714 and contributors, Apache License 2.0). Simplifications: the source keeps the 128-bit values as <code>hi64</code>:<code>lo64</code> word pairs; it reads <em>h</em> + 10 from a per-exponent byte table; and sign, zero, infinity/NaN, subnormal decoding and the printing tail are left out. The source names its shift <code>offset = 9</code>, which gives the 73 = 64 + 9 below. Registers are computed live by a BigInt port of this code. The port is tested against <code>Number.prototype.toString</code> on random doubles and on all 2046 powers of two.</figcaption>
+          </figure>
+          <h3>Three things to notice</h3>
+          <p><strong>The table word is used twice.</strong> Multiplied by <em>c</em> it gives <em>m</em> and <em>n</em>. Shifted right by one to four bits it <em>is</em> the half-gap <em>H</em>, because <em>H</em> = 2<sup><em>q</em>−1</sup> · 10<sup>−<em>k</em>−1</sup> does not involve <em>c</em> at all. The shifted word equals ⌊<em>H</em> · 2<sup>64</sup>⌋ exactly, for every exponent (this page’s tests check all 2047 exponent fields).</p>
+          <p><strong>“≥” costs one addition.</strong> When <em>c</em> is even the interval ends belong to it. Adding 1 to <code>half_ulp</code> turns every strict test <code>half_ulp &gt; x</code> into <em>H</em> ≥ <em>x</em>. The paper proves these integer comparisons are exact, including the equality cases.</p>
+          <p><strong>The last digit never needs a division.</strong> <em>m</em> is the integer part of the product and <code>one</code> is the high word of 10 · <code>dot_one</code>. <em>d</em> = 10 · <code>m_up</code> + <code>one</code> is never even formed: <code>m_up</code> goes straight to digit printing and <code>one</code> is appended.</p>
+        </section>
+
+        <section id="powers">
+          <p class="eyebrow">4 · The unlikely branch</p>
+          <h2>Powers of two get their own branch</h2>
+          <p>When the stored fraction is zero, <em>v</em> is a power of two and the double below it is only half a gap away. The interval is lopsided: <em>L</em> = <em>H</em>/2 below <em>v</em>, <em>H</em> above. The twelve lines assume a symmetric interval, so the source finishes with an <code>[[unlikely]]</code> branch that recomputes <code>k</code>, <code>m_up</code>, <code>one</code> and <code>up_down</code>:</p>
+          <pre class="lab-code xr-static-code" aria-label="The power-of-two branch of xjb64"><span class="xr-c">// sig == 0, exponent field 1…2046: c = 2^52, so c · pow10 is just a shift</span>
+k        = (q * 315653 - 131072) >> 20;       <span class="xr-c">// ⌊q·log10 2 − log10(4/3)⌋</span>
+h        = q + ((k * -217707 - 217707) >> 16);
+pow10_hi = table[-k - 1].hi;                  <span class="xr-c">// only the high word</span>
+half_ulp = pow10_hi >> -h;                    <span class="xr-c">// H: upper half-gap</span>
+dot_one  = pow10_hi << (53 + h);              <span class="xr-c">// n</span>
+up       = half_ulp > ~dot_one;               <span class="xr-c">// same carry test</span>
+down     = (half_ulp >> 1) > dot_one;         <span class="xr-c">// L = H/2 below</span>
+m_up     = (pow10_hi >> (11 - h)) + up;
+one      = ((dot_one >> (53 + h)) * 5 + (1 << (9 - h))) >> (10 - h); <span class="xr-c">// round(10n)</span>
+if ((((dot_one >> 54) * 5) & 511) > ((half_ulp >> 55) * 5))           <span class="xr-c">// frac(10n) > 10·L ?</span>
+    one = (((dot_one >> 54) * 5) >> 9) + 1;   <span class="xr-c">// fell off the short side: next tick up</span>
+if (dot_one == 1ull << 62) one = 2;           <span class="xr-c">// tie at n = ¼</span></pre>
+          <p>Three changes. First, <em>k</em> is picked for a ¾-gap-wide interval, so the interval still covers at least one tick. Second, the drop-down test uses <em>L</em>. Third, if the nearest tick lies below the short lower end, the tick above is used; it is inside, because the interval is at least one tick wide. The carry test is unchanged. The two comparisons use only 9–10 bits, and they are justified by testing all 2046 cases, not by proof.</p>
+          <figure class="lab-figure xr-fig xr-powers" id="xr-powers">
+            <div class="lab-controls">
+              <span class="lab-chips" id="xr-pow-chips" role="group" aria-label="Power of two"></span>
+              <label for="xr-pow-input">2^</label>
+              <input id="xr-pow-input" type="number" min="-1022" max="1023" step="1" value="64" aria-label="exponent p of 2^p">
+            </div>
+            <div class="lab-controls">
+              <span class="lab-chips" role="group" aria-label="Interval used">
+                <button type="button" id="xr-mode-sym" aria-pressed="false">symmetric (the twelve lines)</button>
+                <button type="button" id="xr-mode-true" aria-pressed="true">true, lopsided (the branch)</button>
+              </span>
+            </div>
+            <div id="xr-pow-neighbours" class="xr-neighbours"></div>
+            <div id="xr-pow-ruler"></div>
+            <div class="lab-readout" id="xr-pow-readout" aria-live="polite"></div>
+            <div class="lab-controls xr-readback-row">
+              <button class="lab-button primary" type="button" id="xr-readback">Read it back</button>
+              <span id="xr-readback-out" class="xr-readback-out" aria-live="polite"></span>
+            </div>
+            <figcaption id="xr-census">Counting over all 2046 powers of two…</figcaption>
+          </figure>
+          <p class="xr-note">The published paper’s Algorithm 1 puts the carry test inside the “regular” branch, so powers of two could never carry. The README flags “a mistake in Algorithm 1 on page 10” and gives a corrected version with the carry test outside. The source does what the correction says. The counts above show the correction matters: the carry fires for hundreds of powers of two. The smallest normal power, 2<sup>−1022</sup>, has a subnormal neighbour below at the full gap, so its interval is not actually lopsided. xjb treats it as irregular anyway, and still prints the right answer.</p>
+        </section>
+
+        <section id="shape">
+          <p class="eyebrow">5 · Why this shape is fast</p>
+          <h2>Two independent outputs, no division</h2>
+          <p>Speed claims belong to benchmarks, and this page runs none. What it can show is the <em>shape</em> of the work. The graphs below compare Schubfach’s reference structure (the port bundled in xjb’s benchmark folder) with the xjb path above. Arrows mean “needs the result of”.</p>
+          <figure class="lab-figure xr-fig xr-dag">
+            <div class="xr-dag-grid">
+              <svg viewBox="0 0 340 520" role="img" aria-labelledby="xr-dag-sf-t xr-dag-sf-d">
+                <title id="xr-dag-sf-t">Schubfach dependency graph</title>
+                <desc id="xr-dag-sf-d">c and q give k; k gives the table load; three 64 by 128 products for the lower bound, value and upper bound; the value product is divided by 4 and then by 10; the quotient is compared with both bounds; branches pick one of four candidates; the resulting integer d is printed.</desc>
+                <defs><marker id="xr-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="xr-dag-head"/></marker></defs>
+                <text x="170" y="18" class="xr-dag-h">Schubfach (reference)</text>
+                <g class="xr-dag-node"><rect x="110" y="34" width="120" height="30"/><text x="170" y="54">c, q → k, h</text></g>
+                <g class="xr-dag-node"><rect x="110" y="88" width="120" height="30"/><text x="170" y="108">load 10^−k</text></g>
+                <g class="xr-dag-node xr-mul"><rect x="8" y="146" width="100" height="30"/><text x="58" y="166">× vbl</text></g>
+                <g class="xr-dag-node xr-mul"><rect x="120" y="146" width="100" height="30"/><text x="170" y="166">× vb</text></g>
+                <g class="xr-dag-node xr-mul"><rect x="232" y="146" width="100" height="30"/><text x="282" y="166">× vbr</text></g>
+                <g class="xr-dag-node"><rect x="110" y="206" width="120" height="30"/><text x="170" y="226">s = vb / 4</text></g>
+                <g class="xr-dag-node xr-div"><rect x="110" y="262" width="120" height="30"/><text x="170" y="282">sp = s / 10</text></g>
+                <g class="xr-dag-node"><rect x="60" y="320" width="220" height="30"/><text x="170" y="340">is 10·sp or 10·sp+10 inside?</text></g>
+                <g class="xr-dag-node xr-br"><rect x="60" y="378" width="220" height="30"/><text x="170" y="398">branch: pick a candidate</text></g>
+                <g class="xr-dag-node xr-out"><rect x="110" y="434" width="120" height="30"/><text x="170" y="454">d</text></g>
+                <g class="xr-dag-node xr-out"><rect x="80" y="484" width="180" height="30"/><text x="170" y="504">print digits of d</text></g>
+                <g class="xr-dag-edges">
+                  <path d="M170 64V86"/><path d="M150 118L70 144"/><path d="M170 118V144"/><path d="M190 118L270 144"/>
+                  <path d="M170 176V204"/><path d="M170 236V260"/><path d="M170 292V318"/>
+                  <path d="M58 176C40 260 70 300 100 318"/><path d="M282 176C300 260 270 300 240 318"/>
+                  <path d="M170 350V376"/><path d="M170 408V432"/><path d="M170 464V482"/>
+                </g>
+              </svg>
+              <svg viewBox="0 0 340 520" role="img" aria-labelledby="xr-dag-x-t xr-dag-x-d">
+                <title id="xr-dag-x-t">xjb dependency graph</title>
+                <desc id="xr-dag-x-d">c and q give k and h; the table load feeds one product and, independently, the shift that yields half_ulp; the product yields m and dot_one; dot_one and half_ulp give up and down; dot_one alone gives one; m plus up is printed as digits while one is appended unless up or down fired.</desc>
+                <text x="170" y="18" class="xr-dag-h">xjb64</text>
+                <g class="xr-dag-node"><rect x="110" y="34" width="120" height="30"/><text x="170" y="54">c, q → k, h</text></g>
+                <g class="xr-dag-node"><rect x="110" y="88" width="120" height="30"/><text x="170" y="108">load 10^(−k−1)</text></g>
+                <g class="xr-dag-node xr-mul"><rect x="30" y="146" width="140" height="30"/><text x="100" y="166">× c  (only multiply)</text></g>
+                <g class="xr-dag-node xr-shift"><rect x="194" y="146" width="142" height="30"/><text x="265" y="166">half_ulp = hi&gt;&gt;−h</text></g>
+                <g class="xr-dag-node"><rect x="8" y="206" width="90" height="30"/><text x="53" y="226">m</text></g>
+                <g class="xr-dag-node"><rect x="110" y="206" width="100" height="30"/><text x="160" y="226">dot_one</text></g>
+                <g class="xr-dag-node"><rect x="200" y="262" width="130" height="30"/><text x="265" y="282">up, down (compare)</text></g>
+                <g class="xr-dag-node"><rect x="90" y="262" width="100" height="30"/><text x="140" y="282">one = hi(10·n)</text></g>
+                <g class="xr-dag-node"><rect x="8" y="320" width="120" height="30"/><text x="68" y="340">m_up = m + up</text></g>
+                <g class="xr-dag-node xr-out"><rect x="4" y="378" width="160" height="30"/><text x="84" y="398">m_up → digits (SIMD)</text></g>
+                <g class="xr-dag-node xr-out"><rect x="172" y="378" width="164" height="30"/><text x="254" y="398">+ one unless up_down</text></g>
+                <g class="xr-dag-node xr-out"><rect x="80" y="434" width="180" height="30"/><text x="170" y="454">count trailing zeros</text></g>
+                <g class="xr-dag-edges">
+                  <path d="M170 64V86"/><path d="M150 118L110 144"/><path d="M200 118L250 144"/>
+                  <path d="M80 176L55 204"/><path d="M120 176L155 204"/>
+                  <path d="M180 236L230 260"/><path d="M265 176V260"/><path d="M150 236L145 260"/>
+                  <path d="M53 236V318"/><path d="M230 292L110 318"/>
+                  <path d="M68 350V376"/><path d="M140 292C160 330 220 350 240 376"/><path d="M290 292V376"/>
+                  <path d="M83 408L140 432"/><path d="M251 408L200 432"/>
+                </g>
+              </svg>
+            </div>
+            <figcaption>Multiplies are blue and the division is red. The <code>half_ulp</code> shift needs only the table load, so it runs alongside the product. In xjb, <code>m</code> and <code>one</code> leave on separate paths; Schubfach has to finish the quotient <code>s / 10</code> before it knows which candidate to print.</figcaption>
+          </figure>
+          <div class="xr-table-wrap">
+            <table class="xr-count">
+              <caption>Operations to decide the digits of one regular double (counts only; no timings)</caption>
+              <thead><tr><th scope="col"></th><th scope="col">Schubfach (reference port)</th><th scope="col">xjb64</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">64×128 table products</th><td>3 (value and both bounds)</td><td>1</td></tr>
+                <tr><th scope="row">… as 64×64→128 hardware multiplies</th><td>6</td><td>2</td></tr>
+                <tr><th scope="row">division by 10</th><td>1 (<code>s / 10</code>; a multiply-high by a constant in practice)</td><td>0 (<em>m</em> falls out of the product)</td></tr>
+                <tr><th scope="row">other multiplies</th><td>small constant multiples of <code>sp</code> and <code>s</code></td><td>1 (10 · <code>dot_one</code>, high word)</td></tr>
+                <tr><th scope="row">branches on the decision</th><td>3 conditional branches (<code>s ≥ 10</code>, then two “which candidate” tests)</td><td>0; <code>up</code>/<code>down</code> are added as 0/1. The n = ¼ tie test is a rarely-taken branch (the source notes it is faster than a select), plus the power-of-two branch.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Scaling once, reading the interval off the same power, and splitting off the last digit are not unique to xjb. The README says it was inspired by yy (yy_double) and that parts of it are derived from Żmij, and those algorithms share related tricks. The fair comparison here is with Schubfach, whose mathematics xjb reuses and whose output it matches.</p>
+        </section>
+
+        <section id="evidence">
+          <p class="eyebrow">6 · Evidence</p>
+          <h2>What is proved and what is tested</h2>
+          <div class="xr-evidence">
+            <div>
+              <h3>Proved <span>(paper, computer-assisted per exponent)</span></h3>
+              <ul>
+                <li><em>m</em> is exact even though table entries are rounded up. At least 113 bits are needed, and the table has 128. The bound comes from Farey-sequence / best-rational-approximation enumeration per exponent (<code>py_test/test1.py</code>).</li>
+                <li>The <code>half_ulp</code> vs <code>dot_one</code> comparisons decide membership exactly, including the case where <em>n</em> equals the bound.</li>
+                <li>Ties happen only at <em>n</em> = ¼ or ¾, and <code>dot_one == 2^62</code> detects <em>n</em> = ¼.</li>
+                <li>The <code>+ 2^63 + 6</code> rounding of <code>one</code> is proved correct for every double except ten listed in the paper’s equations (171) and (173). Those ten were checked one by one (<code>test8.py</code>).</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Tested <span>(not proved)</span></h3>
+              <ul>
+                <li>The power-of-two branch: all 2046 cases compared against Schubfach. The paper leaves that branch out.</li>
+                <li>binary32: all 2<sup>32</sup> inputs, exhaustively. One step of the float proof is called “not-so-perfect” and leans on that test.</li>
+                <li>The whole binary64 pipeline: large random tests plus edge cases against Schubfach (<code>bench/check.cpp</code>, paper §4.1).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="aside">
+            <p><strong>Caveats.</strong> The paper’s proofs are written for its pseudocode, which uses a 6-bit alignment (<code>BIT = 6</code>). The current source uses <code>offset = 9</code>, with the comment “offset in range [3,10] has same result”; that change is covered by testing, not re-proved. The README warns that Algorithm 1 in the paper contains a mistake: the carry test is missing for powers of two (see <a href="#powers">above</a>). Sources: the paper, J. Xiang &amp; T. Wang, “xjb: Fast Float to String Algorithm”, <em>Computers</em> 15(5):280, 2026, <a href="https://doi.org/10.3390/computers15050280">doi:10.3390/computers15050280</a>; the repository, <a href="https://github.com/xjb714/xjb">github.com/xjb714/xjb</a> (commit 80cc895).</p>
+          </div>
+          <p class="xr-note">This page’s own check: the BigInt port behind the stepper reproduces the source’s table generator word for word. It prints the same digits as <code>Number.prototype.toString</code> on tens of thousands of random bit patterns, short decimals and subnormals, and on all 2046 powers of two. That is evidence for the port, not a proof of xjb.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/xjb.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

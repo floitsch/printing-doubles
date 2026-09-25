@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Coonen's fixed-digit binary-to-decimal conversion seen through a microscope: one multiplication, one rounding, and a provably thin band of error around the exact scaled value.">
+  <title>Coonen · The scaling microscope · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/coonen-microscope.css">
+  <script type="module" src="./js/coonen-microscope.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="coonen-microscope">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Coonen / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./coonen-pocket.html">compare with approach B</a></p>
+      <h1>The scaling microscope</h1>
+      <p class="chapter-deck">Coonen prints a requested number of digits with one multiplication and one rounding. Only the power of ten can be slightly wrong, and we can see exactly how wrong.</p>
+      <p class="lab-pitch">Zoom in on the one number Coonen rounds. After scaling, “the N-digit answer” is “the nearest integer”, and the only error is a band of provably bounded width around the exact value. The printed digit can be wrong only when that band straddles the .5 line.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Coonen · Approach A</strong><a href="#idea">One number, one integer</a><a href="#pipeline">One conversion, card by card</a><a href="#band">The only liar</a><a href="#exact-zone">Where the band is zero</a><a href="#sticky">Chop, but remember</a><a href="#catch">Catch a misround</a><a href="#budget">Accurate enough, by design</a><a href="#code">The whole algorithm</a></aside>
+      <article class="chapter">
+
+        <section id="idea">
+          <p class="eyebrow">Coonen 1984 · The idea</p>
+          <h2>Printing N digits is rounding one number</h2>
+          <p class="lead">To print x with N significant digits, multiply it by the power of ten that puts exactly N digits in front of the decimal point, then round to the nearest integer.</p>
+          <p>For example, π to five digits: π × 10<sup>4</sup> = 31415.926…, the nearest integer is 31416, so the answer is 3.1416. The exponent that makes this work is</p>
+          <p class="equation cm-equation"><span>digits = round(x × 10<sup>SCALE</sup>),</span> <span>SCALE = N − 1 − ⌊log₁₀ x⌋</span></p>
+          <p>With exact arithmetic that is the whole algorithm. Jerome Coonen’s contribution (in his 1984 dissertation, chapter 7, the basis of the conversion rules in IEEE 754-1985) is to show that you don’t need exact arithmetic. The multiplication can be done <em>once</em>, in a register with a 64-bit significand, and the rounding happens <em>once</em>, at the end. Only one ingredient can be slightly wrong: the power of ten. Its error is known in advance and is tiny.</p>
+          <div class="lab-remember">
+            <strong>What to remember</strong>
+            <p>A double is an integer times a power of two: x = m · 2<sup>e</sup> with m &lt; 2<sup>53</sup>. So x · 10<sup>SCALE</sup> is an exact rational; this page computes it exactly (with BigInt) to check Coonen.</p>
+            <p>The <em>extended</em> format (the x87 “long double”) has a 64-bit significand. A number fits exactly if it is a 64-bit integer times a power of two.</p>
+            <p>10<sup>k</sup> = 5<sup>k</sup> · 2<sup>k</sup>, so 10<sup>k</sup> fits in 64 bits exactly when 5<sup>k</sup> does. That holds up to k = 27, because 5<sup>27</sup> ≈ 7.5·10<sup>18</sup> &lt; 2<sup>64</sup> ≈ 1.8·10<sup>19</sup> &lt; 5<sup>28</sup>.</p>
+            <p><strong class="cm-inline">ulp₁₀</strong> means one unit in the last printed digit. After scaling, that unit is simply 1: neighbouring N-digit outputs are neighbouring integers.</p>
+          </div>
+          <div class="aside"><p><strong>Fixed N, not shortest.</strong> Coonen answers “give me N digits”, like <code>printf("%.16e")</code>. It does not search for the shortest string that reads back, as Grisu, Ryū and friends do. With N = 17 every double reads back correctly (see the <a href="#budget">budget</a> at the end); a shortest printer would need an outer loop over N with a read-back test.</p></div>
+        </section>
+
+        <section id="pipeline">
+          <p class="eyebrow">Algorithm B · step by step</p>
+          <h2>One conversion, card by card</h2>
+          <p>Pick a double. The cards follow Coonen’s Algorithm B: guess the decade cheaply, choose SCALE, build 10<sup>SCALE</sup> from a small table, multiply once, round once, and check that the integer has N digits. Everything is simulated bit for bit, with a 64-bit significand.</p>
+          <figure class="lab-figure cm-figure" aria-labelledby="cm-pipeline-caption">
+            <div class="lab-controls cm-controls">
+              <form class="cm-input" id="cm-form">
+                <label for="cm-x">double</label>
+                <input type="text" id="cm-x" inputmode="decimal" autocomplete="off" spellcheck="false" value="0.1" aria-describedby="cm-x-error">
+                <button type="submit" class="lab-button primary">Convert</button>
+              </form>
+              <label for="cm-n">digits N <input type="range" id="cm-n" min="1" max="17" value="17"> <output id="cm-n-out" for="cm-n">17</output></label>
+              <label for="cm-mode">rounding
+                <select id="cm-mode">
+                  <option value="nearest">to nearest</option>
+                  <option value="zero">toward 0</option>
+                  <option value="up">up (+∞)</option>
+                  <option value="down">down (−∞)</option>
+                </select>
+              </label>
+            </div>
+            <p id="cm-x-error" class="cm-error" role="alert"></p>
+            <div class="lab-chips cm-presets" id="cm-presets" aria-label="Preset numbers"></div>
+            <div class="cm-stepbar">
+              <div class="cm-passes" id="cm-passes"></div>
+              <div class="cm-stepper">
+                <button type="button" class="lab-button" id="cm-step">Step ▸</button>
+                <button type="button" class="lab-button" id="cm-all">Show all</button>
+              </div>
+            </div>
+            <div class="cm-cards" id="cm-cards" aria-live="polite"></div>
+            <figcaption id="cm-pipeline-caption">Each card is one step of Coonen’s Algorithm B. The badges in the last card compare against an exact BigInt computation and against reading the output back with a correctly rounded parser.</figcaption>
+          </figure>
+        </section>
+
+        <section id="band">
+          <p class="eyebrow">The fuzz band</p>
+          <h2>The only liar is the power of ten</h2>
+          <p>Look at what can go wrong in those cards. Putting x into the 64-bit register is exact. The multiplication loses nothing, thanks to a trick explained <a href="#sticky">below</a>. The rounding to an integer is exactly the rounding we asked for. What’s left is z, the power of ten: when |SCALE| &gt; 27 it can’t be stored exactly, so z = 10<sup>SCALE</sup> · (1 + δ).</p>
+          <p>Coonen therefore rounds x · z = Y · (1 + δ) instead of the exact Y = x · 10<sup>SCALE</sup>. The number being rounded is shifted by Y · δ (for a division, by about −Y · δ). Since Y is below 10<sup>N</sup>, and Coonen proves |δ| ≤ 3.5 · 2<sup>−64</sup> for rounding to nearest:</p>
+          <p class="equation cm-equation"><span>|shift| &lt; 10<sup>N</sup> · |δ|</span> <span>≤ 10<sup>17</sup> · 3.5 · 2<sup>−64</sup></span> <span>≈ 0.019 ulp₁₀</span></p>
+          <p>So “does Coonen print the right last digit?” becomes a picture: a band at most ±0.019 wide around the exact scaled value. The correct answer rounds Y, Coonen rounds a point inside the band. They can disagree only if the band straddles the decision line at .5. Fewer digits make the band 10× thinner per digit, while the integers stay where they are.</p>
+          <figure class="lab-figure cm-figure" aria-labelledby="cm-band-caption">
+            <div class="lab-controls">
+              <label for="cm-n2">digits N <input type="range" id="cm-n2" min="1" max="17" value="17"> <output id="cm-n2-out" for="cm-n2">17</output></label>
+              <span class="cm-zoom" role="group" aria-label="Zoom of the lower lens">
+                <button type="button" class="lab-button" id="cm-zoom-out" aria-label="Zoom out">−</button>
+                <button type="button" class="lab-button" id="cm-zoom-auto">auto zoom</button>
+                <button type="button" class="lab-button" id="cm-zoom-in" aria-label="Zoom in">+</button>
+              </span>
+              <span class="cm-current" id="cm-band-x"></span>
+            </div>
+            <div class="cm-svgbox" id="cm-band-svg"></div>
+            <div class="lab-readout" id="cm-band-readout" aria-live="polite"></div>
+            <figcaption id="cm-band-caption">Top lens: the whole stretch between two neighbouring N-digit outputs (one ulp₁₀). Bottom lens: a magnified window around the decision line (or around the exact value when the line is far away). <span class="cm-key cm-key-y"></span> exact x·10<sup>SCALE</sup>, <span class="cm-key cm-key-p"></span> x·z as Coonen computes it, <span class="cm-key cm-key-band"></span> the proven error band, <span class="cm-key cm-key-r"></span> the 64-bit register (its grid ticks appear when zoomed in far enough), red dashes: the decision line.</figcaption>
+          </figure>
+        </section>
+
+        <section id="exact-zone">
+          <p class="eyebrow">Algorithm Q · a table of four numbers</p>
+          <h2>Where the band is zero</h2>
+          <p>Coonen builds 10<sup>|SCALE|</sup> from exact powers up to 10<sup>27</sup> and a table of just four extended numbers: 10<sup>27</sup> (exact), 10<sup>55</sup>, 10<sup>108</sup> and 10<sup>206</sup> (each rounded to nearest). Any power up to 10<sup>340</sup> takes at most three multiplications and at most two rounded table entries; 10<sup>340</sup> = 10<sup>206</sup> · 10<sup>108</sup> · 10<sup>26</sup>. That covers the whole double range: 5e−324 needs SCALE = 340, and the largest double needs SCALE = −292, a division.</p>
+          <p>When |SCALE| ≤ 27 the band has width zero, and Coonen is <em>correctly rounded</em>, full stop. For N = 17 that is every x from 10<sup>−11</sup> up to 10<sup>44</sup>. This zone is the origin of the “correctly rounded” ranges in Table 3 of IEEE 754-1985. Outside it, the bars show the largest shift that the actual table values can cause in each decade.</p>
+          <figure class="lab-figure cm-figure" aria-labelledby="cm-strip-caption">
+            <div class="cm-svgbox" id="cm-strip-svg"></div>
+            <div class="lab-readout" id="cm-strip-readout" aria-live="polite"></div>
+            <figcaption id="cm-strip-caption">Horizontal: the decade of x, from the smallest subnormal to the largest double. Bars: 10<sup>N</sup> · |δ| for the SCALE used in that decade, i.e. the widest the fuzz band can get there, in ulp₁₀. The green zone has |SCALE| ≤ 27, so z is exact. Hover or tap the strip to read a decade. It follows the N and rounding mode chosen above.</figcaption>
+          </figure>
+        </section>
+
+        <section id="sticky">
+          <p class="eyebrow">Algorithm S · the multiply that loses nothing</p>
+          <h2>Chop, but remember</h2>
+          <p>The product x · z is computed in the 64-bit register, too. Why isn’t that a second rounding error? Coonen’s Algorithm S multiplies with rounding <em>toward zero</em> (it chops), then ORs the “inexact” flag into the last bit of the result. That last bit becomes a sticky bit: it says “something non-zero was cut off”.</p>
+          <p>In the final pass the integer part needs at most 57 bits (10<sup>17</sup> &lt; 2<sup>57</sup>), so at least 7 fraction bits remain. The half-way point .5 and the integers lie on that grid at <em>even</em> positions. When bits were cut off, the chopped value gets its last bit forced to 1. That makes it odd, so it can never land exactly on a decision point, and it stays on the same side as the true product. (When nothing was cut off, the register already holds the exact product.) Rounding the register therefore gives exactly the same integer as rounding the exact product. (Today this trick is called <em>round to odd</em>; Coonen describes it as letting the chopped bits “participate correctly as guard bits”.)</p>
+          <figure class="lab-figure cm-figure" aria-labelledby="cm-sticky-caption">
+            <div class="lab-controls">
+              <span>try:</span>
+              <span class="lab-chips" id="cm-sticky-chips"></span>
+              <span class="cm-current" id="cm-sticky-x"></span>
+            </div>
+            <div class="cm-tablebox"><table class="cm-table" id="cm-sticky-table"></table></div>
+            <p class="cm-sticky-note" id="cm-sticky-note" aria-live="polite"></p>
+            <figcaption id="cm-sticky-caption">The same conversion with three ways of storing the product in 64 bits. For 1.0439 the chopped fraction is exactly 512/1024 = .5, a fake tie. For 0.5308290954995201 even rounding the product to nearest lands on a fake tie. Only chop + sticky is always right.</figcaption>
+          </figure>
+        </section>
+
+        <section id="catch">
+          <p class="eyebrow">Experiment</p>
+          <h2>Catch a misround</h2>
+          <p>How often does the band actually flip a digit? Draw random doubles, run Coonen on each, and compare against the exact answer. Each sample that lands near a decision line becomes a dot: across is its distance from the line, up is the shift caused by the power of ten. A digit flips only when the shift carries the value across the line, which means a dot inside the red wedges.</p>
+          <figure class="lab-figure cm-figure" aria-labelledby="cm-catch-caption">
+            <div class="lab-controls">
+              <label for="cm-range">draw from
+                <select id="cm-range"></select>
+              </label>
+              <button type="button" class="lab-button primary" id="cm-run">Run 20 000</button>
+              <button type="button" class="lab-button" id="cm-stop" disabled>Stop</button>
+            </div>
+            <div class="cm-catch">
+              <div class="cm-svgbox" id="cm-scatter-svg"></div>
+              <div class="cm-stats" id="cm-stats" aria-live="polite"></div>
+            </div>
+            <div class="cm-found" id="cm-found"></div>
+            <figcaption id="cm-catch-caption">Uses the N and rounding mode chosen above. Samples farther from the line than Coonen’s bound 10<sup>N</sup> · δ<sub>max</sub> can’t flip and are only counted. Once samples arrive, the axes zoom in to the largest shift seen. Blue dots: z rounded, green: z exact (shift 0), red: misrounded. Click a caught misround to put it under the microscope.</figcaption>
+          </figure>
+        </section>
+
+        <section id="budget">
+          <p class="eyebrow">Error analysis · §3.4 recovery</p>
+          <h2>Accurate enough, by design</h2>
+          <p>The misrounds are not a bug; they are the price of a deliberate trade. Coonen’s own correctly rounded routine for doubles needed a 1400-bit decimal buffer and a 1000-bit binary buffer. Algorithm B needs four table constants, one multiply or divide, and a register only 11 bits wider than a double. In return he proves:</p>
+          <ul>
+            <li>Correct rounding whenever |SCALE| ≤ 27, which covers every everyday magnitude.</li>
+            <li>Elsewhere, at most 0.5 + 0.019 ulp₁₀ from x when rounding to nearest, so the printed value is always one of the two neighbours of x: never off by a whole digit.</li>
+            <li>Directed modes always err in the requested direction.</li>
+            <li>17-digit output always reads back to the same double.</li>
+          </ul>
+          <p>The last point is a budget. At 17 digits an ulp₁₀ is at most 10<sup>−16</sup>/2<sup>−53</sup> ≈ 0.9007 of an ulp₂ (a unit in the double’s last place). Printing costs 0.9007 · (0.5 + 0.019) ulp₂. Reading back with Coonen’s own Algorithm D costs at most 0.5 + 0.0017 ulp₂. If the sum stays below 1 ulp₂, the string can only read back to x.</p>
+          <figure class="lab-figure cm-figure" aria-labelledby="cm-budget-caption">
+            <div class="lab-controls">
+              <label for="cm-p">extended significand <input type="range" id="cm-p" min="58" max="68" value="64"> <output id="cm-p-out" for="cm-p">64 bits</output></label>
+            </div>
+            <div class="cm-svgbox" id="cm-budget-svg"></div>
+            <div class="lab-readout" id="cm-budget-readout" aria-live="polite"></div>
+            <figcaption id="cm-budget-caption">The round-trip budget from Coonen’s §3.4 for 17 digits. The two extra terms scale like 2<sup>−p</sup>. At 64 bits the total is ≈ 0.97 ulp₂: in Coonen’s words, “there is hardly a bit to spare”. This is a worst-case proof: below 63 bits the proof stops working, but actual round-trip failures would still be rare, because the worst print error and the worst spacing ratio don’t occur for the same x.</figcaption>
+          </figure>
+          <details class="cm-details">
+            <summary>Directed rounding modes (toward 0, up, down)</summary>
+            <p>In a directed mode the answer must not lie on the wrong side of x. Coonen ensures that by rounding the power of ten in a known direction too (step S0). If the result should grow in magnitude (rounding up and x &gt; 0, or rounding down and x &lt; 0), z is rounded up; otherwise down. When SCALE &lt; 0 the product is a division, so the direction flips. Table entries are stored rounded to nearest, together with a ±1 “pfix” that moves them one unit in the last place when a mode needs the other side.</p>
+            <p>So in a directed mode the band is one-sided: the computed value always sits on the requested side of the exact one. The decision points are the integers themselves, and the bound grows to 5 · 2<sup>−63</sup>, i.e. 0.054 ulp₁₀ at 17 digits. With the three results X<sub>down</sub>, X<sub>nearest</sub>, X<sub>up</sub> and the correctly rounded C<sub>down</sub>, C<sub>up</sub>, Coonen shows the interlacing X<sub>down</sub> ≤ C<sub>down</sub> ≤ X<sub>nearest</sub> ≤ C<sub>up</sub> ≤ X<sub>up</sub>. That makes a handy test against any correctly rounded implementation. Switch the rounding control above to see the one-sided bands.</p>
+          </details>
+        </section>
+
+        <section id="code">
+          <p class="eyebrow">Summary</p>
+          <h2>The whole algorithm</h2>
+          <p>Algorithms B, S, L and Q from the dissertation, condensed. <code>ext</code> is the 64-bit-significand format; every operation on it is a single IEEE operation.</p>
+<pre class="lab-code"><code>function coonen(x, N, mode):                 // B: N significant digits
+  logx = floor(LOG2 × (e + 0.f))             // L: x = 2^e × 1.f; never too high,
+                                             //    about 2% of the time one too low
+  loop:
+    scale = N − 1 − logx                     // B3
+    z = pow10(|scale|, direction(mode))      // Q: table bricks; exact if |scale| ≤ 27
+    t = (scale ≥ 0 ? x × z : x / z)          // S2: in ext, rounded toward zero
+    if inexact: t = t OR 1                   // S3: sticky bit in the last place
+    r = roundToInteger(t, mode)              // B5: the one rounding that matters
+    if r ≥ 10^N: logx += 1; continue         // B6: logx was low, or a carry: retry once
+    if r &lt; 10^(N−1): r = 10^(N−1)            //     (rare safety net, never seen here)
+    return digits(r), exponent logx          // B7, B8: d1.d2…dN × 10^logx
+
+function pow10(n, dir):                      // Q
+  z = 1
+  for (p, entry) in [(206, T206), (108, T108), (55, T55), (27, 10^27)]:
+    if n ≥ p: z = z × fix(entry, dir); n −= p  // rounded in direction dir
+  return z × 10^n                            // 10^n exact: n ≤ 27</code></pre>
+          <p class="cm-note">About the source: the chapter’s table of powers of ten is garbled in the available OCR transcription. It prints “10<sup>110</sup> … × 2<sup>366</sup>” and “10<sup>210</sup> … × 2<sup>698</sup>”, but the printed significands 0.DA01EE641A708DEA and 0.9F79A169BD203E41 match 10<sup>108</sup> · 2<sup>−359</sup> and 10<sup>206</sup> · 2<sup>−685</sup>, and only 27 + 55 + 108 + 206 reaches 10<sup>340</sup> with two rounded entries. This page uses the corrected table, computed from exact powers of ten. The error of the 10<sup>55</sup> entry is 2<sup>−76.2</sup>, not the printed 2<sup>−79</sup>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/coonen.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>

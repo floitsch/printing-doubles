@@ -1,0 +1,114 @@
+/* Pocket Coonen: page-specific styles. Every class is prefixed "coonen-pocket-". */
+
+.coonen-pocket-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--line); color: var(--muted); font: 500 10px/1.6 var(--mono); vertical-align: 2px; white-space: nowrap; }
+
+.coonen-pocket-red { color: var(--red); }
+.coonen-pocket-ok { color: #1f8a4c; font-weight: 700; }
+.coonen-pocket-bad { color: var(--red); font-weight: 700; }
+.coonen-pocket-warn { color: var(--red); font-family: var(--mono); font-size: .92em; }
+
+/* Register strip */
+.coonen-pocket-register { margin-bottom: 22px; }
+.coonen-pocket-cells { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 3px; max-width: 100%; overflow-x: auto; padding-bottom: 4px; }
+.coonen-pocket-cell { display: grid; flex: 0 0 auto; justify-items: center; gap: 3px; }
+.coonen-pocket-cell b { display: grid; place-items: center; width: clamp(20px, 5.4vw, 36px); height: clamp(26px, 6vw, 40px); border: 1px solid var(--blue); background: color-mix(in srgb, var(--blue) 10%, var(--paper)); color: var(--blue); font: 500 clamp(12px, 3.2vw, 17px) var(--mono); }
+.coonen-pocket-cell i { height: 14px; color: var(--muted); font: normal 11px var(--mono); }
+.coonen-pocket-cell-frac b { border-style: dashed; background: color-mix(in srgb, var(--acid) 45%, var(--paper)); }
+.coonen-pocket-point { align-self: center; margin: 0 -1px 14px; color: var(--ink); font: 700 22px var(--mono); }
+.coonen-pocket-register-caption { margin: 8px 0 0; font: 13px var(--mono); color: var(--muted); }
+
+/* Tables */
+.coonen-pocket-table-wrap { max-width: 100%; overflow-x: auto; }
+.coonen-pocket-powers-table, .coonen-pocket-map { width: 100%; border-collapse: collapse; font: 13px/1.45 var(--mono); }
+.coonen-pocket-powers-table th, .coonen-pocket-powers-table td, .coonen-pocket-map th, .coonen-pocket-map td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.coonen-pocket-powers-table thead th, .coonen-pocket-map thead th { border-bottom: 1px solid var(--ink); color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.coonen-pocket-powers-table td { color: var(--blue); }
+.coonen-pocket-powers-table td small { color: var(--muted); }
+.coonen-pocket-powers-table td.coonen-pocket-exact { color: #1f8a4c; }
+.coonen-pocket-map { margin: 24px 0; font-family: var(--sans); font-size: 14px; }
+.coonen-pocket-map th[scope="row"] { font-weight: 600; }
+.coonen-pocket-map td:nth-child(2) { color: var(--blue); }
+.coonen-pocket-map td:nth-child(3) { color: var(--ink); }
+.coonen-pocket-map td:nth-child(4) { color: var(--muted); font-size: 13px; }
+.coonen-pocket-contrast th, .coonen-pocket-contrast td { background: color-mix(in srgb, var(--acid) 45%, transparent); }
+.coonen-pocket-contrast strong { font-size: 16px; }
+
+/* Step cards */
+.coonen-pocket-counter { color: var(--muted); }
+.coonen-pocket-lines { margin: 0 0 12px; padding-left: 0; list-style: none; counter-reset: coonen-pocket-line; font-size: 15px; }
+.coonen-pocket-lines > li { position: relative; margin: 0; padding: 8px 10px 8px 40px; border-left: 3px solid transparent; counter-increment: coonen-pocket-line; overflow-wrap: anywhere; }
+.coonen-pocket-lines > li::before { content: counter(coonen-pocket-line); position: absolute; left: 8px; top: 8px; width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font: 500 11px var(--mono); }
+.coonen-pocket-lines > li.coonen-pocket-current { border-left-color: var(--red); background: var(--paper); }
+.coonen-pocket-lines > li.coonen-pocket-current::before { border-color: var(--ink); color: var(--ink); }
+.coonen-pocket-lines code { font-size: .92em; color: var(--blue); }
+.coonen-pocket-lines-all > li { padding-top: 5px; padding-bottom: 5px; font-size: 14px; }
+.coonen-pocket-lines-all > li::before { top: 5px; }
+.coonen-pocket-lines-all > li:last-child { border-left-color: var(--red); background: var(--paper); }
+@media (prefers-reduced-motion: no-preference) {
+  .coonen-pocket-lines > li.coonen-pocket-current { animation: coonen-pocket-in .25s ease-out; }
+}
+@keyframes coonen-pocket-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Number line */
+.coonen-pocket-line { width: 100%; min-height: 60px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); }
+.coonen-pocket-line svg { display: block; max-width: 100%; }
+.coonen-pocket-axis { stroke: var(--ink); stroke-width: 1.5; }
+.coonen-pocket-tick { stroke: var(--ink); stroke-width: 1.5; }
+.coonen-pocket-tick-label { fill: var(--ink); font: 500 12px var(--mono); }
+.coonen-pocket-grid { stroke: var(--blue); stroke-width: 1; opacity: .7; }
+.coonen-pocket-grid-label { fill: var(--blue); font: 10px var(--mono); }
+.coonen-pocket-decision { stroke: var(--red); stroke-width: 1.4; stroke-dasharray: 5 4; }
+.coonen-pocket-decision-label { fill: var(--red); font: 500 11px var(--mono); }
+.coonen-pocket-stem { stroke-width: 1; stroke-dasharray: 2 3; stroke: var(--muted); }
+.coonen-pocket-stem-register, .coonen-pocket-stem-sticky, .coonen-pocket-stem-product { stroke: var(--blue); }
+.coonen-pocket-stem-result, .coonen-pocket-stem-wrong { stroke: var(--red); }
+.coonen-pocket-mk-exact { fill: var(--ink); }
+.coonen-pocket-mk-product { fill: var(--paper); stroke: var(--blue); stroke-width: 2; }
+.coonen-pocket-mk-register { fill: var(--blue); }
+.coonen-pocket-mk-sticky { fill: var(--acid); stroke: var(--blue); stroke-width: 2.5; }
+.coonen-pocket-mk-result { fill: var(--red); }
+.coonen-pocket-mk-wrong { stroke: var(--red); stroke-width: 3; fill: none; }
+.coonen-pocket-row-label { font: 500 12px var(--mono); fill: var(--ink); }
+.coonen-pocket-row-register, .coonen-pocket-row-sticky, .coonen-pocket-row-product { fill: var(--blue); }
+.coonen-pocket-row-result, .coonen-pocket-row-wrong { fill: var(--red); }
+
+/* Playground */
+.coonen-pocket-survey { margin: 16px 0 10px; font-size: 14px; }
+.coonen-pocket-more { align-self: center; color: var(--muted); font: 11px var(--mono); }
+#toy-m, #toy-e { width: 5.2em; }
+#real-x { width: min(24ch, 60vw); }
+
+/* Fuzzer */
+.coonen-pocket-fuzz-note { margin: 0 0 12px; padding-left: 12px; border-left: 2px solid var(--blue); font-size: 14px; }
+.coonen-pocket-counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 12px 0; }
+.coonen-pocket-count { padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); }
+.coonen-pocket-count b { display: block; font: 500 24px/1.1 var(--mono); }
+.coonen-pocket-count span { color: var(--muted); font: 11px/1.3 var(--mono); }
+.coonen-pocket-count-bad { border-color: var(--red); }
+.coonen-pocket-count-bad b { color: var(--red); }
+.coonen-pocket-examples { margin: 10px 0; padding: 0; list-style: none; }
+.coonen-pocket-examples li { margin: 4px 0; }
+.coonen-pocket-examples button { width: 100%; padding: 7px 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 12px/1.4 var(--mono); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.coonen-pocket-examples button:hover, .coonen-pocket-examples button:focus-visible, .coonen-pocket-examples button[aria-pressed="true"] { border-color: var(--ink); }
+.coonen-pocket-examples button[aria-pressed="true"] { background: color-mix(in srgb, var(--acid) 35%, var(--paper)); }
+.coonen-pocket-ex-x { color: var(--blue); }
+.coonen-pocket-detail-x { font: 13px var(--mono); overflow-wrap: anywhere; }
+.coonen-pocket-detail-x .lab-button { margin-left: 8px; }
+.coonen-pocket-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.coonen-pocket-compare > div { min-width: 0; }
+.coonen-pocket-compare h4 { margin: 0 0 6px; font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.coonen-pocket-compare .coonen-pocket-lines > li { font-size: 13px; }
+
+@media (max-width: 760px) {
+  .coonen-pocket-compare { grid-template-columns: 1fr; }
+  .coonen-pocket-lines > li { padding-left: 34px; }
+  .coonen-pocket-lines > li::before { left: 4px; }
+  .coonen-pocket-map { font-size: 13px; }
+}
+
+/* Scoped fixes for shared styles: site/styles.css gives .lab-controls a dark
+   bar (from the chapter explorers), and the shared .lab-figure breakout
+   overflows the viewport between 1101px and ~1400px next to the TOC. */
+.coonen-pocket-main .lab-figure { margin-inline: 0; }
+.coonen-pocket-main .lab-controls { padding: 0; border: 0; background: transparent; }
+.coonen-pocket-main .lab-controls label { color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }

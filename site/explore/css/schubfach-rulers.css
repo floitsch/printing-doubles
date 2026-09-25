@@ -1,0 +1,107 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Page-specific styles for explore/schubfach-rulers.html; every class is prefixed sfr-. */
+
+.sfr-svgbox { width: 100%; min-height: 120px; touch-action: pan-y; }
+.sfr-svg { display: block; width: 100%; height: auto; font-family: var(--mono); user-select: none; -webkit-user-select: none; }
+.sfr-frame-label { color: var(--muted); }
+.chapter .sfr-caption { min-height: 4.8em; margin: 12px 0 0; font-size: 15px; }
+.sfr-note { color: var(--muted); font-size: 14px !important; }
+.sfr-error { color: var(--red); }
+
+.sfr-binade-readout { color: var(--muted); overflow-wrap: anywhere; }
+.sfr-binade-readout strong { color: var(--ink); font-weight: 500; }
+
+/* SVG pieces */
+.sfr-svg text { font-size: 11px; fill: var(--ink); pointer-events: none; }
+.sfr-svg .sfr-halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+.sfr-band { fill: var(--blue); fill-opacity: .1; }
+.sfr-band-b { fill: var(--blue); fill-opacity: .2; }
+.sfr-drawer { cursor: grab; fill-opacity: .16; }
+.sfr-drawer:active { cursor: grabbing; }
+.sfr-edge { stroke: var(--blue); stroke-width: 1.5; }
+.sfr-edge-open { stroke-dasharray: 4 3; }
+.sfr-svg .sfr-bracket { font-size: 26px; fill: var(--blue); font-weight: 500; }
+.sfr-svg .sfr-band-label { font-size: 12px; font-weight: 500; }
+.sfr-vdot { fill: var(--blue); stroke: var(--paper); stroke-width: 1.5; }
+.sfr-vdot.sfr-b { fill: var(--dark); }
+.sfr-nbdot { fill: var(--paper); stroke: var(--blue-pale); stroke-width: 2; }
+.sfr-svg .sfr-vlabel { font-size: 12px; font-weight: 500; fill: var(--blue); }
+.sfr-baseline { stroke: var(--ink); stroke-opacity: .35; }
+.sfr-tick { stroke: var(--ink); stroke-opacity: .45; stroke-width: 1; }
+.sfr-tick-in { stroke: var(--red); stroke-opacity: .55; }
+.sfr-tick-strong { stroke: var(--red); stroke-opacity: 1; stroke-width: 2; }
+.sfr-tick-hit { stroke: var(--red); stroke-opacity: 1; stroke-width: 3; }
+.sfr-coarse { stroke-width: 2; }
+.sfr-dense { fill: var(--ink); fill-opacity: .12; }
+.sfr-dense-in { fill: var(--red); fill-opacity: .3; }
+.sfr-row-hl { fill: var(--acid); fill-opacity: .22; }
+.sfr-svg .sfr-row-label { font-size: 11px; fill: var(--muted); }
+.sfr-svg .sfr-row-label-hl { fill: var(--ink); font-weight: 500; }
+.sfr-svg .sfr-count { font-size: 11px; fill: var(--muted); }
+.sfr-svg .sfr-strong { fill: var(--red); font-weight: 500; }
+.sfr-svg .sfr-ticklabel { font-size: 10px; fill: var(--muted); }
+.sfr-svg .sfr-small { font-size: 10.5px; fill: var(--muted); }
+.sfr-svg .sfr-result { font-size: 13px; font-weight: 500; fill: var(--red); }
+.sfr-svg .sfr-cand { font-size: 11.5px; font-weight: 500; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+.sfr-svg .sfr-cand-in { fill: var(--red); }
+.sfr-cand-arrow { fill: var(--ink); }
+.sfr-svg .sfr-dim { opacity: .4; }
+.sfr-hitline { stroke: var(--red); stroke-width: 2; }
+.sfr-guide { stroke: var(--muted); stroke-dasharray: 2 3; }
+.sfr-dist { stroke: var(--muted); stroke-width: 2; }
+.sfr-dist-win { stroke: var(--red); stroke-width: 3; }
+.sfr-a { fill: var(--blue); }
+.sfr-svg .sfr-band-label.sfr-b { fill: var(--dark); }
+
+/* Legend under the main figure */
+.sfr-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; color: var(--muted); font: 11px var(--mono); }
+.sfr-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sfr-legend i { display: inline-block; flex: none; }
+.sfr-key-band { width: 16px; height: 10px; background: color-mix(in srgb, var(--blue) 12%, transparent); }
+.sfr-key-solid { width: 0; height: 14px; border-left: 2px solid var(--blue); }
+.sfr-key-dashed { width: 0; height: 14px; border-left: 2px dashed var(--blue); }
+.sfr-key-v { width: 10px; height: 10px; border-radius: 50%; background: var(--blue); }
+.sfr-key-nb { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--blue-pale); }
+.sfr-key-tick { width: 0; height: 14px; border-left: 2px solid var(--red); }
+
+.sfr-readout > div + div { margin-top: 4px; }
+.sfr-readout sub { font-size: 9px; }
+
+/* Code trace */
+.sfr-trace-head { margin: 24px 0 8px; font: 13px/1.5 var(--mono); color: var(--muted); }
+.sfr-trace-head strong { color: var(--red); font-weight: 500; }
+.sfr-trace { margin: 0 0 24px; padding: 14px 0; list-style: none; background: var(--dark); color: #e8edf2; font: 12.5px/1.5 var(--mono); }
+.chapter .sfr-trace li { font-size: 12.5px; }
+.sfr-trace li { display: grid; grid-template-columns: 2.2em 44ch minmax(0, 1fr); gap: 0 14px; padding: 2px 14px 2px 0; }
+.sfr-trace .sfr-ln { color: #6f7d89; text-align: right; }
+.sfr-trace code { color: #e8edf2; white-space: pre-wrap; font: inherit; }
+.sfr-trace .sfr-val { color: #9fc0ff; overflow-wrap: anywhere; white-space: pre-wrap; }
+.sfr-trace .sfr-yes { color: var(--acid); font-weight: 500; }
+.sfr-trace .sfr-no { color: var(--red-pale); font-weight: 500; }
+.sfr-trace li.sfr-skip code, .sfr-trace li.sfr-skip .sfr-val { color: #56626d; }
+.sfr-trace li.sfr-ret { background: color-mix(in srgb, var(--acid) 22%, transparent); }
+.sfr-trace li.sfr-ret code { color: #fff; }
+
+/* try buttons in prose */
+.sfr-try { margin: 0 4px 0 0; padding: 3px 7px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); font: 500 11px/1.2 var(--mono); cursor: pointer; vertical-align: 1px; }
+.sfr-try:hover, .sfr-try:focus-visible { background: var(--ink); color: var(--paper); }
+
+.sfr-table-wrap { overflow-x: auto; }
+.sfr-map code { font-size: 12px; white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .sfr-trace li { grid-template-columns: 2em minmax(0, 1fr); }
+  .sfr-trace .sfr-val { grid-column: 2; padding-left: 1.2em; }
+  .chapter .sfr-trace li { font-size: 12px; }
+}
+
+/* site/styles.css also defines .lab-controls (dark algorithm-lab bar); undo that here. */
+.sfr-figure .lab-controls { display: flex; padding: 0; border: 0; background: none; }
+.sfr-figure .lab-controls label { color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }
+.sfr-figure .lab-controls input[type="range"] { display: inline-block; width: min(220px, 50vw); margin-top: 0; accent-color: var(--red); }
+
+/* The shared breakout (-160px each side) overflows the viewport between 1101px and 1400px. */
+@media (max-width: 1400px) {
+  .lab-figure.sfr-figure { margin-inline: 0; }
+}
+.chapter .sfr-figure p.lab-readout { font-size: 13px; }

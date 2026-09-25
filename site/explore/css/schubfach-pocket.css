@@ -1,0 +1,144 @@
+/* Pocket Schubfach (explanation lab, approach B). All classes prefixed sfp-. */
+
+.sfp-key { font: 600 13px var(--mono); white-space: nowrap; }
+.sfp-key-closed { color: var(--blue); }
+.sfp-key-open { color: var(--blue); opacity: .7; }
+
+/* Game */
+.sfp-game-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-bottom: 14px; }
+.sfp-rounds button { min-width: 34px; }
+.sfp-rounds button.sfp-done { border-color: var(--blue); }
+.sfp-rounds button.sfp-done::after { content: " ✓"; }
+.sfp-rounds button.sfp-miss::after { content: " ✗"; }
+.sfp-score { margin: 0; font: 500 12px var(--mono); }
+.sfp-score strong { color: var(--red); font-weight: 500; }
+.sfp-round-head { margin-bottom: 14px; }
+.sfp-round-head h3 { margin: 0 0 4px; font: 600 24px/1.15 var(--serif); }
+.sfp-round-head p { margin: 0; font: 13px/1.6 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.sfp-round-head p b { color: var(--blue); font-weight: 500; }
+.sfp-ruler { position: relative; min-height: 190px; border: 1px solid var(--line); background: var(--paper); }
+.sfp-ruler svg { display: block; width: 100%; height: auto; }
+.sfp-ruler .sfp-fog { fill: color-mix(in srgb, var(--ink) 4%, transparent); }
+.sfp-ruler .sfp-widthbar path { stroke: var(--blue); stroke-width: 2; fill: none; }
+.sfp-ruler .sfp-widthbar text { fill: var(--blue); font: 11px var(--mono); }
+.sfp-ruler .sfp-band { fill: color-mix(in srgb, var(--blue) 14%, transparent); }
+.sfp-ruler .sfp-edge { stroke: var(--blue); stroke-width: 2; fill: none; }
+.sfp-ruler .sfp-edge-open { stroke-dasharray: 3 3; }
+.sfp-ruler .sfp-base { stroke: var(--ink); stroke-width: 1; }
+.sfp-ruler .sfp-tick line { stroke: var(--red); stroke-width: 1.5; }
+.sfp-ruler .sfp-tick .sfp-hit { fill: transparent; cursor: pointer; }
+.sfp-ruler .sfp-tick text { fill: var(--ink); font: 11px var(--mono); text-anchor: middle; }
+.sfp-ruler .sfp-tick:hover line, .sfp-ruler .sfp-tick:focus-visible line { stroke-width: 3; }
+.sfp-ruler .sfp-tick:focus { outline: none; }
+.sfp-ruler .sfp-tick:focus-visible .sfp-hit { fill: color-mix(in srgb, var(--acid) 55%, transparent); }
+.sfp-ruler .sfp-tick.sfp-selected .sfp-hit { fill: color-mix(in srgb, var(--acid) 70%, transparent); }
+.sfp-ruler .sfp-dense line { stroke: var(--red); stroke-width: 1; opacity: .55; }
+.sfp-ruler .sfp-mark-ok { fill: var(--red); }
+.sfp-ruler .sfp-mark-bad { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.sfp-ruler .sfp-mark-text { font: 600 10px var(--mono); text-anchor: middle; pointer-events: none; }
+.sfp-ruler .sfp-mark-text.ok { fill: var(--paper); }
+.sfp-ruler .sfp-mark-text.bad { fill: var(--muted); }
+.sfp-ruler .sfp-v { fill: var(--blue); }
+.sfp-ruler .sfp-nb { fill: var(--blue); opacity: .3; }
+.sfp-ruler .sfp-small { fill: var(--muted); font: 11px var(--mono); }
+.sfp-ruler .sfp-vlabel { fill: var(--blue); font: 500 11px var(--mono); }
+.sfp-ruler .sfp-cand line { stroke: var(--ink); stroke-width: 1.5; }
+.sfp-ruler .sfp-cand text { fill: var(--ink); font: 600 11px var(--mono); text-anchor: middle; }
+.sfp-ruler .sfp-cand.in text { fill: var(--red); }
+.sfp-ruler .sfp-note { fill: var(--muted); font: 11px var(--mono); }
+.sfp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-height: 44px; margin-top: 12px; font: 13px/1.5 var(--mono); }
+.sfp-actions .sfp-sel { overflow-wrap: anywhere; }
+.sfp-actions .sfp-sel strong { color: var(--red); font-weight: 500; }
+.sfp-debrief { margin-top: 14px; padding: 16px 18px; border-left: 3px solid var(--red); background: var(--paper); }
+.sfp-debrief h4 { margin: 0 0 8px; font: 600 20px/1.2 var(--serif); }
+.sfp-debrief p { margin: 8px 0; font-size: 15px; }
+.sfp-debrief .sfp-mono { font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+.sfp-census { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; padding: 0; list-style: none; }
+.sfp-census li { padding: 5px 8px; border: 1px solid var(--line); font: 12px var(--mono); }
+.sfp-census li b { font-weight: 500; }
+.sfp-census li.sfp-coarse { border-color: var(--ink); background: color-mix(in srgb, var(--acid) 40%, transparent); }
+.sfp-census li.sfp-fine { border-color: var(--ink); }
+.sfp-census li small { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.sfp-checks { margin: 8px 0; padding: 0; list-style: none; font: 13px/1.7 var(--mono); }
+.sfp-checks li { font-size: 13px; }
+.sfp-page .sfp-eq { white-space: normal; font-size: clamp(15px, 1.7vw, 20px); line-height: 1.7; }
+.sfp-checks .ok { color: var(--red); }
+.sfp-checks .bad { color: var(--muted); }
+.sfp-free { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.sfp-free-msg { color: var(--red); }
+
+.sfp-spoiler > summary { cursor: pointer; padding: 14px 18px; border: 1px solid var(--ink); background: var(--paper); font: 500 13px var(--mono); }
+.sfp-spoiler > summary span { color: var(--muted); }
+.sfp-spoiler[open] > summary { margin-bottom: 24px; }
+.sfp-verify { margin-top: 26px; }
+
+/* Round-to-odd demo and quarter rulers */
+#ro-svg svg, #quarter-rows svg { display: block; width: 100%; height: auto; }
+.sfp-q-exact { stroke: var(--ink); stroke-width: 1.5; }
+.sfp-q-half { fill: color-mix(in srgb, var(--ink) 6%, transparent); stroke: var(--line); }
+.sfp-q-odd { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; }
+.sfp-q-label { fill: var(--muted); font: 10.5px var(--mono); text-anchor: middle; }
+.sfp-q-title { fill: var(--ink); font: 500 12px var(--mono); }
+.sfp-q-true { fill: var(--blue); }
+.sfp-q-est { fill: var(--red); }
+.sfp-q-est-bad { fill: var(--red); stroke: var(--ink); stroke-width: 1.5; }
+.sfp-q-target { stroke: var(--ink); stroke-dasharray: 5 3; stroke-width: 1.2; }
+.sfp-q-target-label { fill: var(--ink); font: 600 10.5px var(--mono); text-anchor: middle; }
+.sfp-q-row { margin: 8px 0 14px; }
+.sfp-q-row p { margin: 0 0 2px; font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
+.sfp-q-row p .bad { color: var(--red); font-weight: 600; }
+.sfp-honest-head { margin: 0 0 12px; }
+.sfp-tests { margin-top: 10px; }
+.sfp-table-wrap { overflow-x: auto; }
+.sfp-page .sfp-tests table, .sfp-page .sfp-fuzz-table { width: 100%; margin: 0; border-collapse: collapse; font: 12px/1.5 var(--mono); }
+.sfp-tests th, .sfp-tests td, .sfp-fuzz-table th, .sfp-fuzz-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.sfp-tests th, .sfp-fuzz-table th { font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.sfp-tests td { overflow-wrap: anywhere; }
+.sfp-tests .mismatch td { background: color-mix(in srgb, var(--red) 12%, transparent); }
+.sfp-tests .ok { color: var(--ink); }
+.sfp-verdict { margin-top: 12px; padding: 10px 14px; background: var(--paper); border-left: 3px solid var(--blue); font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+.sfp-verdict.bad { border-left-color: var(--red); }
+.sfp-verdict strong { color: var(--red); font-weight: 500; }
+.sfp-fuzz-table td:nth-child(2), .sfp-fuzz-table td:nth-child(3) { font-variant-numeric: tabular-nums; }
+.sfp-fuzz-table td.zero { color: var(--blue); }
+.sfp-fuzz-table td.nonzero { color: var(--red); }
+
+.sfp-bits > summary { margin-top: 14px; cursor: pointer; color: var(--red); font: 500 12px var(--mono); }
+.sfp-bitrow { margin: 12px 0; font: 11px/1.5 var(--mono); }
+.sfp-page .sfp-bitrow > p { margin: 0 0 4px; font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
+.sfp-bitstr { padding: 8px 10px; background: var(--paper); overflow-wrap: anywhere; word-break: break-all; letter-spacing: .02em; }
+.sfp-bitstr .hi { color: var(--blue); }
+.sfp-bitstr .mid { color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); }
+.sfp-bitstr .mid.zero { color: var(--muted); background: none; }
+.sfp-bitstr .lo { color: var(--muted); opacity: .75; }
+.sfp-bitlegend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 11px var(--mono); }
+.sfp-bitlegend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; background: currentColor; }
+.sfp-bitlegend .hi { color: var(--blue); }
+.sfp-bitlegend .mid { color: var(--red); }
+.sfp-bitlegend .lo { color: var(--muted); }
+
+@media (max-width: 680px) {
+  .sfp-round-head h3 { font-size: 21px; }
+  .sfp-debrief { padding: 12px; }
+  .sfp-tests th:nth-child(3), .sfp-tests td:nth-child(3) { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sfp-ruler .sfp-mark-ok, .sfp-ruler .sfp-mark-bad { transition: r .15s; }
+}
+
+/* Neutralise the dark .lab-controls of the chapter labs in site/styles.css,
+   which also matches explore.css's .lab-controls. */
+.sfp-page .lab-controls { padding: 0; border: 0; background: none; }
+.sfp-page .lab-controls label { color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }
+.sfp-page .lab-controls output { float: none; color: var(--red); }
+.sfp-page .lab-controls input[type="range"] { display: inline-block; width: min(360px, 60vw); margin: 0; accent-color: var(--red); }
+.sfp-page .lab-controls select { margin-left: 0; padding: 7px 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+
+/* Keep the wide figures inside the viewport next to the table of contents. */
+@media (min-width: 1101px) {
+  .sfp-page .chapter .lab-figure {
+    width: min(1000px, calc(100vw - 40px));
+    margin-right: 0;
+    margin-left: calc((530px - clamp(45px, 7vw, 100px) - min(1000px, calc(100vw - 40px))) / 2);
+  }
+}

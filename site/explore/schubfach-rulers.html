@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Schubfach explained with a stack of decimal rulers laid over a double's rounding interval: one ruler can't miss, the next can't catch two, so four ticks decide the shortest output.">
+  <title>Schubfach · Two rulers · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/schubfach-rulers.css">
+  <script type="module" src="./js/schubfach-rulers.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Schubfach / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./schubfach-pocket.html">compare with approach B</a></p>
+      <h1>Schubfach: two rulers are enough</h1>
+      <p class="chapter-deck">Schubfach finds the shortest decimal without trying one length after another. It measures the rounding interval, lays two decimal rulers over it, and checks four ticks. This page shows why four ticks are always enough.</p>
+      <p class="lab-pitch">Treat Schubfach as a pigeonhole experiment on real doubles: a stack of decimal rulers over the rounding interval, each with a live count of the ticks inside. A short code trace with the same numbers follows, so readers can then read the real code.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Schubfach · two rulers</strong><a href="#puzzle">0.3 and 0.1 + 0.2</a><a href="#drawer">A drawer and a ruler</a><a href="#width">Measure the width</a><a href="#rulers">Rulers over a real double</a><a href="#candidates">Four candidates</a><a href="#code">The code, running</a><a href="#fast">Making it fast</a></aside>
+      <article class="chapter">
+
+        <section id="puzzle">
+          <p class="eyebrow">The puzzle</p>
+          <h2>0.3 and 0.1 + 0.2 are next-door neighbours</h2>
+          <p>In JavaScript, <code>0.3</code> prints as <code>0.3</code>, but <code>0.1 + 0.2</code> prints as <code>0.30000000000000004</code>. The two results are <em>adjacent</em> doubles: their significands differ by exactly one. Why does one get one digit and the other seventeen?</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double is v = c · 2<sup>q</sup>, with an integer significand c (53 bits) and a binary exponent q.</p>
+            <p>Its <b>rounding interval</b> runs from the midpoint with the double below to the midpoint with the double above. Every decimal inside it reads back as v. We want the shortest such decimal; if there are several, the one closest to v.</p>
+            <p>A decimal that lies exactly on a midpoint is a tie. Reading it back rounds to the neighbour with the <b>even</b> significand. So the endpoints belong to v when c is even (closed interval, drawn <code>[ ]</code>). When c is odd they don't (open interval, drawn <code>( )</code>).</p>
+          </div>
+          <p>Below, both rounding intervals are drawn on one number line. Every value is multiplied by 10<sup>17</sup>, so the ticks of the 10<sup>−17</sup> ruler land on whole numbers. Step through the four frames.</p>
+          <figure class="lab-figure sfr-figure" id="sfr-hook">
+            <div class="lab-controls">
+              <button type="button" class="lab-button" id="sfr-hook-prev">← Back</button>
+              <button type="button" class="lab-button primary" id="sfr-hook-next">Next →</button>
+              <span class="sfr-frame-label" id="sfr-hook-label" aria-live="polite">Frame 1 of 4</span>
+            </div>
+            <div class="sfr-svgbox" id="sfr-hook-svg" role="img" aria-label="Rounding intervals of 0.3 and 0.1+0.2, scaled by 10 to the 17"></div>
+            <p class="sfr-caption" id="sfr-hook-caption" aria-live="polite"></p>
+            <figcaption>Everything is multiplied by 10<sup>17</sup>. Tick labels show the last two digits, so “00” is 30000000000000000 (which is 0.3 · 10<sup>17</sup>). Positions come from exact fractions computed in your browser.</figcaption>
+          </figure>
+          <p>0.3 happens to have a tick of the coarser 10<sup>−16</sup> ruler inside its interval, and that tick is simply 0.3. The interval of 0.1 + 0.2 is just as wide, but it sits between two coarse ticks. Its only options are 17-digit ticks of the 10<sup>−17</sup> ruler, and it takes the closest one.</p>
+          <p>The rest of the page turns this picture into an algorithm. There are two questions: why exactly these two rulers, and why is checking four ticks enough?</p>
+        </section>
+
+        <section id="drawer">
+          <p class="eyebrow">The pigeonhole</p>
+          <h2>A drawer and a ruler</h2>
+          <p><em>Schubfach</em> is German for “drawer” and the name of the pigeonhole principle. Think of the rounding interval as a drawer of width W, pushed somewhere along a ruler whose ticks are d apart. Two rules follow:</p>
+          <ul class="lab-steps">
+            <li><strong>If d &gt; W, at most one tick fits in the drawer.</strong> Two ticks are at least d apart, which is more than the drawer is wide.</li>
+            <li><strong>If d ≤ W, at least one tick is in the drawer.</strong> Take the last tick left of the drawer's right edge. It is less than d back from that edge, so it can't have passed the left edge.</li>
+          </ul>
+          <p class="sfr-note">The second rule needs both edges when d = W exactly. A rounding interval may exclude its edges, but for doubles that case is harmless. The width 2<sup>q</sup> equals a power of ten only when q = 0, and then v is itself an integer, so it is a tick of the 10<sup>0</sup> ruler.</p>
+          <p>Try it. Below are six rulers, each ten times coarser than the one beneath it. Drag the band (or use the sliders) and watch the counts on the right. The counts change, but the two highlighted rows never break their rule.</p>
+          <figure class="lab-figure sfr-figure" id="sfr-warm">
+            <div class="lab-controls">
+              <label for="sfr-warm-width">Drawer width W <input type="range" id="sfr-warm-width" min="0" max="2999" step="1" value="1570"></label>
+              <label for="sfr-warm-pos">Position <input type="range" id="sfr-warm-pos" min="0" max="1000" step="1" value="380"></label>
+            </div>
+            <div class="sfr-svgbox" id="sfr-warm-svg"></div>
+            <p class="lab-readout" id="sfr-warm-readout" aria-live="polite"></p>
+            <figcaption>The band includes its edges. Rows with ticks closer than about 2 pixels are drawn as a grey texture; their counts are still exact.</figcaption>
+          </figure>
+          <p>Now make W cross a power of ten: the highlighted pair moves up one row. For every W there is exactly one integer k with</p>
+          <div class="equation">10<sup>k</sup> ≤ W &lt; 10<sup>k+1</sup></div>
+          <p>That k splits the rulers into two groups. The <b>fine ruler</b>, spacing 10<sup>k</sup>, always has a tick in the drawer; it can have up to ten. The <b>coarse ruler</b>, spacing 10<sup>k+1</sup>, has at most one. Rulers above the coarse one are sparser still: 0 or 1 tick. Rulers below the fine one have more ticks, but their extra ticks are longer decimals.</p>
+        </section>
+
+        <section id="width">
+          <p class="eyebrow">Choosing k</p>
+          <h2>Measure the interval, not the number</h2>
+          <p>Dragon4, Grisu and Ryū settle the number of digits in a loop: they generate digits, or remove them, until the result fits the interval. Schubfach gets the right scale in one step, from the <em>width</em> of the rounding interval. For a double v = c · 2<sup>q</sup> the neighbours are 2<sup>q</sup> away, so the interval is 2<sup>q</sup> wide and</p>
+          <div class="equation">k = ⌊log<sub>10</sub> 2<sup>q</sup>⌋</div>
+          <p>The width depends only on q, not on c. Every double in the same binade (same q) gets the same k. The figure below has a slider that moves c through the whole binade: the rulers and all the digits change, but k stays put.</p>
+          <p><b>One exception.</b> When v is an exact power of two (c = 2<sup>52</sup>, except for the smallest normal double), the double below it is only half as far away, since it lies in the smaller binade. The interval is then ¾ · 2<sup>q</sup> wide and k = ⌊log<sub>10</sub>(¾ · 2<sup>q</sup>)⌋, which is sometimes one less. The code computes k with one multiplication and one shift. OpenJDK uses <code>k = (q·661971961083 − (irregular ? 274743187321 : 0)) &gt;&gt; 41</code>; this page's test suite checks that this equals the exact ⌊log<sub>10</sub> width⌋ for every exponent a double can have.</p>
+          <p>Finally, <b>multiply everything by 10<sup>−k</sup></b>. After that, the fine ruler's ticks are the integers and the coarse ruler's ticks are the multiples of 10. The interval is between 1 and 10 units wide. We call the scaled endpoints V<sub>l</sub> and V<sub>r</sub>, and the scaled value V.</p>
+        </section>
+
+        <section id="rulers">
+          <p class="eyebrow">The explorable</p>
+          <h2>Five rulers over a real double</h2>
+          <p>Here is the same stack of rulers over the rounding interval of a real double, labelled with the real spacings. Pick a preset or type any number (simple expressions like <code>0.1+0.2</code>, <code>2/3</code> or <code>2^-10</code> also work).</p>
+          <figure class="lab-figure sfr-figure" id="sfr-main">
+            <div class="lab-controls">
+              <div class="lab-chips" id="sfr-presets" role="group" aria-label="Preset values"></div>
+            </div>
+            <form class="lab-controls" id="sfr-form">
+              <label for="sfr-input">Value <input type="text" id="sfr-input" inputmode="decimal" autocomplete="off" spellcheck="false" size="22" value="0.3"></label>
+              <button type="submit" class="lab-button primary">Show</button>
+              <span class="sfr-error" id="sfr-error" role="alert"></span>
+            </form>
+            <div class="lab-controls">
+              <label for="sfr-binade" class="sfr-binade-label">Move c within this binade <input type="range" id="sfr-binade" min="0" max="1000" step="1" value="500"></label>
+              <span id="sfr-binade-readout" class="sfr-binade-readout" aria-live="polite"></span>
+            </div>
+            <div class="sfr-svgbox" id="sfr-main-svg" role="img"></div>
+            <div class="sfr-legend" aria-hidden="true">
+              <span><i class="sfr-key-band"></i>rounding interval</span>
+              <span><i class="sfr-key-solid"></i>edge included (c even)</span>
+              <span><i class="sfr-key-dashed"></i>edge excluded (c odd)</span>
+              <span><i class="sfr-key-v"></i>v and <i class="sfr-key-nb"></i>its neighbours</span>
+              <span><i class="sfr-key-tick"></i>tick inside</span>
+            </div>
+            <div class="lab-readout sfr-readout" id="sfr-main-readout" aria-live="polite"></div>
+            <figcaption>The horizontal axis is scaled by 10<sup>−k</sup>, so ticks of the fine ruler are integers. Tick labels on the fine ruler are their last two digits. Candidates outside the visible window are shown as arrows at the edge.</figcaption>
+          </figure>
+
+          <h3>Coarser rulers hide inside the coarse one</h3>
+          <p>Every tick of 10<sup>k+2</sup> is also a tick of 10<sup>k+1</sup>, and so is every tick of any coarser ruler. Nesting means we never need to look above the coarse ruler. If some coarser ruler has a tick in the interval, that tick is <em>the</em> coarse tick. There is at most one, and it is the answer: no decimal in the interval is shorter, and none as short is closer to v. Its trailing zeros reveal how short it is.</p>
+          <p>For 0.3 the coarse tick is 30000000000000000 · 10<sup>−17</sup>. The figure draws a red line through every ruler it sits on. Stripping its sixteen trailing zeros gives 3 · 10<sup>−1</sup>: that same point is a tick of all rulers up to 10<sup>−1</sup>. <button type="button" class="sfr-try" data-x="0.1">Show 0.1</button> is the same story.</p>
+          <p>If the coarse ruler misses, every tick inside is a fine tick. They are consecutive integers with no multiple of 10 among them. Consecutive integers without a multiple of 10 all have the same number of digits, so all these candidates are equally short. Ticks of the finer rulers in between are longer. So the answer is the fine tick <em>closest to v</em>.</p>
+        </section>
+
+        <section id="candidates">
+          <p class="eyebrow">No loop</p>
+          <h2>Four candidates, checked in order</h2>
+          <p>We don't need to list the ticks inside. Every point of the interval is less than 10 units from V, because the interval is narrower than 10. Every coarse tick except the two around V is at least 10 units away. So the one coarse tick that could be inside is one of those two. Likewise, the closest fine tick is one of the two fine ticks around V. With s = ⌊V⌋:</p>
+          <ol class="lab-steps">
+            <li><strong>u′ = 10·⌊s/10⌋</strong>, the coarse tick at or below V. If it is inside, return it.</li>
+            <li><strong>w′ = u′ + 10</strong>, the coarse tick above V. If it is inside, return it.</li>
+            <li><strong>u = s and w = s + 1</strong>, the fine ticks around V. The fine ruler can't miss, so at least one is inside. If only one is, return it. If both are, return the closer one; on an exact tie, the even one.</li>
+          </ol>
+          <p>Because u′ and u are never above V, only the left end of the interval can exclude them. Likewise only the right end can exclude w′ and w. Each check is one comparison. For u′ it is V<sub>l</sub> ≤ u′ when c is even, V<sub>l</sub> &lt; u′ when c is odd.</p>
+          <p>Some presets are worth a look:</p>
+          <ul>
+            <li><button type="button" class="sfr-try" data-x="1e23">Show 1e23</button> The right end of the interval is <em>exactly</em> the coarse tick 10<sup>16</sup>. c = 5960464477539062 is even, so the end is included and the output is <code>1e+23</code>. An odd c would have excluded it.</li>
+            <li><button type="button" class="sfr-try" data-x="2/3">Show 2/3</button> The interval is barely more than one unit wide and holds exactly one fine tick, u. w lies outside.</li>
+            <li><button type="button" class="sfr-try" data-x="562949953421312.25">Show a tie</button> Here V = 5629499534213122.5 lies exactly between u and w, and both are inside. The even one, u, wins: <code>562949953421312.2</code>.</li>
+            <li><button type="button" class="sfr-try" data-x="2^62">Show 2^62</button> A power of two. The lower half of the interval is half as wide as the upper half, and the width is ¾ · 2<sup>10</sup> = 768, so k = 2. Using 2<sup>10</sup> = 1024 would give k = 3, and a 10<sup>3</sup> ruler could slip past a 768-wide interval.</li>
+            <li><button type="button" class="sfr-try" data-x="5e-324">Show 5e-324</button> The smallest subnormal. Here s = 4 &lt; 10, so u′ would be 0 and the coarse step is skipped (Figure 7 of the paper guards it with s ≥ 10). The fine step picks 5 · 10<sup>−324</sup>.</li>
+          </ul>
+        </section>
+
+        <section id="code">
+          <p class="eyebrow">The algorithm</p>
+          <h2>The code, running</h2>
+          <p>Here is the whole algorithm as straight-line code, following Figure 7 of Giulietti's paper (the variant that prints the plain shortest result). It traces the value from the figure above. Each line shows its live value, each test shows ✓ or ✗, and lines that don't run are greyed out. There is no loop over digit counts.</p>
+          <div class="sfr-trace-head" id="sfr-trace-head"></div>
+          <ol class="sfr-trace" id="sfr-trace" aria-live="polite"></ol>
+          <p class="sfr-note">Here V<sub>l</sub>, V and V<sub>r</sub> are exact fractions (BigInt numerator and denominator). OpenJDK's <code>Double.toString</code> differs in two small ways because it prints at least two digits. It guards the coarse step with s ≥ 100, and it treats the tiniest subnormals specially, which is why Java prints <code>4.9E-324</code> where this code gives <code>5e-324</code>.</p>
+        </section>
+
+        <section id="fast">
+          <p class="eyebrow">Epilogue</p>
+          <h2>Making it fast</h2>
+          <p>Everything above used exact fractions with hundreds of digits. Real implementations never build them. They need the three scaled values V<sub>l</sub>, V, V<sub>r</sub> only precisely enough to answer the comparisons in the trace. Every comparison is against an integer (u′, w′, u, w) or a half-integer (the midpoint in “closer”).</p>
+          <p>So the code keeps each value times 4 as a 64-bit integer, called <code>vbl</code>, <code>vb</code> and <code>vbr</code>, <b>rounded to odd</b>. The integer part is kept, and the lowest bit is set if anything nonzero was cut off. After multiplying by 4, every comparison target (4u′, 4w′, 4u, 4w, and 2(u + w) for “closer”) is an even integer. Rounding to odd leaves a value that is exactly an even integer alone and moves anything else to an odd integer on the same side of every even one. So no comparison can flip. The three values come from multiplying 4c − 2 (or 4c − 1), 4c and 4c + 2 by one 126-bit table entry that approximates 10<sup>−k</sup>. The tests become:</p>
+          <div class="sfr-table-wrap">
+          <table class="sfr-map">
+            <thead><tr><th>On this page</th><th>OpenJDK <code>DoubleToDecimal</code></th></tr></thead>
+            <tbody>
+              <tr><td>closed / open</td><td><code>out = c &amp; 1</code></td></tr>
+              <tr><td>s = ⌊V⌋</td><td><code>s = vb &gt;&gt; 2</code></td></tr>
+              <tr><td>u′ inside</td><td><code>vbl + out &lt;= sp10 &lt;&lt; 2</code></td></tr>
+              <tr><td>w′ inside</td><td><code>(tp10 &lt;&lt; 2) + out &lt;= vbr</code></td></tr>
+              <tr><td>u inside / w inside</td><td><code>vbl + out &lt;= s &lt;&lt; 2</code> / <code>(t &lt;&lt; 2) + out &lt;= vbr</code></td></tr>
+              <tr><td>V − u vs w − V</td><td><code>vb − ((s + t) &lt;&lt; 1)</code></td></tr>
+            </tbody>
+          </table>
+          </div>
+          <p>Why 126 bits are enough, and why the rounding must be to odd rather than simple truncation, is its own story. <a href="./schubfach-pocket.html">Approach B</a> tells it, and the <a href="../chapters/schubfach.html">Schubfach chapter</a> has the proof sketch.</p>
+          <p class="sfr-note">Sources: R. Giulietti, <a href="https://fmt.dev/papers/Schubfach4.pdf">The Schubfach way to render doubles</a> (§7–8, Results 8–11, Figure 7); OpenJDK <a href="https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/jdk/internal/math/DoubleToDecimal.java">DoubleToDecimal.java</a>; A. Bolz, <a href="https://github.com/abolz/Drachennest/blob/master/src/schubfach_64.cc">schubfach_64.cc</a>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/schubfach.html"><span>Compare</span><strong>Schubfach chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
