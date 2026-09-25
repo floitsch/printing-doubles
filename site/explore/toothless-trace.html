@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Step one double through Toothless, an unpublished continued-fraction printer, with its real 63-bit table: every comparison, its integers, and how far it is from the gap between the cached fraction and the truth.">
+  <title>Toothless · Follow one double · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/toothless-trace.css">
+  <script type="module" src="./js/toothless-trace.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="toothless-trace">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Toothless / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./toothless-gap.html">compare with approach A</a></p>
+      <h1>Follow one double</h1>
+      <p class="chapter-deck">Toothless prints doubles using nothing wider than 128-bit integers, and it never needs a big-number fallback. Step one number through the real code and the real 63-bit table. Every comparison is shown with its integers, its answer, and how far it stayed from the only place where a wrong answer could hide.</p>
+      <p class="lab-pitch">Real data first. A step debugger runs a BigInt port of <code>continued.c</code> on any double. Each comparison is drawn on a ruler of relative distance, next to the error of the cached fraction. A budget toggle rebuilds the cache with fewer bits until real hard cases break. A claims ledger separates what the draft argues from what this page re-checks.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Toothless · trace</strong><a href="#idea">The trick</a><a href="#stepper">Follow one double</a><a href="#staircase">Where 63 bits come from</a><a href="#budget">Starve the cache</a><a href="#ledger">Claims ledger</a></aside>
+      <article class="chapter">
+
+        <section id="idea">
+          <p class="eyebrow">1 · The trick</p>
+          <h2>Ask small questions, get exact answers</h2>
+          <p class="lead">The number 6.62607015 × 10<sup>−34</sup> is stored as <em>f</em> · 2<sup>−163</sup>. To read off its decimal digits exactly, you would compute <em>v</em> · 10<sup>50</sup> = 8<em>f</em> · 10<sup>50</sup>/2<sup>166</sup>. The fraction 10<sup>50</sup>/2<sup>166</sup> has a 167-bit denominator, so the exact route needs big integers.</p>
+          <p>Toothless never computes that product. Every decision it makes is a yes/no question with one shape: <strong>is the small fraction <em>a</em>/<em>b</em> above or below α = 2<sup><em>e<sub>k</sub></em></sup>/10<sup><em>k</em></sup>?</strong> For example, “is the prefix 66260701 · 10<sup>9</sup> already above the lower end of the rounding interval?” becomes “is 66260701000000000 / 61977679189084292 ≥ α?”. Both parts of every such fraction stay below 2<sup>59</sup>.</p>
+          <p>Toothless answers each question against a cached stand-in <em>num</em>/<em>den</em> instead of α. Both parts of the stand-in are below 2<sup>63</sup>. The stand-in is not exact: for this number it is 1.3 × 10<sup>−36</sup> (relative) below α. But it was chosen with continued fractions so that <strong>no fraction whose parts are below 2<sup>62</sup> lies between the stand-in and α</strong>. A question fraction is far too small to fit into that gap. So “above <em>num</em>/<em>den</em>?” always has the same answer as “above α?”. Only a question that lands exactly <em>on</em> <em>num</em>/<em>den</em> can’t be settled this way. For that case, two tag bits in the table say which side of α the stand-in lies on.</p>
+          <figure class="lab-figure tt-fig" id="tt-bits-figure">
+            <div id="tt-bits" role="img" aria-label="Bar chart of bit widths. Every question fraction has a numerator and denominator below 2 to the 59. A fraction strictly between a cached entry and alpha needs a numerator of at least 2 to the 62.06 and a denominator of at least 2 to the 63, over all 297 inexact entries."></div>
+            <figcaption>How big the integers are, in bits. Every question Toothless asks has both parts below 2<sup>59</sup>. Over all 297 inexact table entries, the simplest fraction strictly inside the gap between stand-in and α has a numerator of at least 2<sup>62.06</sup> and a denominator of at least 2<sup>63.00</sup> (for the reciprocal entries the two roles swap). That leaves about three bits of headroom. The bars are computed in your browser from the table.</figcaption>
+          </figure>
+          <p>This “nothing lives in the gap” argument is what sets Toothless apart. Grisu and Errol bound their approximation error, then fall back or special-case inputs when a decision lands inside that bound. Toothless picks its stand-in so that no decision can land there at all. Approach A, <a href="./toothless-gap.html">Nothing lives in the gap</a>, builds this picture with a toy float. This page follows one real double through the real code.</p>
+          <p class="tt-status"><strong>Status.</strong> Toothless is unpublished. The mechanism is <em>argued in an unfinished 2017 draft and checked numerically</em>, not proved. The draft’s proofs have TODOs, and a few steps exist only in code. The <a href="#ledger">claims ledger</a> at the end lists what is argued, what this page re-checks, and what is still open.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is exactly <em>v</em> = <em>f</em> · 2<sup><em>e</em></sup> with an integer significand <em>f</em> (53 bits for normal numbers). Every real number closer to <em>v</em> than halfway to its neighbours reads back as <em>v</em>. That is the <strong>rounding interval</strong> [<em>m</em><sup>−</sup>, <em>m</em><sup>+</sup>]. Its ends count only when <em>f</em> is even, because ties read back to the even significand.</p>
+            <p>For a power of two the neighbour below is only half as far away, so the interval is lopsided. Shortest printing picks the decimal in the interval with the fewest digits. If several decimals have that length, it picks the one closest to <em>v</em>.</p>
+          </div>
+        </section>
+
+        <section id="stepper">
+          <p class="eyebrow">2 · The code</p>
+          <h2>Follow one double through <code>continued.c</code></h2>
+          <p>Pick a number and press <strong>Step</strong>. The <kbd>←</kbd>/<kbd>→</kbd> keys also work while the figure has focus. The stepper runs a line-by-line BigInt port of the reference implementation, <code>bench/continued.c</code>, with its real cache, <code>bench/fraction_values.h</code>. The cache has 325 entries, and their tag bits are kept as stored. The log below the card collects every comparison the code makes. Each comparison also gets the answer that the exact α would give.</p>
+          <figure class="lab-figure tt-fig tt-stepper" id="tt-stepper" tabindex="-1">
+            <div class="tt-controls">
+              <div class="lab-chips" id="tt-presets" role="group" aria-label="Preset numbers"></div>
+              <form class="tt-form" id="tt-form">
+                <label for="tt-input">or type a double</label>
+                <input id="tt-input" type="text" spellcheck="false" autocomplete="off" size="22" aria-describedby="tt-input-help">
+                <button class="lab-button" type="submit">Load</button>
+              </form>
+              <p class="tt-help" id="tt-input-help">Decimals like <code>0.3</code> or <code>1e-300</code>, or a bit pattern like <code>0x3FB999999999999A</code>. Negative inputs are printed without their sign.</p>
+              <p class="tt-error" id="tt-error" role="alert" hidden></p>
+            </div>
+            <div class="tt-controls tt-step-row">
+              <button class="lab-button" type="button" id="tt-first">|◀ Start</button>
+              <button class="lab-button" type="button" id="tt-back">◀ Back</button>
+              <button class="lab-button primary" type="button" id="tt-step">Step ▶</button>
+              <button class="lab-button" type="button" id="tt-last">End ▶|</button>
+              <span class="tt-counter" id="tt-counter" aria-live="polite"></span>
+              <label class="tt-cache-label" for="tt-cache">cache</label>
+              <select id="tt-cache"></select>
+            </div>
+            <ol class="tt-stages" id="tt-stages" aria-label="Stages"></ol>
+            <div class="tt-card" id="tt-card" aria-live="polite"></div>
+            <div class="tt-log-head">
+              <h3>Comparison log</h3>
+              <p>Each row is one integer comparison from the C code, rewritten as “<em>a</em>/<em>b</em> versus <em>num</em>/<em>den</em>”. The ruler shows how far <em>a</em>/<em>b</em> is from α in relative terms, on a log scale running from 1 down to 10<sup>−44</sup>. The shaded zone holds everything closer to α than the stand-in is. Only a question inside that zone, on the stand-in’s side of α, could get a wrong answer.</p>
+            </div>
+            <ol class="tt-log" id="tt-log" aria-label="Comparisons made so far"></ol>
+            <figcaption>Port of <code>continued()</code> from <code>bench/continued.c</code> (F. Loitsch, 2017, unpublished) using BigInt instead of <code>uint64_t</code>/<code>uint128_t</code>. The port matches <code>Number.prototype.toString</code> on every double this page’s tests try, but that is evidence, not proof. α is computed exactly (2<sup><em>e<sub>k</sub></em></sup> and 10<sup><em>k</em></sup> as BigInts) only to judge the answers. The algorithm itself never sees it.</figcaption>
+          </figure>
+          <h3>Things to notice</h3>
+          <p><strong>The margins are huge compared with the gap.</strong> For most inputs the tightest question still lies 10<sup>−17</sup> or so away from α, while the stand-in is within 10<sup>−36</sup>. The <em>hard case</em> preset, 3.294312317590731 × 10<sup>−79</sup>, is the exception. Its lower boundary is 3.29431231759073099999999999999999813…e−79, so the 16-digit answer clears it by only 5.7 × 10<sup>−34</sup> (relative). A 64-bit approximation of the power of ten has an uncertainty near 10<sup>−19</sup> and cannot decide that question. Toothless decides it exactly, because even this margin is 10<sup>5</sup> times the width of the gap.</p>
+          <p><strong>The margin is not the proof.</strong> A big margin shows that a single question was safe. The guarantee for all questions comes from the empty gap: a question fraction with parts below 2<sup>59</sup> can’t be inside it, however close it gets to α. The badge on each row checks exactly that.</p>
+          <p><strong>Negative exponents use the reciprocal.</strong> The table only stores 2<sup><em>e</em></sup>/10<sup><em>i</em></sup> for <em>i</em> = 0…324, a value in (½, 1]. For numbers below 1 the code needs 10<sup><em>n</em></sup>/2<sup><em>e</em></sup> instead. It swaps numerator and denominator, and with them the “lower” and “higher” tags. Entries 0…27 are exact (5<sup>27</sup> &lt; 2<sup>63</sup>), so doubles from about 1.5 × 10<sup>−11</sup> to 9 × 10<sup>43</sup> never touch an approximation.</p>
+        </section>
+
+        <section id="staircase">
+          <p class="eyebrow">3 · The cache</p>
+          <h2>Where the 63-bit fractions come from</h2>
+          <p>Each table entry comes from the continued fraction of its exact ratio α<sub><em>i</em></sub> = 2<sup>⌊<em>i</em>·log<sub>2</sub>10⌋</sup>/10<sup><em>i</em></sup>. Cutting the continued fraction after each term gives a <em>convergent</em>: a fraction that approximates α very well for its size. Convergents alternate around α, and their denominators grow at each step by a factor of about the next term. The Planck example uses entry 50, and its continued fraction contains the term 479. That term makes the denominators jump from 55 bits straight to 64 bits, past the 63-bit limit.</p>
+          <figure class="lab-figure tt-fig" id="tt-stair-figure">
+            <div id="tt-stair" role="img" aria-label="Staircase of convergent denominator sizes for entry 50. Bit lengths grow slowly until convergent 30 with 55 bits. The next convergent, produced by the term 479, has 64 bits and exceeds the 63-bit wall. The stored entry is the semiconvergent with c equal to 329, just under 63 bits."></div>
+            <figcaption>Continued fraction of α<sub>50</sub> = 2<sup>166</sup>/10<sup>50</sup> = [0; 1, 14, 2, 7, 1, 84, …], computed in your browser. Each step is one convergent, and its height is the size of its denominator in bits. The numbers under the axis are the terms.</figcaption>
+          </figure>
+          <p>Between the 55-bit convergent <em>h</em><sub>30</sub>/<em>k</em><sub>30</sub> and the 64-bit one lie the <em>semiconvergents</em> (<em>c</em>·<em>h</em><sub>30</sub> + <em>h</em><sub>29</sub>)/(<em>c</em>·<em>k</em><sub>30</sub> + <em>k</em><sub>29</sub>) for <em>c</em> = 1…478. Each one is closer to α than the one before. The table stores <em>c</em> = 329, the last one whose parts fit below 2<sup>63</sup>, tagged “higher”. It and the 55-bit convergent are <em>Farey neighbours</em>: their cross-product differs by exactly 1. So any fraction strictly between them has a denominator of at least the sum of their denominators (the <a href="https://en.wikipedia.org/wiki/Farey_sequence">standard Farey argument</a>), and that sum is above 2<sup>63</sup>. That is the empty gap. The ledger re-checks it for every entry.</p>
+        </section>
+
+        <section id="budget">
+          <p class="eyebrow">4 · Starve the cache</p>
+          <h2>Rebuild the cache with fewer bits</h2>
+          <p>How much of the 63-bit budget is needed? Rebuild all 325 entries with fractions whose parts are below 2<sup><em>B</em></sup>. The page uses the continued-fraction bracket of each α and keeps whichever endpoint is closer, which takes a few milliseconds per table. Then run real hard cases through the same code. They were found by a targeted search. Random testing would not find them, as the button below shows.</p>
+          <figure class="lab-figure tt-fig" id="tt-budget-figure">
+            <div class="lab-controls tt-budget-controls">
+              <label for="tt-budget">fraction budget <em>B</em></label>
+              <input type="range" id="tt-budget" min="44" max="64" step="1" value="64" aria-describedby="tt-budget-out">
+              <output id="tt-budget-out" for="tt-budget"></output>
+            </div>
+            <p class="tt-budget-summary" id="tt-budget-summary" aria-live="polite"></p>
+            <div class="tt-table-wrap">
+              <table class="tt-cases" id="tt-cases">
+                <thead><tr><th scope="col">input</th><th scope="col">Toothless prints</th><th scope="col">verdict</th><th scope="col"><span class="lab-sr-only">action</span></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="lab-controls tt-random-row">
+              <button class="lab-button" type="button" id="tt-random">Test 100,000 random doubles</button>
+              <span class="tt-random-out" id="tt-random-out" aria-live="polite"></span>
+            </div>
+            <figcaption>The rightmost slider position is the original table from <code>fraction_values.h</code>. Positions 44 to 63 are rebuilt in your browser. The rebuilt 63-bit table differs from the original in 114 entries: the original does not always store the closer bracket endpoint (see the ledger). Hard cases found with the ideation scripts for this page. Verdicts compare against <code>Number.prototype.toString</code>.</figcaption>
+          </figure>
+          <p>With 50-bit fractions, 3.294312317590731 × 10<sup>−79</sup> prints with one digit too many. 3.7299018480438463 × 10<sup>228</sup> prints as a 16-digit string that reads back as a different double. With 52 bits, 6.1359116592542813 × 10<sup>−266</sup> fails to round-trip. From 54 bits on, all of these pass. Yet the 50-bit table passes 100,000 random doubles without a single failure. <strong>Random testing is weak evidence here.</strong> Failures need a question fraction that lands in the gap, which is a vanishingly thin target. Load a failing case into the stepper to see which question lands in it: that row turns red.</p>
+          <p>The separation argument itself only needs <em>B</em> ≥ 59, one bit more than the largest question. From 59 bits on, any fraction inside a gap has a part of at least 2<sup>59</sup>. Between 54 and 58 bits, no failure is known to this page, but nothing guarantees there isn’t one.</p>
+        </section>
+
+        <section id="ledger">
+          <p class="eyebrow">5 · What is argued, what is checked</p>
+          <h2>Claims ledger</h2>
+          <p>Toothless rests on seven claims. The draft (<code>pldi/double_conversion.tex</code>, 2017) argues some of them. The generator and the tools check others, and a few exist only in code. Each row below says which, and its <strong>Run</strong> button re-checks the claim in your browser. None of this adds up to a proof.</p>
+          <details class="tt-ledger" id="tt-ledger">
+            <summary>Open the ledger (7 claims, live checks)</summary>
+            <ol class="tt-claims" id="tt-claims"></ol>
+          </details>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/toothless.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
