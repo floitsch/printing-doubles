@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Grisu3 computes the rounding interval with one approximate 64-bit multiplication, so every fence is blurred by up to one unit. See it search the widest interval, certify against the narrowest, and reject what it cannot prove.">
+  <title>Grisu · Blurry fences · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/grisu-blur.css">
+  <script type="module" src="./js/grisu-blur.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="gb-page">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Grisu / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./grisu-pocket.html">compare with approach B</a></p>
+      <h1>Blurry fences: prove it or say “too close to call”</h1>
+      <p class="chapter-deck">Grisu finds the rounding interval with one cheap 64-bit multiplication, so each end of the interval, each fence, can be off by up to one unit. Grisu3 searches the widest interval that error allows and prints only what it can prove. The rest, about 0.5% of random doubles, goes to an exact algorithm.</p>
+      <p class="lab-pitch">The page draws the exact interval sharp and Grisu’s computed one blurred, with loupes on the fences. Readers see that a rejection means Grisu could not prove its answer, not that the answer was wrong. A precision knob shrinks the blur until only a floor of rejections is left, one that no amount of precision removes.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Grisu · Approach A</strong><a href="#target">The target</a><a href="#park">Park the binary point</a><a href="#fences">Three blurry fences</a><a href="#cut">Cut from the top</a><a href="#round">Walk toward W</a><a href="#weed">Prove it or reject</a><a href="#bits">More bits, less blur</a><a href="#grisu2">Grisu2: never reject</a><a href="#contracts">Three contracts, one loop</a></aside>
+      <article class="chapter">
+
+        <section id="target">
+          <p class="eyebrow">Grisu · Loitsch 2010 · The target</p>
+          <h2>Find the shortest decimal between two fences</h2>
+          <p class="lead">A double stands for every real number that rounds to it. Printing it shortest means finding the decimal with the fewest digits in that stretch, and the closest one if there is a tie in length.</p>
+          <p>The stretch runs from m<sup>−</sup> to m<sup>+</sup>, halfway to the neighbouring doubles on either side. Call these two ends the <em>fences</em>. Dragon4 and its descendants locate the fences exactly, with big-integer arithmetic. Grisu (Florian Loitsch, PLDI 2010; production code in Google’s <code>double-conversion</code>) uses only 64-bit integers. The price is that it only knows approximately where the fences are.</p>
+          <div class="lab-remember">
+            <strong>What to remember</strong>
+            <p>A double is v = f · 2<sup>e</sup> with an integer f &lt; 2<sup>53</sup>. Its neighbours are one ulp away, and m<sup>−</sup>, m<sup>+</sup> are the midpoints. When f = 2<sup>52</sup> the lower neighbour is only half as far away, so m<sup>−</sup> is closer to v.</p>
+            <p>A decimal strictly between m<sup>−</sup> and m<sup>+</sup> reads back as v. A decimal exactly on a fence reads back as v only through round-half-even, and only when f is even. Grisu3 never prints such a number.</p>
+            <p>On this page a <strong class="gb-inline">unit</strong> is <em>not</em> the double’s ulp. It is the weight of the last bit of Grisu’s 64-bit scaled numbers. The interval of a normal double is about 1000 to 2000 units wide; for subnormals it is much wider.</p>
+          </div>
+        </section>
+
+        <section id="park">
+          <p class="eyebrow">Step 0 · where the error comes from</p>
+          <h2>Park the binary point, pay one unit</h2>
+          <p>Dragon4 needs big integers because the exponent of v = f · 2<sup>e</sup> can be anything from −1074 to 971. Grisu removes that exponent with a single multiplication. It picks a power of ten c̃ ≈ 10<sup>k</sup> from a table so that the product lands with its binary point at a known, comfortable place. The 64-bit result gets an exponent E between −60 and −32. So the top 4 to 32 bits are the integer part and the rest are fraction bits. Printing then becomes integer work: divide the integer part (at most 32 bits), and multiply the fraction by 10 without overflowing, because at least 4 bits of headroom are left.</p>
+          <p>The table holds only every eighth power, 10<sup>−348</sup>, 10<sup>−340</sup>, …, 10<sup>340</sup>: 87 entries. Eight decimal exponents span about 26.6 binary ones, less than the 28-wide window, so one entry always fits. <a href="./grisu-pocket.html">Approach B</a> takes these mechanics apart in a 16-bit version you can check by hand. Here we only need the bill:</p>
+          <ul>
+            <li>each table entry is 10<sup>k</sup> rounded to 64 bits: off by at most ½ of its last bit, which costs less than ½ unit in the product;</li>
+            <li>the multiplication keeps only the top 64 bits of the 128-bit product, rounded: off by at most ½ unit more.</li>
+          </ul>
+          <p>Grisu multiplies v, m<sup>−</sup> and m<sup>+</sup> by the same c̃. The boundaries are exact 64-bit numbers with v’s exponent. The results are called <strong>LO</strong>, <strong>W</strong> and <strong>HI</strong>, and each is off by less than one unit.</p>
+          <figure class="lab-figure gb-figure" aria-labelledby="gb-park-caption">
+            <div class="lab-chips gb-presets" data-presets aria-label="Preset numbers"></div>
+            <div class="gb-park-eq" id="gb-park-eq"></div>
+            <div class="gb-svgbox" id="gb-park-strip"></div>
+            <div class="gb-svgbox" id="gb-park-budget"></div>
+            <p class="lab-sr-only" id="gb-park-alt" aria-live="polite"></p>
+            <figcaption id="gb-park-caption">Top: the scaled value W as a 64-bit register. The binary point sits after bit −E; dark cells are the integer part, pale cells the fraction. Bottom: the error bill for LO, W and HI in units. Each row starts at the exact product (0). Blue is the error from the rounded table entry, red the error from rounding the product, and the dot is what Grisu actually holds. Everything stays inside ±1.</figcaption>
+          </figure>
+        </section>
+
+        <section id="fences">
+          <p class="eyebrow">The explorable</p>
+          <h2>Three blurry fences, two intervals</h2>
+          <p>After the multiplication Grisu has LO, W and HI, each within one unit of the truth. It does not know where the true fences are. Grisu3 copes by using <em>two</em> intervals:</p>
+          <ul>
+            <li><strong>The search interval</strong> runs from too_low = LO − 1 to too_high = HI + 1. It certainly contains the whole true interval. Anything outside it certainly does <em>not</em> read back as v. Grisu3 looks for the shortest decimal here.</li>
+            <li><strong>The safe zone</strong> lies certainly inside the true interval. Anything in it certainly reads back. Grisu3 certifies its answer here.</li>
+          </ul>
+          <p>A candidate between the two gets no verdict. Grisu3 answers “too close to call”, and an exact algorithm decides. Step through a conversion below. Use the loupes: at 64 bits a blur of ±1 unit is about 1/600 of the interval, too thin to see at full scale.</p>
+
+          <figure class="lab-figure gb-figure gb-main" id="gb-main" aria-labelledby="gb-main-caption">
+            <div class="lab-controls gb-controls">
+              <form class="gb-input" id="gb-form">
+                <label for="gb-x">double</label>
+                <input type="text" id="gb-x" inputmode="decimal" autocomplete="off" spellcheck="false" value="0.3" aria-describedby="gb-x-error">
+                <button type="submit" class="lab-button primary">Convert</button>
+                <button type="button" class="lab-button" id="gb-random">Random</button>
+              </form>
+              <label for="gb-q" class="gb-qlabel">precision q <input type="range" id="gb-q" min="55" max="80" value="64"> <output id="gb-q-out" for="gb-q">64</output> bits</label>
+              <button type="button" class="lab-button" id="gb-q64">q = 64</button>
+              <span class="gb-mode" role="group" aria-label="Algorithm">
+                <button type="button" class="lab-button" id="gb-mode-g3" aria-pressed="true">Grisu3</button>
+                <button type="button" class="lab-button" id="gb-mode-g2" aria-pressed="false">Grisu2</button>
+              </span>
+            </div>
+            <p id="gb-x-error" class="gb-error" role="alert"></p>
+            <div class="lab-chips gb-presets" data-presets aria-label="Preset numbers"></div>
+            <p class="gb-story" id="gb-story"></p>
+
+            <div class="gb-stepbar">
+              <button type="button" class="lab-button" id="gb-prev" aria-label="Previous step">◂ Back</button>
+              <button type="button" class="lab-button primary" id="gb-next" aria-label="Next step">Next ▸</button>
+              <button type="button" class="lab-button" id="gb-end">Verdict ⇥</button>
+              <span class="gb-stepname" id="gb-stepname"></span>
+            </div>
+            <div class="gb-dots" id="gb-dots" aria-hidden="true"></div>
+            <p class="gb-caption" id="gb-caption" aria-live="polite"></p>
+
+            <div class="gb-svgbox" id="gb-ruler"></div>
+            <div class="gb-loupes" id="gb-loupes"></div>
+            <div class="gb-verdict" id="gb-verdict" aria-live="polite"></div>
+            <div class="gb-ladder" id="gb-ladder"></div>
+            <div class="lab-readout" id="gb-readout"></div>
+            <figcaption id="gb-main-caption">Axis: offsets from W in units. <span class="gb-key gb-key-exact"></span> exact m<sup>−</sup>, v, m<sup>+</sup> (computed here with BigInt for reference; Grisu never sees them). <span class="gb-key gb-key-blur"></span> computed LO, W, HI with their ±1-unit blur. <span class="gb-key gb-key-outer"></span> search interval [too_low, too_high]. <span class="gb-key gb-key-safe"></span> safe zone. <span class="gb-key gb-key-cand"></span> decimal candidates. The boxes on the main ruler mark what each loupe magnifies. The URL keeps the number, q, mode and step.</figcaption>
+          </figure>
+        </section>
+
+        <section id="cut">
+          <p class="eyebrow">DigitGen · one comparison per digit</p>
+          <h2>Cut the digits from the top</h2>
+          <p>Which decimal in an interval [x, y] is shortest? Picture rulers with ticks every 10<sup>κ</sup>. The shortest decimal is a tick of the coarsest ruler that has any tick inside the interval. For a given ruler the tick to test is the last one at or below y: y cut down to a multiple of 10<sup>κ</sup>. It lies inside exactly when the part cut off, y mod 10<sup>κ</sup>, is at most y − x. That is Theorem 6.2 of the paper.</p>
+          <p class="equation">candidate = y − (y mod 10<sup>κ</sup>) &nbsp;is inside ⇔&nbsp; rest = y mod 10<sup>κ</sup> ≤ y − x</p>
+          <p>So Grisu3 generates the digits of the <em>upper</em> end, too_high, one at a time. After each digit it asks a single question: is the leftover <code>rest</code> smaller than the width <code>unsafe</code> = too_high − too_low? The first “yes” gives the shortest length. Generating v’s own digits, as Dragon4 does, needs two stopping tests, one per fence. Cutting from the top needs only one. The test is strict (rest &lt; unsafe), so too_low itself never counts. In fixed point each step is cheap. Integer digits come from dividing a 32-bit number. Fraction digits come from multiplying by 10 and reading off the bits that cross the binary point.</p>
+          <p class="gb-jumps">Try it: <a class="gb-jump" href="?x=0.3&amp;step=digit#gb-main">0.3: one digit is enough</a> <a class="gb-jump" href="?x=0.1%2B0.2&amp;step=digit#gb-main">0.1+0.2: 17 digits</a></p>
+        </section>
+
+        <section id="round">
+          <p class="eyebrow">RoundWeed, part 1 · closest</p>
+          <h2>Walk toward W, but aim at the whole blur</h2>
+          <p>The cut-off top end is the <em>largest</em> candidate of that length in the search interval. It may not be the closest to v. RoundWeed walks it down, one step of 10<sup>κ</sup> at a time, toward W. W is blurred, though: the true v is somewhere between W − 1 and W + 1 units. So the walk aims at the top of the blur, W + 1. It stops when the candidate reaches W + 1, when the next step would leave the search interval, or when the next candidate would be farther from W + 1.</p>
+          <p>Then it asks the same question from the other end of the blur, W − 1. Would the next lower candidate be closer to W − 1? If yes, the closest candidate depends on where exactly v sits inside the blur. Grisu3 cannot tell, so it rejects.</p>
+          <p class="gb-jumps">Try it: <a class="gb-jump" href="?x=5e-324&amp;step=walk#gb-main">5e-324: 7 → 6 → 5</a> <a class="gb-jump" href="?x=0.1%2B0.2&amp;step=walk#gb-main">0.1+0.2: 7 → 4</a> <a class="gb-jump" href="?x=8.332404691393481&amp;step=closest#gb-main">8.332404691393481: a coin flip</a></p>
+        </section>
+
+        <section id="weed">
+          <p class="eyebrow">RoundWeed, part 2 · certify</p>
+          <h2>Prove it or say “too close to call”</h2>
+          <p>Finally the survivor must lie in the safe zone. With rest = too_high − candidate, <code>double-conversion</code> accepts exactly when</p>
+          <p class="equation">2 units ≤ rest ≤ unsafe − 4 units</p>
+          <p>That means at least 2 units below too_high and at least 4 above too_low. The margins are not symmetric. The paper’s prose (step 7) asks for 2 units at both ends, which is the interval [LO + 1, HI − 1]. The code’s comment also derives “too_low + 2”, but when it rewrites the bound relative to too_high it ends up with 4. The paper’s own listing (Fig. 8) has the same 4. A wider margin can only add rejections, never wrong answers. On the 20,000-double sample used below, the 2-unit version rejects <span data-stat="rej2">88</span> instead of <span data-stat="rej4">102</span> and still prints nothing wrong. The figures on this page use the code’s margins.</p>
+          <p>When the check fails, Grisu3 returns false and the caller (<code>DoubleToAscii</code>) runs <code>BignumDtoa</code>, an exact algorithm. That makes the reject reasons worth a closer look:</p>
+          <ul>
+            <li><strong>Outside the safe zone, but right anyway.</strong> The shortest answer for 0.00093 is 93e-5. It lies 1.8 units above the exact m<sup>−</sup>, so it is valid. But it is only 2.8 units above too_low, and 4 are required. The same goes for 3.14e-13. With one more bit (q = 65) both are accepted.</li>
+            <li><strong>Closest is ambiguous.</strong> For 8.332404691393481 the midpoint between the candidates …482 and …481 lies 0.34 units from W, inside W’s blur. Two more bits (q = 66) settle it.</li>
+            <li><strong>No precision helps.</strong> For 1e23 the candidate 1e23 lies <em>exactly</em> on m<sup>+</sup>, and HI hits it exactly too. Grisu3 never prints a value on a fence. The fallback prints 1e23, which is valid because v’s significand is even. For 105191451600.796875 two 17-digit candidates are exactly equally far from v. A blur never gets thin enough to split an exact tie, and the fallback picks the even one, …688.</li>
+          </ul>
+          <p class="gb-jumps">Try it: <a class="gb-jump" href="?x=0.00093&amp;step=verdict#gb-main">0.00093</a> <a class="gb-jump" href="?x=3.14e-13&amp;step=verdict#gb-main">3.14e-13</a> <a class="gb-jump" href="?x=1e23&amp;step=verdict#gb-main">1e23</a> <a class="gb-jump" href="?x=105191451600.796875&amp;step=verdict#gb-main">exact tie</a> <a class="gb-jump" href="?x=0.00093&amp;q=65&amp;step=verdict#gb-main">0.00093 at q = 65</a></p>
+        </section>
+
+        <section id="bits">
+          <p class="eyebrow">The precision knob</p>
+          <h2>More bits, less blur, and a floor</h2>
+          <p><code>double-conversion</code> uses 64 bits because that is the machine word. The knob in the explorable reruns the whole algorithm with q-bit table entries and products. The window keeps its width, [−(q − 4), −(q − 32)]. Every extra bit makes the interval twice as many units wide, while the blur stays ±1 unit and the margins stay 2 and 4 units. So rejections roughly halve per bit, until they stop falling.</p>
+          <figure class="lab-figure gb-figure" aria-labelledby="gb-chart-caption">
+            <div class="gb-svgbox gb-chartbox" id="gb-chart"><div class="gb-tip" id="gb-tip" hidden></div></div>
+            <div class="lab-controls gb-sampler">
+              <button type="button" class="lab-button primary" id="gb-sample">Sample 2,000 random doubles at q = 64</button>
+              <span id="gb-sample-out" aria-live="polite"></span>
+            </div>
+            <details class="gb-table">
+              <summary>Data table</summary>
+              <div id="gb-chart-table"></div>
+            </details>
+            <figcaption id="gb-chart-caption">Grisu3 rejections versus q, out of <span data-stat="n">20,000</span> random bit patterns (a fixed, reproducible sample; log scale). Click or tap a point to set q in the explorable. The dashed line is the floor: doubles whose shortest closest decimal lies exactly on a fence or is an exact tie. No precision can certify those. The sampler draws fresh random doubles and checks every accepted output against exact arithmetic.</figcaption>
+          </figure>
+          <p>At q = 64: <span data-stat="rej64">102 of 20,000 (0.51%)</span> rejected. The paper reports about 0.5% (its abstract says 0.6%). From q ≈ 69 on, every rejection in the sample is one of the <span data-stat="floor">28 (0.14%)</span> no precision can decide: <span data-stat="ties">8</span> exact ties and <span data-stat="bnd">20</span> fence hits like 1e23. At q = 55, only two bits more than the double’s 53, the interval is a few units wide and almost nothing survives the margins. These rates are for random bit patterns. Numbers that come from real programs are distributed differently.</p>
+        </section>
+
+        <section id="grisu2">
+          <p class="eyebrow">Grisu2 · the other way round</p>
+          <h2>Grisu2 never rejects, and sometimes misses</h2>
+          <p>Grisu2 (paper, section 6.2) shrinks the interval instead of widening it. It searches [LO + 1, HI − 1], which lies certainly inside. It takes the digits of HI − 1 and stops at the first rest ≤ δ. Everything it prints reads back as v, and it never needs a fallback. The cost is that a shorter or closer decimal may be sitting in the blurred margin, and Grisu2 cannot see it. The paper’s version also does not round the last digit toward v. The paper calls rounding simple to add, and derived implementations such as RapidJSON’s add it. Switch the explorable to <em>Grisu2</em> to watch it.</p>
+          <div class="gb-tablewrap"><table class="gb-compare" id="gb-compare"></table></div>
+          <p>On the same sample, with q = 64, Grisu2 prints something longer than the shortest for <span data-stat="g2long">18 of 20,000</span> doubles. The paper reports 99.92% shortest. Without rounding, <span data-stat="g2nc">7,193 (36%)</span> more have the right length but not the closest digits. With a rounding step, <span data-stat="g2rnc">11</span> remain. Grisu3 is not “Grisu2 plus a check”: it searches the <em>wider</em> interval, which is why it finds the short answers Grisu2 misses, or knows that it can’t decide.</p>
+        </section>
+
+        <section id="contracts">
+          <p class="eyebrow">Summary</p>
+          <h2>Three contracts, one loop</h2>
+          <div class="gb-tablewrap">
+            <table class="gb-contracts">
+              <thead><tr><th scope="col"></th><th scope="col">Grisu1</th><th scope="col">Grisu2</th><th scope="col">Grisu3</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Uses</th><td>W only, all its digits</td><td>shrunk interval [LO+1, HI−1]</td><td>wide interval to search, safe zone to certify</td></tr>
+                <tr><th scope="row">Promise</th><td>reads back; ~20 digits (0.3 → <code id="gb-g1">29999999999999998888e-20</code>)</td><td>reads back; usually shortest; closest only with a rounding step</td><td>shortest <em>and</em> closest, or “reject”</td></tr>
+                <tr><th scope="row">Needs</th><td>q ≥ p + 2</td><td>q ≥ p + 3</td><td>any q; fewer rejects with more bits</td></tr>
+                <tr><th scope="row">Failure</th><td>none (just long)</td><td>silent: slightly long or not closest</td><td>loud: returns false, exact fallback</td></tr>
+                <tr><th scope="row">Measured<br><small>q = 64, sample</small></th><td>—</td><td><span data-stat="g2long2">0.09%</span> longer than shortest</td><td><span data-stat="rej64b">0.51%</span> rejected, 0 wrong</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Here is the whole of Grisu3 after the multiplication, paraphrased in JavaScript from <code>fast-dtoa.cc</code> (<code>DigitGen</code> and <code>RoundWeed</code>). The highlighted line follows the explorable’s current step. Values are in units, and the fraction phase multiplies <code>unit</code>, <code>unsafe</code> and <code>rest</code> by 10 per digit, just like the C++.</p>
+          <div class="gb-codebar">
+            <button type="button" class="lab-button" id="gb-code-prev" aria-label="Previous step">◂</button>
+            <button type="button" class="lab-button" id="gb-code-next" aria-label="Next step">▸</button>
+            <span class="gb-stepname" id="gb-code-step"></span>
+          </div>
+          <pre class="lab-code gb-code" id="gb-code" aria-label="Grisu3 digit generation and RoundWeed, JavaScript paraphrase"></pre>
+          <div class="aside"><p><strong>Where to read on.</strong> The real code is <code>double-conversion/fast-dtoa.cc</code>; the cache is in <code>cached-powers.cc</code>. The paper’s Figure 8 is the same RoundWeed. The chapter compares Grisu with the other algorithms on this site.</p></div>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/grisu.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
