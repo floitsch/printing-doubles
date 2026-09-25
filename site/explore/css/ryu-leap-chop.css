@@ -1,0 +1,172 @@
+/* Ryū · Leap, then chop (explanation lab, approach A). Everything is scoped to main.ryu-leap-chop. */
+
+.ryu-leap-chop {
+  --rlc-green: #1d8a4e;
+  --rlc-green-pale: color-mix(in srgb, #1d8a4e 14%, var(--paper));
+  --rlc-band: color-mix(in srgb, var(--acid) 38%, transparent);
+}
+
+/* Sticky number picker */
+.ryu-leap-chop .rlc-picker { position: sticky; top: 77px; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: -40px 0 70px; padding: 10px 12px; border: 1px solid var(--ink); background: var(--paper); font: 500 12px var(--mono); box-shadow: 0 6px 16px -12px rgba(20, 32, 43, .5); }
+.ryu-leap-chop .rlc-picker-label { text-transform: uppercase; letter-spacing: .08em; color: var(--blue); }
+.ryu-leap-chop .rlc-picker select, .ryu-leap-chop .rlc-picker input { min-width: 0; padding: 6px 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 500 12px var(--mono); }
+.ryu-leap-chop .rlc-picker select { max-width: 230px; }
+.ryu-leap-chop .rlc-form { display: flex; gap: 6px; flex: 1 1 200px; min-width: 0; }
+.ryu-leap-chop .rlc-form input { flex: 1 1 auto; width: 100%; }
+.ryu-leap-chop .rlc-current { color: var(--muted); overflow-wrap: anywhere; }
+.ryu-leap-chop .rlc-error { flex-basis: 100%; margin: 0; color: var(--red); font-size: 12px; }
+.ryu-leap-chop .rlc-error:empty { display: none; }
+
+/* Inline "load this example" buttons inside prose */
+.ryu-leap-chop .rlc-inline { display: inline; padding: 0 4px; border: 0; border-bottom: 1px solid var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); color: var(--ink); font: 500 .88em var(--mono); cursor: pointer; overflow-wrap: anywhere; }
+.ryu-leap-chop .rlc-inline:hover, .ryu-leap-chop .rlc-inline:focus-visible { background: var(--ink); color: var(--paper); }
+
+.ryu-leap-chop .rlc-mono { font-family: var(--mono); overflow-wrap: anywhere; }
+.ryu-leap-chop .rlc-small { margin: 4px 0; font-size: 13px; }
+.ryu-leap-chop .rlc-note { color: var(--muted); font-size: 12px; }
+.ryu-leap-chop .rlc-muted { color: var(--muted); }
+.ryu-leap-chop .rlc-ok { color: var(--rlc-green); }
+.ryu-leap-chop .rlc-bad { color: var(--red); }
+.ryu-leap-chop .rlc-special { margin: 0; padding: 14px; color: var(--muted); font: 13px var(--mono); }
+.ryu-leap-chop .rlc-badge-exact, .ryu-leap-chop .rlc-badge-floor { display: inline-block; padding: 1px 6px; border-radius: 9px; font: 500 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .05em; vertical-align: 1px; }
+.ryu-leap-chop .rlc-badge-exact { background: var(--rlc-green); color: #fff; }
+.ryu-leap-chop .rlc-badge-floor { border: 1px solid var(--line); color: var(--muted); }
+
+/* Rulers */
+.ryu-leap-chop .rlc-svgbox { width: 100%; min-height: 120px; }
+.ryu-leap-chop .rlc-ruler { display: block; width: 100%; height: auto; font-family: var(--mono); }
+.ryu-leap-chop .rlc-band { fill: var(--rlc-band); }
+.ryu-leap-chop .rlc-band-edge { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; }
+.ryu-leap-chop .rlc-end-in { fill: var(--ink); stroke: var(--ink); }
+.ryu-leap-chop .rlc-end-out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.ryu-leap-chop .rlc-vline { stroke: var(--blue); stroke-width: 1.2; stroke-dasharray: 2 3; }
+.ryu-leap-chop .rlc-vdot { fill: var(--blue); }
+.ryu-leap-chop .rlc-t-v { fill: var(--blue); font-size: 11px; font-weight: 500; }
+.ryu-leap-chop .rlc-t-small { fill: var(--muted); font-size: 10px; }
+.ryu-leap-chop .rlc-axis { stroke: var(--ink); stroke-width: 1; }
+.ryu-leap-chop .rlc-axis-bin { stroke: var(--blue); }
+.ryu-leap-chop .rlc-axis-faint { stroke: var(--muted); stroke-dasharray: 2 2; }
+.ryu-leap-chop .rlc-tick-bin { stroke: var(--blue-pale); stroke-width: 1; }
+.ryu-leap-chop .rlc-dbl { stroke: var(--ink); stroke-width: 2.5; }
+.ryu-leap-chop .rlc-mid { stroke: var(--blue); stroke-width: 2; }
+.ryu-leap-chop .rlc-t-bin { fill: var(--blue); font-size: 10px; }
+.ryu-leap-chop .rlc-tick { stroke: var(--muted); stroke-width: 1; }
+.ryu-leap-chop .rlc-tick-legal { stroke: var(--red); stroke-width: 1.6; }
+.ryu-leap-chop .rlc-faint { opacity: .55; }
+.ryu-leap-chop .rlc-hatch-line { stroke: var(--muted); stroke-width: .8; }
+.ryu-leap-chop .rlc-dense-legal { fill: color-mix(in srgb, var(--red) 35%, transparent); }
+.ryu-leap-chop .rlc-lane-label { fill: var(--ink); font-size: 10.5px; }
+.ryu-leap-chop .rlc-lane-label.rlc-bin { fill: var(--blue); }
+.ryu-leap-chop .rlc-marker { fill: var(--red); font-size: 11px; font-weight: 500; }
+.ryu-leap-chop .rlc-marker-out { fill: var(--rlc-green); }
+.ryu-leap-chop .rlc-ring { fill: none; stroke: var(--rlc-green); stroke-width: 2; }
+.ryu-leap-chop .rlc-edge { fill: var(--muted); font-size: 10px; }
+
+/* Act 1: unit slider and table */
+.ryu-leap-chop .rlc-unit-controls { margin: 14px 0 6px; }
+.ryu-leap-chop .rlc-unit-controls input[type="range"] { width: 150px; }
+.ryu-leap-chop .rlc-unit-out b { color: var(--red); font-weight: 500; }
+.ryu-leap-chop .rlc-table { width: 100%; border-collapse: collapse; font: 12.5px/1.5 var(--mono); }
+.ryu-leap-chop .rlc-table th, .ryu-leap-chop .rlc-table td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.ryu-leap-chop .rlc-table thead th { color: var(--muted); font-weight: 500; font-size: 11px; }
+.ryu-leap-chop .rlc-table th small { color: var(--muted); font-weight: 400; }
+.ryu-leap-chop .rlc-table td.rlc-mono { overflow-wrap: anywhere; }
+.ryu-leap-chop .rlc-unit-verdict { margin: 10px 0 0; font-size: 14px; }
+
+/* Act 1: ribbon and formula card */
+.ryu-leap-chop .rlc-ribbon-head, .ryu-leap-chop .rlc-ribbon-foot { margin: 0 0 8px; font-size: 14px; }
+.ryu-leap-chop .rlc-ribbon-foot { margin: 8px 0 0; color: var(--muted); }
+.ryu-leap-chop .rlc-never { display: inline-block; margin-right: 8px; padding: 2px 7px; border: 1px dashed var(--muted); color: var(--muted); font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.ryu-leap-chop .rlc-ribbon-digits { max-height: 9.6em; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); font: 12px/1.6 var(--mono); overflow-wrap: anywhere; word-break: break-all; }
+.ryu-leap-chop .rlc-kept { padding: 1px 0; background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); font-weight: 500; }
+.ryu-leap-chop .rlc-rest { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+.ryu-leap-chop .rlc-exp { color: var(--ink); }
+.ryu-leap-chop .rlc-formula { margin-top: 22px; }
+.ryu-leap-chop .rlc-card-title { margin: 0 0 10px; font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .07em; color: var(--red); }
+.ryu-leap-chop .rlc-card { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px 14px; margin: 0 0 10px; padding: 14px 16px; border-left: 3px solid var(--blue); background: var(--paper); font-size: 14px; }
+.ryu-leap-chop .rlc-card dt { font: 500 10px/2 var(--mono); text-transform: uppercase; color: var(--muted); }
+.ryu-leap-chop .rlc-card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ryu-leap-chop .rlc-wrap { word-break: break-all; }
+.ryu-leap-chop .rlc-mul { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px; font-size: 13px; }
+.ryu-leap-chop .rlc-mul-name { font-family: var(--mono); color: var(--red); }
+.ryu-leap-chop .rlc-mul b { color: var(--red); font-weight: 500; }
+
+/* Act 1: exactness */
+.ryu-leap-chop .rlc-exact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ryu-leap-chop .rlc-exact-card { min-width: 0; padding: 12px 14px; border: 1px solid var(--line); background: var(--paper); overflow-wrap: anywhere; }
+.ryu-leap-chop .rlc-exact-card.is-exact { border-color: var(--rlc-green); background: var(--rlc-green-pale); }
+.ryu-leap-chop .rlc-exact-name { margin: 0 0 6px; font-size: 14px; }
+.ryu-leap-chop .rlc-flags { margin-top: 12px; }
+
+/* Act 2: chopper */
+.ryu-leap-chop .rlc-sabotage { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 12px; padding: 8px 12px 10px; border: 1px dashed var(--muted); font: 12px var(--mono); }
+.ryu-leap-chop .rlc-sabotage legend { padding: 0 6px; color: var(--red); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
+.ryu-leap-chop .rlc-sabotage label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.ryu-leap-chop .rlc-sabotage input { accent-color: var(--red); }
+.ryu-leap-chop .rlc-sab-banner { margin: 0 0 12px; padding: 8px 12px; background: color-mix(in srgb, var(--red) 12%, var(--paper)); border-left: 3px solid var(--red); font-size: 13px; }
+.ryu-leap-chop .rlc-chop-status { margin: 0 0 10px; font: 500 12px var(--mono); color: var(--muted); }
+.ryu-leap-chop .rlc-rows { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 26px; padding: 14px 16px; background: var(--paper); border: 1px solid var(--line); }
+.ryu-leap-chop .rlc-rowgrid { display: grid; grid-template-columns: auto auto auto auto auto auto; align-items: center; gap: 4px 6px; font-family: var(--mono); }
+.ryu-leap-chop .rlc-row { display: contents; }
+.ryu-leap-chop .rlc-rname { color: var(--red); font-weight: 500; font-size: 15px; }
+.ryu-leap-chop .rlc-rsub { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.ryu-leap-chop .rlc-glyph { min-width: .7ch; color: var(--ink); font-size: 20px; line-height: 1; }
+.ryu-leap-chop .rlc-digits { display: inline-block; min-width: calc(var(--rlc-w) * 1ch); font-size: 17px; letter-spacing: .02em; white-space: pre; text-align: right; }
+.ryu-leap-chop .rlc-kept-digits { color: var(--ink); }
+.ryu-leap-chop .rlc-cut { color: color-mix(in srgb, var(--muted) 55%, transparent); text-decoration: line-through; text-decoration-color: var(--red); }
+.ryu-leap-chop .rlc-fresh { display: inline-block; animation: rlc-drop .45s ease-out; }
+@keyframes rlc-drop { from { color: var(--red); transform: translateY(-6px); text-decoration-color: transparent; } to { transform: none; } }
+.ryu-leap-chop .rlc-lamp { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.ryu-leap-chop .rlc-lamp i { width: 10px; height: 10px; border: 1px solid var(--muted); border-radius: 50%; }
+.ryu-leap-chop .rlc-lamp.is-on { color: var(--rlc-green); }
+.ryu-leap-chop .rlc-lamp.is-on i { border-color: var(--rlc-green); background: var(--rlc-green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rlc-green) 25%, transparent); }
+.ryu-leap-chop .rlc-tag { padding: 1px 6px; border: 1px solid var(--red); color: var(--red); font-size: 10px; white-space: nowrap; }
+.ryu-leap-chop .rlc-pocket { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-family: var(--mono); }
+.ryu-leap-chop .rlc-pocket-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.ryu-leap-chop .rlc-pocket-digits { display: flex; flex-wrap: wrap; gap: 2px; max-width: 260px; font-size: 15px; }
+.ryu-leap-chop .rlc-pocket-digits > span { min-width: 1.3ch; text-align: center; color: var(--muted); }
+.ryu-leap-chop .rlc-pocket-digits .rlc-pocket-last { padding: 0 3px; border: 1.5px solid var(--red); color: var(--red); font-weight: 500; }
+.ryu-leap-chop .rlc-pocket-note { font-size: 11px; color: var(--muted); }
+.ryu-leap-chop .rlc-test { margin: 12px 0; padding: 10px 14px; border-left: 3px solid var(--ink); background: var(--paper); font-size: 14px; }
+.ryu-leap-chop .rlc-roundcard:not(:empty) { margin-top: 14px; padding: 14px 16px; border: 1.5px solid var(--rlc-green); background: var(--paper); font-size: 14px; }
+.ryu-leap-chop .rlc-roundcard p { margin: 6px 0; font-size: 14px; }
+.ryu-leap-chop .rlc-reasons, .ryu-leap-chop .rlc-checks { margin: 6px 0; padding-left: 20px; }
+.ryu-leap-chop .rlc-reasons li, .ryu-leap-chop .rlc-checks li { font-size: 14px; }
+.ryu-leap-chop .rlc-checks { padding-left: 0; list-style: none; font-family: var(--mono); }
+.ryu-leap-chop .rlc-checks li { font-size: 13px; }
+.ryu-leap-chop .rlc-output b { color: var(--red); font-weight: 500; font-size: 16px; }
+
+.ryu-leap-chop .rlc-sablist { padding-left: 0; list-style: none; }
+.ryu-leap-chop .rlc-sablist li { margin: 0 0 14px; }
+.ryu-leap-chop .rlc-sablist .rlc-inline { margin-right: 6px; }
+
+/* Appendix */
+.ryu-leap-chop .rlc-details summary { cursor: pointer; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.ryu-leap-chop .rlc-code { font-size: 12px; line-height: 1.5; }
+.ryu-leap-chop .rlc-off { color: #6e7c88; }
+.ryu-leap-chop .rlc-cnote { color: var(--acid); }
+.ryu-leap-chop .rlc-sources { color: var(--muted); font-size: 14px; }
+
+@media (max-width: 680px) {
+  .ryu-leap-chop .rlc-picker { position: static; margin: -20px 0 50px; padding: 8px; }
+  .ryu-leap-chop .rlc-picker select { flex: 1 1 100%; max-width: none; }
+  .ryu-leap-chop .rlc-current { display: none; }
+  .ryu-leap-chop .rlc-exact-grid { grid-template-columns: minmax(0, 1fr); }
+  .ryu-leap-chop .rlc-card { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .ryu-leap-chop .rlc-card dd { margin-bottom: 8px; }
+  .ryu-leap-chop .rlc-rows { padding: 10px; }
+  .ryu-leap-chop .rlc-rowgrid { grid-template-columns: auto auto auto auto; gap: 2px 4px; }
+  .ryu-leap-chop .rlc-rsub { display: none; }
+  .ryu-leap-chop .rlc-lampcell { grid-column: 1 / -1; padding-left: 2ch; }
+  .ryu-leap-chop .rlc-lampcell:empty { display: none; }
+  .ryu-leap-chop .rlc-digits { font-size: 13px; }
+  .ryu-leap-chop .rlc-sabotage { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ryu-leap-chop .rlc-fresh { animation: none; }
+}
+
+.ryu-leap-chop .rlc-eq { line-height: 1.9; white-space: normal; }
+.ryu-leap-chop .rlc-eq span { display: inline-block; white-space: nowrap; }
+@media (max-width: 680px) { .ryu-leap-chop .rlc-eq { font-size: 15px; } }

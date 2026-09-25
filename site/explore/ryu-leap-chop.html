@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Ryū in two acts: one multiplication turns a double's rounding interval into three exact decimal integers, then a digit eraser shortens them until one more erasure would leave no valid answer.">
+  <title>Ryū · Leap, then chop · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/ryu-leap-chop.css">
+  <script type="module" src="./js/ryu-leap-chop.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="ryu-leap-chop">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Ryū / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./ryu-pocket.html">compare with approach B</a></p>
+      <h1>Leap, then chop</h1>
+      <p class="chapter-deck">Ryū never writes out the long exact decimal of a double. One multiplication jumps straight to its leading digits, as three exact integers. Then it erases trailing digits until one more erasure would leave no valid answer.</p>
+      <p class="lab-pitch">One two-act widget carries the same three integers a, b, c from the leap (a change of units, from binary quarter-steps to a fine decimal unit) into the chop (delete the last column while a coarser decimal grid still has a tick inside the rounding interval). All numbers are computed live from a BigInt port of d2s.c. The presets cover every branch, and the sabotage switches show which edge case each rule is there for.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Ryū · Approach A</strong><a href="#plan">Two moves</a><a href="#leap">Act 1 · The leap</a><a href="#unit">Which decimal unit?</a><a href="#multiply">One multiply, one shift</a><a href="#exact">Did the floor lose anything?</a><a href="#chop">Act 2 · The chop</a><a href="#round">The round step</a><a href="#sabotage">Break a rule</a><a href="#safe">Why no fallback</a><a href="#code">Appendix: the code</a></aside>
+      <article class="chapter">
+
+        <section id="plan">
+          <p class="eyebrow">Ryū · Ulf Adams, PLDI 2018 · The plan</p>
+          <h2>Two moves</h2>
+          <p class="lead">Every double owns an interval: all the reals that read back as that double. Ryū prints the shortest decimal inside it, and among the shortest the one closest to the double.</p>
+          <p>It gets there in two moves, and this page gives each one an act:</p>
+          <ol class="lab-steps">
+            <li><strong>The leap.</strong> Count the lower end of the interval, the double itself and the upper end in a fine <em>decimal</em> unit 10<sup>e10</sup>, keeping only whole units. The results are three exact integers, a ≤ b ≤ c, with 17 to 19 digits. One table multiply and one shift per integer do this. The hundreds of digits of the exact value are never produced.</li>
+            <li><strong>The chop.</strong> Delete the last digit of all three integers together, as long as a coarser decimal grid still has a tick inside the interval. Then round, using the last digit deleted from b.</li>
+          </ol>
+          <p>Unlike Dragon4 and Grisu, Ryū does not produce digits from left to right. It starts with too many digits and removes them from the right.</p>
+        </section>
+
+        <div class="rlc-picker" role="group" aria-labelledby="rlc-picker-label">
+          <span id="rlc-picker-label" class="rlc-picker-label">Double</span>
+          <label class="lab-sr-only" for="rlc-preset">Preset</label>
+          <select id="rlc-preset"></select>
+          <form id="rlc-form" class="rlc-form">
+            <label class="lab-sr-only" for="rlc-input">Any double (decimal, 2^k, a+b or max)</label>
+            <input id="rlc-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0.3" aria-describedby="rlc-input-error">
+            <button class="lab-button primary" type="submit">Go</button>
+          </form>
+          <button class="lab-button" type="button" id="rlc-random">Random</button>
+          <output id="rlc-current" class="rlc-current" aria-live="polite"></output>
+          <p id="rlc-input-error" class="rlc-error" role="alert"></p>
+        </div>
+
+        <section id="leap">
+          <p class="eyebrow">Act 1 · The leap</p>
+          <h2>Change the ruler</h2>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double is an integer times a power of two: v = m · 2<sup>e</sup>, with m &lt; 2<sup>53</sup>. Its neighbours are m − 1 and m + 1 on the same grid. Where m is exactly 2<sup>52</sup> (a power of two), the neighbour below sits half as far away.</p>
+            <p>The interval ends at the two midpoints, m ± ½. Ryū multiplies by 4 (two guard bits) and counts in the unit 2<sup>e2</sup>, where e2 = e − 2. Then all three points are integers: <b>4m − 2, 4m, 4m + 2</b>, or <b>4m − 1</b> for the lower end at a power of two. One guard bit would not be enough for that closer midpoint.</p>
+            <p>A reader that rounds ties to even maps a midpoint back to our double only when m is even. So the ends of the interval are <em>included</em> when m is even and <em>excluded</em> when m is odd. The code calls this <code>acceptBounds</code>.</p>
+          </div>
+          <p>So far everything is counted in a binary unit. The leap re-counts the same three points in a decimal unit 10<sup>e10</sup> and keeps only whole units. That is a floor:</p>
+          <p class="equation rlc-eq"><span>a = ⌊(lower end) / 10<sup>e10</sup>⌋</span> &nbsp; <span>b = ⌊v / 10<sup>e10</sup>⌋</span> &nbsp; <span>c = ⌊(upper end) / 10<sup>e10</sup>⌋</span></p>
+          <p>In the figure the tinted band is the interval. The upper ruler shows the binary points; the lower ruler shows the decimal ticks, labelled a, b and c where the floors land. Ticks inside the band are decimal numbers that would read back as our double.</p>
+
+          <figure class="lab-figure rlc-figure" aria-labelledby="rlc-ruler1-caption">
+            <div id="rlc-ruler1" class="rlc-svgbox" role="img" aria-describedby="rlc-ruler1-alt"></div>
+            <p id="rlc-ruler1-alt" class="lab-sr-only"></p>
+            <div class="lab-controls rlc-unit-controls">
+              <label for="rlc-unit">decimal unit
+                <input type="range" id="rlc-unit" min="-3" max="3" step="1" value="0" aria-describedby="rlc-unit-out">
+              </label>
+              <output id="rlc-unit-out" for="rlc-unit" class="rlc-unit-out"></output>
+              <button class="lab-button" type="button" id="rlc-unit-reset">Back to Ryū’s choice</button>
+            </div>
+            <div id="rlc-unit-table" class="rlc-unit-table"></div>
+            <figcaption id="rlc-ruler1-caption">The same interval on two rulers. Top, blue: the binary grid in units of 2<sup>e2</sup>, with the neighbouring doubles. Bottom, red: the decimal grid at the chosen unit. The slider tries units Ryū never uses. The table computes a, b and c for that unit exactly (BigInt, not Ryū’s arithmetic), then runs the same chop and round on them.</figcaption>
+          </figure>
+        </section>
+
+        <section id="unit">
+          <p class="eyebrow">Act 1 · Choosing e10</p>
+          <h2>Which decimal unit?</h2>
+          <p>The unit depends only on the binary exponent. Ryū takes the finest power of ten whose counts fit comfortably in a 64-bit integer, then goes <em>one step finer</em>:</p>
+          <p class="equation rlc-eq"><span>e2 ≥ 0:</span> <span>q = ⌊e2 · log<sub>10</sub>2⌋ − 1,</span> <span>e10 = q</span><br><span>e2 &lt; 0:</span> <span>q = ⌊−e2 · log<sub>10</sub>5⌋ − 1,</span> <span>e10 = e2 + q</span></p>
+          <p>(Both are clamped at q ≥ 0.) Here q is the number of decimal digits the leap removes. For 0.3 it is 38, which is why the exact value never has to be written out. Move the slider to see the trade-off:</p>
+          <ul>
+            <li><strong>Too fine</strong> (slider left): the three counts get longer. Two steps finer, a 19-digit count needs more than 64 bits, and every extra digit is one more chop.</li>
+            <li><strong>Too coarse</strong> (slider right): the leap throws away the digit that decides the rounding. With the “−1” removed from q, <button type="button" class="rlc-inline" data-x="2.9176505403442687e-228" data-unit="1">2.9176505403442687e-228</button> gets zero chops, so no rounding digit is ever seen. The floor b is printed as is, ending in …686: it reads back correctly but is not the closest shortest decimal. Two steps coarser, the band holds no tick at all.</li>
+          </ul>
+          <p>At Ryū’s choice every normal double starts with 17 to 19 digits below 2<sup>62</sup>, and the band holds between 3 and about 400 ticks: plenty of room, and the digits below the answer are all still there.</p>
+        </section>
+
+        <section id="multiply">
+          <p class="eyebrow">Act 1 · The multiply</p>
+          <h2>One multiply, one shift</h2>
+          <p>The floors are exact, but Ryū does not compute them with big numbers. First look at what it avoids: the exact decimal value of the double.</p>
+          <figure class="lab-figure rlc-figure" aria-labelledby="rlc-leap-caption">
+            <div id="rlc-ribbon" class="rlc-ribbon"></div>
+            <div id="rlc-formula" class="rlc-formula"></div>
+            <figcaption id="rlc-leap-caption">Top: the exact value of the double, digit by digit, computed here with BigInt for show only. Ryū never produces it: the leap lands on the highlighted leading digits, b. Bottom: the leap as Ryū does it, with the live table constant for this double.</figcaption>
+          </figure>
+          <p>Dividing by 10<sup>e10</sup> splits into a power of 2 and a power of 5. Powers of 2 are shifts, so the only real work is the power of five:</p>
+          <ul>
+            <li><strong>Small numbers (e2 &lt; 0)</strong> need a multiplication by 5<sup>i</sup> with i = −e2 − q. The table stores the top 125 bits of 5<sup>i</sup> (truncated). Try <button type="button" class="rlc-inline" data-x="0.3">0.3</button>: its entry is 5<sup>18</sup> · 2<sup>83</sup>, exact because 5<sup>18</sup> fits.</li>
+            <li><strong>Large numbers (e2 ≥ 0)</strong> need a division by 5<sup>q</sup>. The table stores 125 bits of the reciprocal 2<sup>k</sup>/5<sup>q</sup>, rounded up. Try <button type="button" class="rlc-inline" data-x="1e23">1e23</button>: a division by 5<sup>5</sup> = 3125 turns into a multiply and a shift.</li>
+          </ul>
+          <p>In C each entry is two 64-bit words, and each of a, b and c costs one 64×128-bit multiply whose low bits are dropped by the shift. A truncated constant makes each product a hair too small, and a rounded-up one a hair too big; the floor comes out right only if no exact product lies closer to an integer than that error. The paper proves that the 125-bit entries are always accurate enough, for every double, so there is no bignum fallback (see <a href="#safe">below</a>).</p>
+        </section>
+
+        <section id="exact">
+          <p class="eyebrow">Act 1 · The flags</p>
+          <h2>Did the floor lose anything?</h2>
+          <p>A floor forgets whether it threw anything away. Later, Ryū needs to know that for two reasons: an included endpoint that lands <em>exactly</em> on a tick is itself a valid output, and an exact value followed by a 5 is a true tie. It asks with a cheap divisibility test instead of looking at the dropped digits:</p>
+          <ul>
+            <li>e2 ≥ 0: x · 2<sup>e2</sup> / 10<sup>q</sup> is an integer exactly when 5<sup>q</sup> divides x (the 2<sup>q</sup> is always covered by 2<sup>e2</sup>).</li>
+            <li>e2 &lt; 0: x · 5<sup>i</sup> / 2<sup>q</sup> is an integer exactly when 2<sup>q</sup> divides x, that is, when x ends in q zero bits.</li>
+          </ul>
+          <figure class="lab-figure rlc-figure" aria-labelledby="rlc-exact-caption">
+            <div id="rlc-exact" class="rlc-exact"></div>
+            <figcaption id="rlc-exact-caption">Green “exact” badges: the point sits exactly on a tick of 10<sup>e10</sup>. Try <button type="button" class="rlc-inline" data-x="1e23">1e23</button> (c exact), <button type="button" class="rlc-inline" data-x="7e22">7e22</button> (a exact), <button type="button" class="rlc-inline" data-x="2^-25">2^-25</button> (b exact) and <button type="button" class="rlc-inline" data-x="1125899906842624.25">1125899906842624.25</button> (all three).</figcaption>
+          </figure>
+          <p>The code tests only what can matter. For e2 ≥ 0 at most one of the three integers can be a multiple of 5 (they are at most 4 apart), and the test runs only for q ≤ 21. For e2 &lt; 0 the ends 4m ± 2 have a single zero bit, so they only matter when q ≤ 1. When the upper end is exact but excluded, Ryū lowers c by one, so that c is always the largest legal tick.</p>
+        </section>
+
+        <section id="chop">
+          <p class="eyebrow">Act 2 · The chop</p>
+          <h2>Erase the last column</h2>
+          <p>Deleting the last digit of an integer is ⌊x / 10⌋. Doing it to a, b and c together is the same as switching to a grid ten times coarser. The band stays where it is; its ticks thin out.</p>
+          <p>So the loop asks one question: <strong>does the coarser grid still have a tick inside the band?</strong> In integers: is ⌊c/10⌋ &gt; ⌊a/10⌋? If yes, a shorter answer exists, so chop. If no, stop: the current grid is the coarsest that still has an answer, and its length is the shortest possible.</p>
+          <figure class="lab-figure rlc-figure rlc-chopper" aria-labelledby="rlc-chop-caption">
+            <div class="lab-controls rlc-chop-controls">
+              <button class="lab-button" type="button" id="rlc-back">◀ Back</button>
+              <button class="lab-button primary" type="button" id="rlc-step">Chop ▶</button>
+              <button class="lab-button" type="button" id="rlc-end">Chop to the end ▶▶</button>
+              <button class="lab-button" type="button" id="rlc-round">Round</button>
+              <button class="lab-button" type="button" id="rlc-reset">Reset</button>
+            </div>
+            <fieldset class="rlc-sabotage">
+              <legend>What if Ryū skipped a rule?</legend>
+              <label><input type="checkbox" data-sab="ignoreBounds"> ignore bound inclusion</label>
+              <label><input type="checkbox" data-sab="symmetricPow2"> symmetric interval at powers of two</label>
+              <label><input type="checkbox" data-sab="skipBump"> skip the b = a check</label>
+              <label><input type="checkbox" data-sab="halfUp"> round ties up</label>
+            </fieldset>
+            <p id="rlc-sab-banner" class="rlc-sab-banner" hidden></p>
+            <p id="rlc-chop-status" class="rlc-chop-status" aria-live="polite"></p>
+            <div id="rlc-rows" class="rlc-rows"></div>
+            <div id="rlc-test" class="rlc-test"></div>
+            <div id="rlc-ruler2" class="rlc-svgbox" role="img" aria-describedby="rlc-ruler2-alt"></div>
+            <p id="rlc-ruler2-alt" class="lab-sr-only"></p>
+            <div id="rlc-roundcard" class="rlc-roundcard"></div>
+            <figcaption id="rlc-chop-caption">Rows a, b, c start exactly where the leap left them. Erased columns stay visible, struck out; the digits erased from b collect in the pocket, and the last one decides the rounding. The bracket in front of a is “[” when a itself is a legal output and “(” when it is not. Ruler: the current grid (red ticks inside the band are legal outputs) and, fainter, the next coarser grid that the stop test looks at.</figcaption>
+          </figure>
+          <p>Hand-check <button type="button" class="rlc-inline" data-x="5e-324">5e-324</button>. The smallest double gives a, b, c = 24, 49, 74 at the unit 10<sup>−325</sup>. One chop gives 2, 4, 7: the coarser grid still had the ticks 30…70 inside. Chopping again would give 0, 0, 0: no tick left. The candidates at 10<sup>−324</sup> are 3 … 7, and the erased 9 says round b = 4 up: <b>5e-324</b>.</p>
+          <p>Most doubles need one to three chops. “Human” decimals like <button type="button" class="rlc-inline" data-x="0.3">0.3</button> need seventeen, because the interval is wide enough for a one-digit answer. Note that the test is not “do a and c share leading digits”: for 0.3 they start as 2999… and 3000…, and chopping continues anyway.</p>
+          <p>The two lamps track the exactness from Act 1 through the chops. “a exact” stays on only while every digit erased from a is 0: then a is still exactly the lower end. “b’s tail is 0” means every digit erased from b before the last one was 0. The code calls them <code>vmIsTrailingZeros</code> and <code>vrIsTrailingZeros</code>.</p>
+          <p>When the lower end is included and a is exact, the band is closed on the left, and a tick exactly at a counts too. The code handles this with a second loop that keeps chopping while a ends in 0: in ruler terms, “the coarser grid has a tick in [a, c]”. <button type="button" class="rlc-inline" data-x="7e22">7e22</button> needs it: its lower end is exactly 7·10<sup>22</sup>. One ordinary chop, then sixteen chops in the second loop.</p>
+        </section>
+
+        <section id="round">
+          <p class="eyebrow">Act 2 · Round</p>
+          <h2>The round step</h2>
+          <p>When the loop stops, the answer is b or b + 1 on the current grid. Three rules pick one:</p>
+          <ol class="lab-steps">
+            <li><strong>The last erased digit.</strong> 5 or more: the double is at least halfway to b + 1, so take b + 1. Otherwise keep b.</li>
+            <li><strong>Exact ties go to even.</strong> If that digit is exactly 5 and b’s tail lamp is on, the double is exactly halfway: keep b if it is even. See <button type="button" class="rlc-inline" data-x="2^-25">2^-25</button> and <button type="button" class="rlc-inline" data-x="1125899906842624.25">1125899906842624.25</button>.</li>
+            <li><strong>b must be inside the band.</strong> If b = a and a is not a legal output, b lies at or below the lower end: take b + 1 whatever the digit says. See <button type="button" class="rlc-inline" data-x="2^-1017">2^-1017</button>, where the digit is 4.</li>
+          </ol>
+          <p>b + 1 never jumps past c: the interval is symmetric, or narrower below, so a double at least halfway to b + 1 cannot have c = b.</p>
+        </section>
+
+        <section id="sabotage">
+          <p class="eyebrow">Act 2 · Edge cases</p>
+          <h2>Break a rule</h2>
+          <p>Each rule above exists for real doubles. The switches above the chopper remove one rule at a time. Each button below loads a double and a switch; the round card then shows what goes wrong.</p>
+          <ul class="rlc-sablist">
+            <li><button type="button" class="rlc-inline" data-x="1e23" data-sab="ignoreBounds">1e23, ignore inclusion</button> The upper end is exactly 10<sup>23</sup> and m is even, so it is a legal output. Treated as excluded, c drops to 999…9 and the result is 9.999999999999999e22: it reads back, but it is not the shortest.</li>
+            <li><button type="button" class="rlc-inline" data-x="2^-1019" data-sab="symmetricPow2">2^-1019, symmetric interval</button> At a power of two the lower half-gap is half as wide. Pretending it is 4m − 2 lets the chopper reach 1.780059086805761e-307, which reads back as a different double.</li>
+            <li><button type="button" class="rlc-inline" data-x="2^-1017" data-sab="skipBump">2^-1017, skip b = a</button> The digit 4 says keep b, but b = a lies below the band: 7.120236347223044e-307 reads back as a different double.</li>
+            <li><button type="button" class="rlc-inline" data-x="1125899906842624.25" data-sab="halfUp">1125899906842624.25, ties up</button> An exact tie between …2 and …3. Round half up prints …624.3, which reads back but is not the closest-to-even answer that JavaScript prints.</li>
+          </ul>
+        </section>
+
+        <section id="safe">
+          <p class="eyebrow">Beyond the widget</p>
+          <h2>Why no fallback, and the fast path</h2>
+          <p>Two things this page takes on trust. First, the floors from the truncated table are always exact: for each exponent the paper computes how close any product can come to an integer (with a Euclid-like min/max search, not by testing), and shows that 124 bits beat the worst case; d2s.c stores 125. So Ryū never needs a bignum fallback, unlike Grisu. <a href="./ryu-pocket.html">Approach B</a> lets you shrink the table and watch it break. Second, the real loop is faster than the one shown: in the common case (both flags off, about 99.3% of doubles) d2s.c skips the flag bookkeeping and first tries to remove <em>two</em> digits at once with a division by 100. It removes the same digits and gives the same result. It also has a shortcut for integers in [1, 2<sup>53</sup>), which it prints directly and strips of trailing zeros.</p>
+        </section>
+
+        <section id="code">
+          <p class="eyebrow">Appendix</p>
+          <h2>The code, with live values</h2>
+          <p>A simplified <code>d2d</code> from <a href="https://github.com/ulfjack/ryu/blob/master/ryu/d2s.c">ryu/d2s.c</a>, without the common-path shortcut. The comments show the values for the current double; the grey lines are branches it does not take.</p>
+          <details class="rlc-details" id="rlc-code-details">
+            <summary>Show the code for <span id="rlc-code-x">0.3</span></summary>
+            <pre class="lab-code rlc-code" id="rlc-code"></pre>
+          </details>
+          <p class="rlc-sources">Sources: Ulf Adams, “Ryū: fast float-to-string conversion”, PLDI 2018, <a href="https://doi.org/10.1145/3192366.3192369">doi:10.1145/3192366.3192369</a>; reference code <a href="https://github.com/ulfjack/ryu">github.com/ulfjack/ryu</a>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/ryu.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
