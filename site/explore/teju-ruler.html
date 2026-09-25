@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Tejú Jaguá explained runtime first: pick a ruler of ticks 10^F, read two exact floors from a 128-bit table row, and decide the shortest decimal with integer comparisons, stepping through the real C kernel.">
+  <title>Tejú Jaguá · Exact floors on a decade ruler · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/teju-ruler.css">
+  <script type="module" src="./js/teju-ruler.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Tejú Jaguá / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./teju-generator.html">compare with approach B</a></p>
+      <h1>Tejú Jaguá: exact floors on a decade ruler</h1>
+      <p class="chapter-deck">Tejú Jaguá picks a ruler with ticks 10<sup>F</sup> apart, finds which tick each end of the rounding interval lies at or just past, and decides the output with a few integer comparisons. It can work this way because every floor it reads is exact, which its generator proved in advance.</p>
+      <p class="lab-pitch">Runtime first. The reader picks the ruler, sees where the table row comes from, and then steps through the real C kernel next to a number line that shows the same integers. The offline proof only appears in the last section, as a preview of approach B.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Tejú Jaguá · decade ruler</strong><a href="#idea">The idea</a><a href="#ruler">Pick the ruler</a><a href="#row">One row per decade</a><a href="#kernel">Step through the kernel</a><a href="#edges">Ties and powers of two</a><a href="#divisibility">Divisibility without dividing</a><a href="#trust">Why trust a and b?</a></aside>
+      <article class="chapter">
+
+        <section id="idea">
+          <p class="eyebrow">The idea</p>
+          <h2>Two whole numbers decide almost everything</h2>
+          <p>Tejú Jaguá (Cassio Neri, 2021–2025, named after the first monster of Guaraní mythology) converts a double to its shortest decimal. It belongs to the same family as Ryū and Schubfach: scale the rounding interval by a power of ten, then read the answer off the scaled ends. What sets it apart is how little it computes at run time. It works out <em>two floors</em>, a and b: the tick at or just below each end of the interval. They are exact, so no error margin is needed. From a and b it knows whether a shorter decimal fits; if one doesn't, a third floor, c₂, picks the closest one.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is x = m · 2<sup>e</sup> with an integer mantissa m &lt; 2<sup>53</sup> (for normal doubles m ≥ 2<sup>52</sup>, the hidden bit included).</p>
+            <p>Its <b>rounding interval</b> runs from the midpoint with the double below to the midpoint with the double above: from (2m − 1)·2<sup>e−1</sup> to (2m + 1)·2<sup>e−1</sup>, so it is 2<sup>e</sup> wide. Every decimal inside reads back as x.</p>
+            <p>A decimal exactly on an end is a tie, and reading it back picks the neighbour with the <b>even</b> mantissa. So the ends belong to x when m is even (drawn solid) and not when m is odd (drawn dashed).</p>
+            <p>We want the <b>shortest</b> decimal inside. If several are equally short, we want the one <b>closest</b> to x.</p>
+          </div>
+          <p>The plan has three parts: choose a ruler, find where the interval's ends fall on it, and decide. The page follows that order, with real doubles and the real C code.</p>
+        </section>
+
+        <section id="ruler">
+          <p class="eyebrow">Step 1</p>
+          <h2>Pick the ruler</h2>
+          <p>Think of the decimals with a given number of digits as the ticks of a ruler spaced 10<sup>D</sup> apart. Tejú picks one ruler, and the choice is the heart of the method: take the largest power of ten that fits in the interval's width 2<sup>e</sup>,</p>
+          <div class="equation">F = ⌊e · log<sub>10</sub> 2⌋<br>10<sup>F</sup> ≤ 2<sup>e</sup> &lt; 10<sup>F+1</sup></div>
+          <p>Measured in ticks of 10<sup>F</sup>, the interval is between 1 and 10 ticks wide. This gives two guarantees:</p>
+          <ul class="lab-steps">
+            <li><strong>At least one tick is inside.</strong> The interval is at least one tick wide, so it can't slip between two ticks.</li>
+            <li><strong>At most one <em>long</em> tick is inside.</strong> Every tenth tick (a multiple of 10 on this ruler) is a tick of the coarser ruler 10<sup>F+1</sup>, a decimal one digit shorter. Long ticks are 10 apart, and the interval is narrower than 10.</li>
+          </ul>
+          <p>Try other rulers below. The drag control is a what-if: Tejú never tries rulers, it computes F in one step. A finer ruler (smaller D) catches many long ticks, so a program would have to search among them. A coarser ruler can miss the interval completely.</p>
+          <figure class="lab-figure tjr-figure" id="tjr-decade">
+            <div class="lab-controls">
+              <div class="lab-chips" id="tjr-decade-presets" role="group" aria-label="Example doubles"></div>
+            </div>
+            <div class="lab-controls">
+              <label for="tjr-decade-range">Ruler 10<sup>D</sup>, D − F = <output id="tjr-decade-out" for="tjr-decade-range">0</output> <input type="range" id="tjr-decade-range" min="-3" max="2" step="1" value="0"></label>
+              <button type="button" class="lab-button" id="tjr-decade-snap">Snap to Tejú's F</button>
+            </div>
+            <div class="tjr-svgbox" id="tjr-decade-svg" role="img" aria-label="The rounding interval on a hypothetical decimal ruler"></div>
+            <div class="lab-readout" id="tjr-decade-readout" aria-live="polite"></div>
+            <figcaption>The interval keeps its size on screen; only the ruler changes. Short ticks are the ruler's decimals; tall ticks are multiples of 10, i.e. one digit shorter. Ticks inside the interval are red. When ticks get closer than 3 pixels they are drawn as a grey texture, and the counts in the readout stay exact.</figcaption>
+          </figure>
+          <p>The formula is computed with one multiply and one shift, no logarithm: 1292913987 / 2<sup>32</sup> = 0.30102999…, which is log<sub>10</sub> 2 to 9 digits. So <code>F = (1292913987 · e) &gt;&gt; 32</code>, exact for every exponent a double can have.</p>
+          <p class="tjr-note">Powers of two are the one exception. For m = 2<sup>52</sup> the double below is only half as far away, the interval is ¾ · 2<sup>e</sup> wide, and it can be <em>less</em> than one tick wide. Try 2^-1011 above. Tejú keeps the same F and handles this case separately (see <a href="#edges">Ties and powers of two</a>).</p>
+        </section>
+
+        <section id="row">
+          <p class="eyebrow">Step 2</p>
+          <h2>One table row per decade</h2>
+          <p>To use the ruler, Tejú needs the interval's ends in units of 10<sup>F</sup>, for example the upper end (2m + 1) · 2<sup>e−1</sup> / 10<sup>F</sup>. The factor 2<sup>e−1</sup>/10<sup>F</sup> comes from a table, but the table has one row per <em>decimal</em> exponent F, not one per binary exponent e. F = ⌊e · log<sub>10</sub> 2⌋ stays flat for three or four consecutive exponents, a staircase:</p>
+          <figure class="lab-figure tjr-figure" id="tjr-stairs">
+            <div class="lab-controls">
+              <label for="tjr-stairs-range">Binary exponent e <input type="range" id="tjr-stairs-range" min="-1074" max="971" step="1" value="-56"></label>
+              <button type="button" class="lab-button" id="tjr-stairs-dec" aria-label="Decrease e">e − 1</button>
+              <button type="button" class="lab-button" id="tjr-stairs-inc" aria-label="Increase e">e + 1</button>
+              <output id="tjr-stairs-out" for="tjr-stairs-range" class="tjr-out">e = −56</output>
+            </div>
+            <div class="tjr-svgbox" id="tjr-stairs-svg" role="img" aria-label="Staircase of F against e"></div>
+            <div class="lab-readout" id="tjr-stairs-readout" aria-live="polite"></div>
+            <div class="tjr-words" id="tjr-stairs-words"></div>
+            <figcaption>Each dot is one binary exponent; its label is r = e − e<sub>0</sub>, the number of steps since F last changed. The highlighted stair shares one table row. Across the table, 418 rows serve 3 exponents and 199 serve 4, 617 rows in total (F = −324 … 292).</figcaption>
+          </figure>
+          <p>Within one stair, the exponents differ only by r = e − e<sub>0</sub> ∈ {0, 1, 2, 3}, where e<sub>0</sub> is the first exponent of the stair. Tejú rewrites the value so that it uses the stair's first exponent:</p>
+          <div class="equation">m · 2<sup>e</sup> = (m ≪ r) · 2<sup>e<sub>0</sub></sup></div>
+          <p>The leftover power of two becomes a left shift of the <em>small</em> operand, and a 53-bit mantissa shifted by up to 3 (and doubled, plus one) still fits in 64 bits. The table row is the 128-bit number</p>
+          <div class="equation">M = ⌊2<sup>128</sup> · 2<sup>e<sub>0</sub>−1</sup> / 10<sup>F</sup>⌋ + 1</div>
+          <p>and scaling is <code>mshift(n, M) = ⌊n · M / 2<sup>128</sup>⌋</code>. The shift is always 128, so the result is just the top 64-bit word of a 64 × 128-bit product, and no shift instruction is needed. The readout above multiplies a sample mantissa for the chosen e, and the top word is exactly the floor of the scaled upper end.</p>
+          <p>The residual r also costs only one multiply: the low 32 bits of <code>1292913987 · e</code> are the fractional part of e · log<sub>10</sub> 2, the distance up the current stair. Dividing it by 1292913987 (one stair step) counts the steps: <code>r = (uint32_t)(1292913987 · e) / 1292913987</code>.</p>
+        </section>
+
+        <section id="kernel">
+          <p class="eyebrow">Step 3</p>
+          <h2>Step through the kernel</h2>
+          <p>Now the whole runtime. Pick a double and step through <code>teju_to_decimal</code>. The number line is in units of 10<sup>F</sup>: its ticks are integers. The code beside it is the real kernel from <code>teju.h</code>, with the current lines highlighted and each variable's value written next to it.</p>
+          <p>The number line shows the exact fractional parts of the ends for you. <b>Tejú never computes them.</b> It only has the floors a and b, and the generator guarantees they are right.</p>
+          <figure class="lab-figure tjr-figure tjr-kernel" id="tjr-kernel">
+            <div class="lab-controls">
+              <div class="lab-chips" id="tjr-presets" role="group" aria-label="Preset doubles, one per route"></div>
+            </div>
+            <form class="lab-controls" id="tjr-form">
+              <label for="tjr-input">Double x <input type="text" id="tjr-input" inputmode="decimal" autocomplete="off" spellcheck="false" size="22" value="0.1"></label>
+              <button type="submit" class="lab-button primary">Run</button>
+              <button type="button" class="lab-button" id="tjr-random">Random double</button>
+              <span class="tjr-error" id="tjr-error" role="alert"></span>
+            </form>
+            <div class="tjr-route" id="tjr-route" aria-live="polite"></div>
+            <div class="lab-controls tjr-stepper">
+              <button type="button" class="lab-button" id="tjr-prev">← Back</button>
+              <button type="button" class="lab-button primary" id="tjr-next">Next →</button>
+              <button type="button" class="lab-button" id="tjr-end">Result</button>
+              <span class="tjr-steplabel" id="tjr-steplabel" aria-live="polite"></span>
+            </div>
+            <div class="tjr-svgbox" id="tjr-line-svg" role="img"></div>
+            <div class="tjr-kgrid">
+              <div class="tjr-explain">
+                <h3 id="tjr-step-title"></h3>
+                <div id="tjr-step-text" aria-live="polite"></div>
+                <div class="tjr-vars" id="tjr-vars"></div>
+              </div>
+              <div class="tjr-code" id="tjr-code" tabindex="0" aria-label="C source of the Tejú Jaguá kernel with the current lines highlighted"></div>
+            </div>
+            <div class="lab-readout" id="tjr-result" aria-live="polite"></div>
+            <figcaption>Positions and fractional parts are exact rationals computed in your browser. The kernel's variables come from a BigInt port of <code>teju.h</code> that uses the real 617-row table, checked against every row of the published <code>ieee64_with_uint128.c</code>. Tick labels show only the last digits; the full numbers are listed under the explanation. <code>teju_u1_t</code> is a 64-bit unsigned integer.</figcaption>
+          </figure>
+          <p>For 0.1, the ruler is 10<sup>−17</sup>. The interval runs from 9999999999999999.861… to 10000000000000001.249… ticks, so a = 9999999999999999 and b = 10000000000000001. The only possible long tick is <b>s = 10 · ⌊b/10⌋</b>, the multiple of 10 at or below b. Here s = 10<sup>16</sup>, which is greater than a, so it lies inside. Stripping its zeros gives 1 · 10<sup>−1</sup>.</p>
+          <p>Why is s the only candidate? Any other multiple of 10 is either above b, and so past the upper end, or at most s − 10. The interval is less than 10 ticks wide, so s − 10 lies below the lower end. <b>If s misses, no shorter decimal exists</b>, and Tejú returns the tick of 10<sup>F</sup> closest to x. The interval is at least one tick wide, so that tick is inside. It computes one more exact floor, c₂ = ⌊2x / 10<sup>F</sup>⌋. With c = ⌊c₂/2⌋, x lies between ticks c and c + 1, and the parity of c₂ says which half: even means x is in the left half, odd means the right half.</p>
+        </section>
+
+        <section id="edges">
+          <p class="eyebrow">The fine print</p>
+          <h2>Ties and powers of two</h2>
+          <p>Because a and b are floors, “s &gt; a” is exactly the right test in almost every case. Two situations need more care, and each has a preset:</p>
+          <ul>
+            <li><button type="button" class="tjr-try" data-x="1e23" data-step="4">Show 1e23</button> <b>An end is exactly a tick.</b> The double nearest to 10<sup>23</sup> is 99999999999999991611392, and its upper end is <em>exactly</em> 10<sup>23</sup>: 2m + 1 = 11920928955078125 = 5<sup>23</sup>. On the ruler 10<sup>7</sup> that makes b = s = 10<sup>16</sup>. The floor cannot tell “just past s” from “exactly s”. The code checks exactness separately: the end is a tick exactly when 5<sup>F</sup> divides m<sub>b</sub>, <code>is_tie(f, m_b)</code>. It is, and m is even, so the end belongs to x and the output is 1e23. The mirror case s == a (the lower end is exactly s) is accepted only when it is a tie and m is even. The <a href="#divisibility">aside below</a> shows how the divisibility test works without dividing.</li>
+            <li><b>A midpoint between two ticks.</b> On the closest path, c₂ odd usually means “round up”. If 2x/10<sup>F</sup> is <em>exactly</em> the odd integer c₂, x sits exactly halfway, and the even one of c and c + 1 wins. Tejú tests that with the same trick, <code>is_tie(-f, c_2)</code>, which can only happen for −26 ≤ F ≤ 0.</li>
+            <li><button type="button" class="tjr-try" data-x="2^60" data-step="3">Show 2^60</button> <button type="button" class="tjr-try" data-x="2^53" data-step="5">Show 2^53</button> <b>Uncentred: m = 2<sup>52</sup>.</b> The lower end is only 2<sup>e−2</sup> below x, so <code>to_decimal_uncentred</code> computes a from m<sub>a</sub> = (4m − 1) ≪ r and halves the floor. The rest is the same, with one extra exit: the lower half of the interval can be narrower than half a tick, so the tick c below x can be outside. When c == a (and the lower end isn't exactly a tick), the answer is c + 1. 2^56 takes that exit.</li>
+            <li><button type="button" class="tjr-try" data-x="2^-1011" data-step="4">Show 2^-1011</button> <b>No tick at all.</b> An uncentred interval is only ¾ · 2<sup>e</sup> wide and can fall between two ticks, so a == b. Unless the lower end is exactly the tick a, Tejú moves one decade finer. On the ruler 10<sup>F−1</sup> the interval is at least 7.5 ticks wide, and c₂ = mshift(40m ≪ r) gives the closest tick there. For binary64 this happens for 33 powers of two. 2<sup>−1011</sup> prints as 4.5569512622227484e-305.</li>
+            <li><button type="button" class="tjr-try" data-x="123" data-step="1">Show 123</button> <b>Small integers</b> (x = m · 2<sup>e</sup> with −52 ≤ e ≤ 0 and x a whole number) skip the multiply entirely. x is m ≫ −e, and only the trailing zeros are removed.</li>
+          </ul>
+        </section>
+
+        <section id="divisibility">
+          <p class="eyebrow">Aside</p>
+          <h2>Divisibility without dividing</h2>
+          <div class="tjr-aside">
+            <p>Tejú asks “is n a multiple of 5<sup>f</sup>?” for ties and “is n a multiple of 10?” while stripping zeros. Neither question uses a division. It multiplies by a <b>modular inverse</b> and compares. Here is the trick on an 8-bit clock with 256 positions (the real code uses 64 bits).</p>
+            <p>205 is the inverse of 5 modulo 256: 5 · 205 = 1025 = 4 · 256 + 1. Multiplying by 205 (mod 256) shuffles the clock, but it sends every multiple 5k to exactly k. So <b>all 52 multiples of 5 land on 0 … 51</b>, and everything else lands above. After one more <b>rotate right by one bit</b>, even quotients are halved and odd ones get their low bit moved to the top, which makes them ≥ 128. So the multiples of 10 are exactly the results below 26, and each result is n / 10.</p>
+            <figure class="lab-figure tjr-figure" id="tjr-clock">
+              <div class="lab-controls">
+                <div class="lab-chips" id="tjr-clock-mode" role="group" aria-label="Clock view">
+                  <button type="button" data-mode="0" aria-pressed="true">n</button>
+                  <button type="button" data-mode="1" aria-pressed="false">n · 205 mod 256</button>
+                  <button type="button" data-mode="2" aria-pressed="false">ror(n · 205)</button>
+                </div>
+                <label for="tjr-clock-n">n <input type="range" id="tjr-clock-n" min="0" max="255" step="1" value="30"></label>
+                <output id="tjr-clock-out" for="tjr-clock-n" class="tjr-out">30</output>
+              </div>
+              <div class="tjr-clockwrap">
+                <div class="tjr-svgbox tjr-clockbox" id="tjr-clock-svg" role="img" aria-label="256 residues on a clock"></div>
+                <div class="lab-readout tjr-clock-readout" id="tjr-clock-readout" aria-live="polite"></div>
+              </div>
+              <figcaption>All 256 values of a byte. Red: multiples of 10. Blue: odd multiples of 5. Grey: the rest. Each dot is placed at the value shown by the selected view. The shaded arc is the accept range: 0 … 51 after “×205”, 0 … 25 after the rotate.</figcaption>
+            </figure>
+            <p>At 64 bits the same works for every power of five. The generator emits a table <code>minverse[f]</code> = (5<sup>−f</sup> mod 2<sup>64</sup>, ⌊2<sup>64</sup>/5<sup>f</sup>⌋) with 27 rows. It stops there because 5<sup>27</sup> exceeds every number the kernel can test (at most 320 · (2<sup>53</sup> − 1)). For F &lt; 0 or F &gt; 26 an exact tie is impossible, and the test is skipped.</p>
+            <details class="tjr-details">
+              <summary>The 27 rows of <code>minverse</code> and the 1e23 check</summary>
+              <div class="tjr-tablewrap"><table class="tjr-table" id="tjr-minverse"></table></div>
+              <p class="lab-readout" id="tjr-tiecheck"></p>
+            </details>
+            <p><code>remove_trailing_zeros</code> uses the f = 1 row with the rotate: q = ror(m · 0xcccccccccccccccd). If q &lt; ⌊(2<sup>64</sup> − 1)/10⌋ + 1, then 10 divides m and q is already m/10. Each digit costs one multiply, one rotate and one compare. The kernel above lists every iteration when the result is stripped.</p>
+          </div>
+        </section>
+
+        <section id="trust">
+          <p class="eyebrow">Epilogue</p>
+          <h2>Why may the kernel trust a and b?</h2>
+          <p>Everything above assumed that <code>mshift</code> returns the exact floor. That is not automatic. M = ⌊2<sup>128</sup> · α/δ⌋ + 1 (with α/δ = 2<sup>e<sub>0</sub>−1</sup>/10<sup>F</sup> in lowest terms) is slightly <em>too large</em>, so n · M / 2<sup>128</sup> overshoots the true n · α/δ by a small amount that grows with n. The floor comes out wrong exactly when the true value lies just below an integer, closer to it than the overshoot.</p>
+          <p>Tejú's generator, a C++ program using Boost.Multiprecision, rules that out before any code ships. For each of the 617 rows it finds the worst n among all operands the runtime can pass: every mantissa, shifted and doubled, plus the extra power-of-two operands. That is about 2<sup>58</sup> values, and it doesn't try them one by one; a Euclid-like recursion finds the worst one in at most a few dozen steps. It then proves that even that n gets the right floor. If any row failed, it would refuse to emit the table.</p>
+          <div class="lab-readout" id="tjr-proof" aria-live="polite"></div>
+          <p>Across all rows, the tightest safety margin is 3.71 bits (F = −199) and the median is about 14 bits. So 128 bits are enough, with room to spare, and the kernel never needs a correction step. <a href="./teju-generator.html">Approach B</a> starts from this proof and lets you break the multiplier.</p>
+          <p class="tjr-note">Sources: C. Neri, <a href="https://github.com/cassioneri/teju_jagua">teju_jagua</a> (runtime <code>teju/src/teju.h</code>, <code>mshift.h</code>, <code>div10.h</code>; generator <code>cpp/generator/generator.cpp</code>; table <code>teju/src/generated/ieee64_with_uint128.c</code>; commit 4403283). There is no published paper on Tejú Jaguá yet. The talk: C. Neri, <a href="https://www.youtube.com/watch?v=fPZ1ZdA7Iwc">“A New Dragon in the Den: Fast Conversion From Floating-Point Numbers”</a>, CppCon 2024. The division by 10 is Theorem 4 of Neri &amp; Schneider, <a href="https://arxiv.org/abs/2102.06959">“Euclidean affine functions and their application to calendar algorithms”</a> (SPE 2023). The divisibility test comes from Neri, <a href="https://accu.org/journals/overload/27/154/neri_2722/">“Quick Modular Calculations”</a> (Overload 154, 2019).</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/teju-jagua.html"><span>Compare</span><strong>Tejú Jaguá chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
