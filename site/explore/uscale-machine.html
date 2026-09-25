@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Open Russ Cox's uscale: a 192-bit product in three 64-bit words, why table error cannot reach the answer, why one multiply usually suffices, and Short, FixedWidth and Parse running with every variable lit up.">
+  <title>Unrounded scaling · One primitive, three programs · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/uscale-machine.css">
+  <script type="module" src="./js/uscale-machine.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="uscale-machine">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Unrounded scaling / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./uscale-window.html">compare with approach A</a></p>
+      <h1>One primitive, three programs</h1>
+      <p class="chapter-deck">Russ Cox’s shortest printer, fixed-width printer and parser all call the same function: <code>uscale</code>. It multiplies by a power of ten and hands back the result <em>unrounded</em>. This page opens it up: a 192-bit product in three 64-bit words, why the table’s error cannot reach the answer, and why one multiply is almost always enough. Then it runs the real code with every variable lit up.</p>
+      <p class="lab-pitch">Machine view. No rulers: the reader watches the words of the product, plays with a 12-bit toy carry, cuts the one corner Cox refuses to cut and sees the wrong output, then reads Cox’s actual <code>Short</code>, <code>FixedWidth</code> and <code>Parse</code> with live values for any number.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Unrounded scaling · machine</strong><a href="#unrounded">1 · Two extra bits</a><a href="#primitive">2 · One primitive</a><a href="#table">3 · The table</a><a href="#error">4 · Where the error can’t reach</a><a href="#firewall">5 · A 1 bit is a firewall</a><a href="#proof">6 · Proved, not hoped</a><a href="#one-multiply">7 · One multiply</a><a href="#lights">8 · The code, lights on</a><a href="#verify">9 · Check it yourself</a><a href="#credits">10 · Whose ideas</a></aside>
+      <article class="chapter">
+
+        <section id="unrounded">
+          <p class="eyebrow">1 · The data type</p>
+          <h2>Two extra bits</h2>
+          <p class="lead">Round too early and you round wrong. Keep every digit and you pay for bignums. Cox keeps exactly two bits more than the integer.</p>
+          <p>An <strong>unrounded number</strong> ⟨<em>x</em>⟩ is the integer part of <em>x</em>, followed by a <strong>½ bit</strong> (is the fraction at least one half?) and a <strong>sticky bit</strong> (is there anything else left over?). In one line: ⟨<em>x</em>⟩ = ⌊4<em>x</em>⌋ | (4<em>x</em> ≠ ⌊4<em>x</em>⌋), stored in an ordinary <code>uint64</code>. It is written <code>n.0</code>, <code>n.0+</code>, <code>n.5</code> or <code>n.5+</code>, where “.5” means “the ½ bit is set” and “+” means “and a bit more”.</p>
+          <div class="usm-table-wrap">
+            <table class="usm-codes" id="usm-codes">
+              <caption class="lab-sr-only">Unrounded codes for six real numbers and three roundings of each</caption>
+              <thead><tr><th scope="col">x</th><th scope="col">4x</th><th scope="col">⟨x⟩ in binary<br><span>int · ½ · sticky</span></th><th scope="col">code</th><th scope="col">written</th><th scope="col">floor<br><span>+0 &gt;&gt;2</span></th><th scope="col">round ½-even<br><span>+1+bit2 &gt;&gt;2</span></th><th scope="col">ceil<br><span>+3 &gt;&gt;2</span></th></tr></thead>
+              <tbody>
+                <tr data-num="6" data-den="1" data-code="24"><td>6</td><td>24</td><td><code>110·0·0</code></td><td>24</td><td><code>6.0</code></td><td>6</td><td>6</td><td>6</td></tr>
+                <tr data-num="6001" data-den="1000" data-code="25"><td>6.001</td><td>24.004</td><td><code>110·0·<b>1</b></code></td><td>25</td><td><code>6.0+</code></td><td>6</td><td>6</td><td>7</td></tr>
+                <tr data-num="25" data-den="4" data-code="25"><td>6.25</td><td>25</td><td><code>110·0·<b>1</b></code></td><td>25</td><td><code>6.0+</code></td><td>6</td><td>6</td><td>7</td></tr>
+                <tr data-num="13" data-den="2" data-code="26"><td>6.5</td><td>26</td><td><code>110·<b>1</b>·0</code></td><td>26</td><td><code>6.5</code></td><td>6</td><td>6</td><td>7</td></tr>
+                <tr data-num="6999" data-den="1000" data-code="27"><td>6.999</td><td>27.996</td><td><code>110·<b>1</b>·<b>1</b></code></td><td>27</td><td><code>6.5+</code></td><td>6</td><td>7</td><td>7</td></tr>
+                <tr data-num="15" data-den="2" data-code="30"><td>7.5</td><td>30</td><td><code>111·<b>1</b>·0</code></td><td>30</td><td><code>7.5</code></td><td>7</td><td>8</td><td>8</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Every rounding rule is now “add a constant, shift right by two”: +0 for floor, +1 for round-half-down, +2 for round-half-up, +3 for ceiling, and +1 plus the integer’s low bit for round-half-to-even (so 6.5 goes down to 6 and 7.5 goes up to 8). 6.25 and 6.001 get the same code: the ¼ bit is simply folded into the sticky bit, because no rounding rule needs it.</p>
+          <p>Three more one-liners complete the type:</p>
+          <ul class="usm-ops">
+            <li><code>nudge(±1)</code> adds ±1 to the code: it behaves as if an infinitesimal were added or subtracted. <code>⟨7.0⟩.nudge(−1)</code> is <code>6.5+</code>, whose floor is 6, not 7. This is how the printer will exclude an interval endpoint.</li>
+            <li><code>div(d)</code> is <code>u/d | u&amp;1 | (u%d ≠ 0)</code>: the sticky bit sticks. ⟨15.4⟩ = <code>15.0+</code> (61); 61/6 = 10 remainder 1, so the result is 11 = <code>2.5+</code>, which rounds to 3. Rounding first would give 15/6 = 2.5 and then 2. (15.4/6 = 2.57, so 3 is right.)</li>
+            <li><code>rsh(1)</code> is the same idea for a shift by one bit. The parser needs it once.</li>
+          </ul>
+          <p class="usm-aside-link">Want to drag a point along a line and watch it snap into these four zones? <a href="./uscale-window.html">Approach A</a> builds the idea visually. This page assumes the table above and heads into the machine.</p>
+        </section>
+
+        <section id="primitive">
+          <p class="eyebrow">2 · The primitive</p>
+          <h2>One function, called by everything</h2>
+          <p>The primitive is</p>
+          <p class="equation">uscale(x, e, p) = ⟨x · 2<sup>e</sup> · 10<sup>p</sup>⟩</p>
+          <p>for a 64-bit integer <em>x</em>, normally left-justified (top bit set). That one call is where binary meets decimal. Here is where each of Cox’s three conversions uses it (<span class="usm-call-key">highlighted</span>); everything around it is a few lines of integer bookkeeping:</p>
+          <div class="usm-three">
+            <div class="usm-three-card">
+              <p class="usm-three-title">Short(f): shortest digits</p>
+<pre class="lab-code usm-mini">pre  := prescale(e, p, log2Pow10(p))
+dmin := <span class="usm-call">uscale(min, pre)</span>.nudge(+odd).ceil()
+dmax := <span class="usm-call">uscale(max, pre)</span>.nudge(-odd).floor()
+…
+d = <span class="usm-call">uscale(m, pre)</span>.round()</pre>
+              <p>Given <em>m</em>, <em>e</em>, it picks the decimal exponent <em>p</em>.</p>
+            </div>
+            <div class="usm-three-card">
+              <p class="usm-three-title">FixedWidth(f, n): n digits</p>
+<pre class="lab-code usm-mini">p = n - 1 - log10Pow2(e+63)
+u := <span class="usm-call">uscale(m, prescale(e, p, …))</span>
+d = u.round()
+if d &gt;= 10ⁿ { d = u.div(10).round() }</pre>
+              <p>Given <em>m</em>, <em>e</em> and <em>n</em>, it picks <em>p</em>.</p>
+            </div>
+            <div class="usm-three-card">
+              <p class="usm-three-title">Parse(d, p): decimal → double</p>
+<pre class="lab-code usm-mini">e := min(1074, 53-b-lp)
+u := <span class="usm-call">uscale(d&lt;&lt;(64-b), prescale(…))</span>
+… one rsh(1) if 54 bits came out
+return pack64(u.round(), -e)</pre>
+              <p>Given <em>d</em>, <em>p</em>, it picks the binary exponent <em>e</em>.</p>
+            </div>
+          </div>
+          <p>Printing knows <em>e</em> and chooses <em>p</em>; parsing knows <em>p</em> and chooses <em>e</em>. Each picks the missing exponent so that the integer part of the result is exactly the integer it wants (about 17 decimal digits for <code>Short</code>, <em>n</em> digits for <code>FixedWidth</code>, a 53-bit mantissa for <code>Parse</code>), and each rounds <em>afterwards</em>, however it likes. If <code>uscale</code> is exact, all three programs are correct almost by inspection. So the hard question is: how does <code>uscale</code> get an exact ⟨⟩ without bignums? Sections 3 to 7 answer that. Section 8 then runs the three programs.</p>
+        </section>
+
+        <section id="table">
+          <p class="eyebrow">3 · The ingredient</p>
+          <h2>A table of 128-bit powers of ten</h2>
+          <p>Multiplying by 2<sup><em>e</em></sup> is just a shift. The 10<sup><em>p</em></sup> needs a table. Most powers of ten have no finite binary form (10<sup>−1</sup> = 0.000110011001…₂ repeats forever), so Cox stores each one as a 128-bit mantissa, <strong>rounded up</strong>:</p>
+          <p class="equation">pm = ⌈10<sup>p</sup> / 2<sup>pe</sup>⌉ ∈ [2<sup>127</sup>, 2<sup>128</sup>)<br>pe = ⌊log₂ 10<sup>p</sup>⌋ − 127</p>
+          <p>So 10<sup><em>p</em></sup> ≈ pm · 2<sup>pe</sup>, and pm is too big by some ε₀ with 0 ≤ ε₀ &lt; 1 (in units of pm’s last bit). The table covers <em>p</em> ∈ [−348, 347]; the three algorithms need [−343, 341]. Since 10<sup><em>p</em></sup> = 5<sup><em>p</em></sup> · 2<sup><em>p</em></sup>, only the 5<sup><em>p</em></sup> part needs bits: for 0 ≤ <em>p</em> ≤ 55 it fits in 128 bits and the entry is <strong>exact</strong>; for 0 ≤ <em>p</em> ≤ 27 it even fits in the top 64 bits.</p>
+          <figure class="lab-figure usm-fig" id="usm-table-fig">
+            <div class="lab-controls">
+              <label for="usm-tp">p</label>
+              <input id="usm-tp" type="number" min="-348" max="347" step="1" value="-7">
+              <span class="lab-chips" id="usm-tp-chips" role="group" aria-label="Example powers"></span>
+            </div>
+            <div id="usm-table-out" class="usm-table-out" aria-live="polite"></div>
+            <figcaption>Each entry is computed in your browser with exact BigInt arithmetic, the same way Cox’s <code>pow10gen.go</code> does. The “stored” line is the form section 7 needs: <code>hi·2⁶⁴ − lo</code>, which makes <code>hi</code> on its own the top word rounded up.</figcaption>
+          </figure>
+        </section>
+
+        <section id="error">
+          <p class="eyebrow">4 · The product</p>
+          <h2>Where the error can’t reach</h2>
+          <p>A 64-bit <em>x</em> times a 128-bit pm is a 192-bit product. Picture it as three 64-bit words:</p>
+          <p class="equation usm-eq-words">x · pm = [ hi | mid | lo ]</p>
+          <p><code>prescale</code> picks a shift <em>s</em> = −(<em>e</em> + ⌊log₂ 10<sup><em>p</em></sup>⌋ + 3) so that, error aside, <code>hi &gt;&gt; s</code> is ⌊4 · <em>x</em> · 2<sup><em>e</em></sup> · 10<sup><em>p</em></sup>⌋: the integer, the ½ bit and the ¼ bit (which becomes the sticky slot). Everything below the cut (the low <em>s</em> bits of <code>hi</code>, all of <code>mid</code> and <code>lo</code>) only has to answer one question for the sticky bit: <em>is any of it nonzero?</em></p>
+          <p>Now the error. pm is too big by ε₀ &lt; 1, so the product is too big by <em>x</em> · ε₀ &lt; <em>x</em> &lt; 2<sup>64</sup>. <strong>The whole error fits in the bottom word.</strong> So Cox never looks at the bottom word: he throws it away (in fact never computes it) and takes the sticky bit from the low bits of <code>hi</code> and <code>mid</code>. Compare the true product with the computed one:</p>
+          <figure class="lab-figure usm-fig" id="usm-prod-fig">
+            <div class="lab-controls">
+              <span class="lab-chips" id="usm-prod-chips" role="group" aria-label="Frames"></span>
+            </div>
+            <div class="lab-controls usm-sub-controls">
+              <form class="usm-form" id="usm-prod-form">
+                <label for="usm-prod-input">or any double</label>
+                <input id="usm-prod-input" type="text" spellcheck="false" autocomplete="off" size="14">
+                <button class="lab-button" type="submit">Show</button>
+              </form>
+              <span class="lab-chips" id="usm-prod-calls" role="group" aria-label="Which uscale call of Short"></span>
+            </div>
+            <p class="usm-error-msg" id="usm-prod-error" role="alert" hidden></p>
+            <p class="usm-frame-title" id="usm-prod-title"></p>
+            <div id="usm-prod-words" class="usm-words-host"></div>
+            <div class="lab-readout" id="usm-prod-readout" aria-live="polite"></div>
+            <figcaption>Upper row: the ideal product <em>x</em> · 10<sup><em>p</em></sup> / 2<sup>pe</sup> as an exact rational (a trailing “…” means the bottom word has a fraction). Lower row: <em>x</em> · pm with the rounded-up table entry. <span class="usm-legend usm-legend-diff">red digits</span> differ. In <code>hi</code>, the last bits are drawn in binary: <span class="usm-legend usm-legend-kept">kept</span> (the final two are the ½ and ¼ bits), then the cut, then the <span class="usm-legend usm-legend-drop">s dropped bits</span>. The <em>x</em> is one of the three values <code>Short</code> scales (the lower midpoint, the upper midpoint, or the double itself).</figcaption>
+          </figure>
+          <p>This is Cox’s first, straightforward <code>uscale</code>. It computes the top two words exactly (two 64×64-bit multiplies) and ignores the bottom one:</p>
+<pre class="lab-code">hi, mid := bits.Mul64(x, c.pm.hi)        <span class="usm-c">// top 128 bits of x·pm.hi</span>
+mid2, _ := bits.Mul64(x, c.pm.lo)        <span class="usm-c">// low half = bottom word: dropped</span>
+mid, carry := bits.Add64(mid, mid2, 0)
+hi += carry
+sticky := bool2(mid != 0 || hi&amp;((1&lt;&lt;c.s)-1) != 0)
+return unrounded(hi&gt;&gt;c.s) | sticky</pre>
+          <p>In the 1e23 frame the true product ends in 128 zero bits: the upper midpoint of that double is <em>exactly</em> 10<sup>23</sup>. The computed bottom word is pure error, but it is never looked at, the middle reads zero, and <code>uscale</code> correctly reports an exact <code>10000000000000000.0</code>, no “+”. That exactness decides the output: the printer may use this endpoint, and prints <code>1e23</code>.</p>
+        </section>
+
+        <section id="firewall">
+          <p class="eyebrow">5 · The only danger</p>
+          <h2>A single 1 bit is a firewall</h2>
+          <p>The error changes the bottom word freely. It can change a higher word in only one way: a <strong>carry</strong> out of the bottom word. A carry turns 1s into 0s from right to left until it meets a 0, which becomes a 1, and stops. So if a carry ran through the whole middle and into the top word, it left the middle <em>all zeros</em>. Turn that around: <strong>if the computed middle contains a single 1 bit, no carry reached the top, and the top is right.</strong> That 1 also proves the result is inexact, so the sticky bit is right too.</p>
+          <p>Try it on a 12-bit toy product: 4 top bits, 4 middle bits, 4 bottom bits. The error is at most 15, so it “fits in the bottom word”, just like the real one.</p>
+          <figure class="lab-figure usm-fig" id="usm-toy-fig">
+            <div class="lab-controls">
+              <span class="lab-chips" role="group" aria-label="Direction">
+                <button type="button" id="usm-toy-carry" aria-pressed="true">carry: table rounded up</button>
+                <button type="button" id="usm-toy-borrow" aria-pressed="false">borrow: section 7</button>
+              </span>
+              <span class="lab-chips" id="usm-toy-presets" role="group" aria-label="Toy presets"></span>
+            </div>
+            <div class="lab-controls">
+              <label for="usm-toy-err" id="usm-toy-err-label">error</label>
+              <input id="usm-toy-err" type="range" min="0" max="15" step="1" value="11">
+              <output id="usm-toy-err-out" for="usm-toy-err">11</output>
+            </div>
+            <div id="usm-toy" class="usm-toy"></div>
+            <div class="lab-readout" id="usm-toy-readout" aria-live="polite"></div>
+            <figcaption>Click the bits of the first row to change them. The ripple marks every bit the carry (or borrow) flipped. Toy sizes; the real words are 64 bits.</figcaption>
+          </figure>
+          <p><strong>Borrow is the same with 0s and 1s swapped.</strong> In section 7 the machine will see a value that is slightly <em>too big</em> and will have to subtract. A borrow turns 0s into 1s until it meets a 1. So it can reach the top only if the bits the machine sees in between are all 0. In both directions, the danger sign is the same: all zeros between the kept bits and the bottom word.</p>
+        </section>
+
+        <section id="proof">
+          <p class="eyebrow">6 · The guarantee</p>
+          <h2>Proved, not hoped</h2>
+          <p>So <code>uscale</code> is right whenever the middle is nonzero for inexact results. (For exact results the true bits below the cut are zero; the error cannot carry out of the bottom word, and the middle correctly reads zero.) Is the middle ever all zero for an inexact result? Cox’s proof post settles it, case by case:</p>
+          <details class="usm-ladder" open>
+            <summary>The proof ladder</summary>
+            <ol class="usm-rungs">
+              <li><strong>p ∈ [0, 27]: nothing to prove.</strong> 5<sup><em>p</em></sup> &lt; 2<sup>63</sup>, so the table entry is exact (ε₀ = 0) and the product has no error at all.</li>
+              <li><strong>p ∈ [−27, −1]: the fraction can’t hide.</strong> Here the product is <em>x</em>/5<sup>k</sup> (k = −<em>p</em>) times a power of two. If that is not an integer, its fractional part is a multiple of 1/5<sup>k</sup>, at least 5<sup>−27</sup> &gt; 2<sup>−63</sup> away from 0 and from 1. A gap that wide shows up as a middle of at least 2, far from both all-zeros and a wrap-around.</li>
+              <li><strong>p ≤ −28 and p ≥ 28: checked by program.</strong> No neat argument exists. Cox wrote an <a href="https://research.swtch.com/fp-proof">Ivy program</a> that visits every table entry and, with a modular-minimum search in the spirit of Paxson’s and Peters’ algorithms, finds the smallest middle any input can produce. Result: the middle is at least 2 for every 55-bit <em>x</em> when the middle is at least 66 bits wide (printing), and for every 64-bit <em>x</em> when it is at least 73 bits wide (parsing).</li>
+            </ol>
+            <p>Why the fine print about widths? Because the claim is <em>false</em> in general. Here is the proof post’s counterexample: an arbitrary 64-bit <em>x</em> times the entry for 10<sup>62</sup>, split into three plain 64-bit words.</p>
+            <div id="usm-counter-words" class="usm-words-host"></div>
+            <p>The carry went all the way through: the computed middle is all zeros, and the computed top word is one too big. Short never passes such an <em>x</em>: its inputs have at most 55 significant bits, and the widths it uses leave a longer middle. Parsing uses all 64 bits but needs only 55 bits of output, which leaves a middle of at least 73 bits. For exactly those widths, the program proves the firewall is always there.</p>
+          </details>
+        </section>
+
+        <section id="one-multiply">
+          <p class="eyebrow">7 · The optimization</p>
+          <h2>Usually, one multiply</h2>
+          <p>The straightforward version always does two 64×64-bit multiplies. Cox’s real one usually does one. The trick is to store each entry differently: as <code>hi·2⁶⁴ − lo</code> instead of <code>hi·2⁶⁴ + lo</code>. Now <code>hi</code> alone is the top half of pm <em>rounded up</em>, and <code>x · hi</code> alone gives a <code>[hi | mid]</code> that is slightly too big. The true value is <code>x · hi · 2⁶⁴ − x · lo</code>, and <code>x · lo</code> is less than one unit of <code>hi</code>. So the true <code>hi</code> is either <code>hi</code> or <code>hi − 1</code>: at most a <strong>borrow</strong>.</p>
+          <p>And a borrow can reach the kept bits only through zeros. If any of the <em>s</em> bits about to be dropped from <code>hi</code> is a 1, the borrow dies there. The kept bits are right, and that 1 also proves the result inexact, so the sticky bit is 1. One multiply, done. Only if those <em>s</em> bits are all zero does the code pay for the second multiply:</p>
+<pre class="lab-code" id="usm-fast-code"><span class="usm-cl" data-l="1">func uscale(x uint64, c scaler) unrounded {</span>
+<span class="usm-cl" data-l="2">	hi, mid := bits.Mul64(x, c.pm.hi)           <span class="usm-c">// the one multiply</span></span>
+<span class="usm-cl" data-l="3">	sticky := uint64(1)</span>
+<span class="usm-cl usm-cl-if" data-l="4">	if hi&amp;(1&lt;&lt;(c.s&amp;63)-1) == 0 {              <span class="usm-c">// no 1 bit among the s dropped bits?</span></span>
+<span class="usm-cl usm-cl-if" data-l="5">		mid2, _ := bits.Mul64(x, c.pm.lo)     <span class="usm-c">// top half of x·lo only</span></span>
+<span class="usm-cl usm-cl-if" data-l="6">		sticky = bool2[uint64](mid-mid2 &gt; 1)</span>
+<span class="usm-cl usm-cl-if" data-l="7">		hi -= bool2[uint64](mid &lt; mid2)       <span class="usm-c">// the borrow</span></span>
+<span class="usm-cl usm-cl-if" data-l="8">	}</span>
+<span class="usm-cl" data-l="9">	return unrounded(hi&gt;&gt;c.s | sticky)</span>
+<span class="usm-cl" data-l="10">}</span></pre>
+          <p>Why “&gt; 1” rather than “≠ 0”? Only the top half of <code>x · lo</code> is computed; its bottom half would subtract at most one more unit from <code>mid</code>. So a difference of 1 means the true middle is 0: exact. The proof shows an inexact middle is never 0 or 1, so the test cannot be fooled.</p>
+          <figure class="lab-figure usm-fig" id="usm-om-fig">
+            <div class="lab-controls">
+              <span class="lab-chips" id="usm-om-chips" role="group" aria-label="Examples"></span>
+            </div>
+            <div class="lab-controls usm-sub-controls">
+              <form class="usm-form" id="usm-om-form">
+                <label for="usm-om-input">or any double</label>
+                <input id="usm-om-input" type="text" spellcheck="false" autocomplete="off" size="14">
+                <button class="lab-button" type="submit">Show</button>
+              </form>
+              <span class="lab-chips" id="usm-om-calls" role="group" aria-label="Which uscale call of Short"></span>
+            </div>
+            <div class="lab-controls usm-sub-controls">
+              <label class="usm-cut"><input type="checkbox" id="usm-om-cut"> Cut the corner: delete the <code>if</code> block (trust the rounded-up <code>hi</code>)</label>
+            </div>
+            <p class="usm-error-msg" id="usm-om-error" role="alert" hidden></p>
+            <div id="usm-om-steps" class="usm-om-steps" aria-live="polite"></div>
+            <figcaption>All values are this page’s BigInt port of <code>uscale</code>, checked against the exact rational ⟨<em>x</em> · 2<sup><em>e</em></sup> · 10<sup><em>p</em></sup>⟩.</figcaption>
+          </figure>
+          <p>Why is the check so rarely needed? The dropped bits of <code>hi</code> are all zero only about once in 2<sup><em>s</em></sup>. And <code>Short</code>’s calls share the table entry but have different <em>x</em>, so at most one of them usually falls on the slow path. Measure it yourself:</p>
+          <figure class="lab-figure usm-fig" id="usm-stats-fig">
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" id="usm-stats-run">Run 10,000 random doubles</button>
+              <span class="usm-progress" id="usm-stats-progress" aria-live="polite"></span>
+            </div>
+            <div id="usm-stats-out" class="usm-stats-out"></div>
+            <figcaption>Random 63-bit patterns (positive, finite, subnormals included). Each double runs through <code>Short</code> twice: once as written and once with the corner cut. Outputs are compared after trimming zeros.</figcaption>
+          </figure>
+          <p>Cutting the corner is the classic 64-bit trap. Grisu works with 64-bit powers of ten and is therefore sometimes unsure (Grisu3 detects it and falls back to a slower algorithm). Cox’s conditional second multiply is what turns “usually right” into “proved right”, for the cost of about one multiply in seventy.</p>
+        </section>
+
+        <section id="lights">
+          <p class="eyebrow">8 · The programs</p>
+          <h2>The code, with the lights on</h2>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double is <em>m</em> · 2<sup><em>e</em></sup>. Every real number closer to it than to its neighbours reads back as that double. The midpoints to the two neighbours bound this <strong>rounding interval</strong>; they belong to it when the 53-bit mantissa is even (ties go to even). At a power of two the neighbour below is only half as far away, so the interval is lopsided (“skewed”).</p>
+          </div>
+          <p><code>Short</code> scales the two midpoints, not the double, with a <em>p</em> that makes the interval between 1 and 10 units wide. Then <code>dmin</code> = ceiling of the lower end and <code>dmax</code> = floor of the upper end bound the valid integers, and a width under 10 means at most one of them ends in 0. Three cases: a valid integer ending in 0 exists (use it, drop the zeros); exactly one valid integer; or several, in which case a third <code>uscale</code> scales the double itself and rounds. <a href="./uscale-window.html">Approach A</a> draws this decimal window; here you watch the code do it.</p>
+          <p>Below is Cox’s Go source (from <code>fpfmt.go</code>, comments trimmed). The page runs a line-for-line JavaScript BigInt port of it and paints every variable’s value next to the line that sets it. Branches not taken are dimmed. The <code>uscale</code> call has the same colour in all three programs.</p>
+          <figure class="lab-figure usm-fig usm-wide" id="usm-code-fig">
+            <div class="usm-tabs" role="tablist" aria-label="Program">
+              <button type="button" role="tab" id="usm-tab-short" aria-controls="usm-panel" aria-selected="true">Short(f)</button>
+              <button type="button" role="tab" id="usm-tab-fixed" aria-controls="usm-panel" aria-selected="false" tabindex="-1">FixedWidth(f, n)</button>
+              <button type="button" role="tab" id="usm-tab-parse" aria-controls="usm-panel" aria-selected="false" tabindex="-1">Parse(d, p)</button>
+            </div>
+            <div id="usm-panel" role="tabpanel" aria-labelledby="usm-tab-short">
+              <div class="lab-controls" id="usm-code-controls"></div>
+              <p class="usm-error-msg" id="usm-code-error" role="alert" hidden></p>
+              <div class="usm-code" id="usm-code" aria-label="Source code with live values"></div>
+              <div class="lab-readout" id="usm-code-readout" aria-live="polite"></div>
+            </div>
+            <figcaption>Hex values are 64-bit words; ⟨…⟩ are unrounded numbers. <code>min</code> and <code>max</code> are the midpoints, left-justified like <code>m</code>. Every <code>uscale</code> result is also recomputed with exact rationals; a ✓ means they agree.</figcaption>
+          </figure>
+          <h3>What to try</h3>
+          <ul>
+            <li><strong>0.3 and 0.1+0.2</strong> are neighbouring doubles. They share a midpoint: 0.3’s <code>⟨max⟩</code> is 0.1+0.2’s <code>⟨min⟩</code>. 0.3 finds an integer ending in 0; 0.1+0.2 has six valid integers, none ending in 0, and needs the third call.</li>
+            <li><strong>2^89</strong> takes the skewed branch. Its nearest 16-digit decimal, …901 (the double is 6189700196426901.37… · 10<sup>11</sup>), lies <em>outside</em> the interval; only …902 reads back. That is why <code>Short</code> scales the endpoints instead of the value.</li>
+            <li><strong>5e-324</strong>, the smallest subnormal, sets <em>z</em> = 63: the whole interval is 2.47 to 7.41 · 10<sup>−324</sup>, one digit, and you can check every step by hand.</li>
+            <li><strong>1e23</strong>: the upper end lands exactly on 10000000000000000.0, and the mantissa is even, so that end counts. Switch to <strong>Parse</strong> and read “1e23”: the scaled value is an exact tie, ⟨5960464477539062.5⟩, and round-half-even picks the even mantissa.</li>
+            <li><strong>FixedWidth</strong>: π at 15 digits gives <code>⟨314159265358979.0+⟩</code>. 1.125 at 3 digits is an exact tie <code>⟨112.5⟩</code>: Go and C print 1.12, JavaScript’s <code>toPrecision</code> rounds ties up to 1.13. The unrounded result lets the caller pick. 9.999999 at 3 digits rounds to 1000, one digit too many, so the code divides the <em>unrounded</em> value by 10.</li>
+          </ul>
+        </section>
+
+        <section id="verify">
+          <p class="eyebrow">9 · Evidence</p>
+          <h2>Check it yourself</h2>
+          <p>The port is only worth trusting if it agrees with a known-good printer. JavaScript’s <code>Number.prototype.toString</code> is required to produce the shortest round-tripping digits, so it makes a good referee. The button runs <code>Short</code> on 100,000 random doubles, compares digits and exponent with JavaScript’s, and also parses each result back with <code>Parse</code>.</p>
+          <figure class="lab-figure usm-fig" id="usm-verify-fig">
+            <div class="lab-controls">
+              <button class="lab-button primary" type="button" id="usm-verify-run">Verify 100,000 random doubles</button>
+              <span class="usm-progress" id="usm-verify-progress" aria-live="polite"></span>
+            </div>
+            <div class="usm-bar" aria-hidden="true"><span id="usm-verify-bar"></span></div>
+            <div class="lab-readout" id="usm-verify-out">Not run yet.</div>
+          </figure>
+        </section>
+
+        <section id="credits">
+          <p class="eyebrow">10 · Lineage</p>
+          <h2>Whose ideas</h2>
+          <p>Cox presents unrounded scaling as a synthesis, and says so in detail in <a href="https://research.swtch.com/fp">“Floating-Point Printing and Parsing Can Be Simple And Fast”</a>:</p>
+          <ul>
+            <li><strong>The sticky bit</strong> is Len Harding’s, probably from the late 1960s; its first hardware was the BCC Model 1 in 1970. Unrounded numbers are that idea turned into a data type.</li>
+            <li><strong>128-bit tables are enough</strong> for exact conversion: Hanson (Apple, 1990s), then Hack (the first proof, for parsing, 2004), Nadhezin and Giulietti, and Adams’s Ryū. Eisel and Lemire’s parser uses the same idea.</li>
+            <li><strong>Checking whether a carry could have mattered</strong> goes back to Slishman (IBM, 1990), who computed 16 extra bits and fell back to bignums when they were all 1s: his table was rounded down, so the danger sign was inverted.</li>
+            <li><strong>The shortest-printing structure</strong>, including “with the right <em>p</em>, at most one valid decimal ends in 0”, is Giulietti’s Schubfach. Schubfach even computes a special case of unrounded scaling.</li>
+            <li><strong><code>trimZeros</code></strong>, the multiply-by-inverse way to strip trailing zeros, is from Jeon’s Dragonbox.</li>
+            <li>New in Cox’s version: the unrounded type as the common interface for all three conversions, the rounded-up <code>hi</code> that usually saves the second multiply, and a proof, checked by program for every table entry, that this fast <code>uscale</code> is exact for the input widths the conversions actually use.</li>
+          </ul>
+          <p>Sources: the post above, the proof post <a href="https://research.swtch.com/fp-proof">“Fast Unrounded Scaling: Proof by Ivy”</a>, and the code at <a href="https://github.com/rsc/fpfmt">github.com/rsc/fpfmt</a> (<code>fpfmt.go</code>, <code>pow10gen.go</code>, commit ec108cb; BSD-style license, © The Go Authors).</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/unrounded-scaling.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
