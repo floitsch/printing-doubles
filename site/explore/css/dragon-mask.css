@@ -1,0 +1,128 @@
+/* Copyright (C) 2026 Toit contributors. */
+/* Dragon4 · the mask (explanation lab, approach A). All selectors are scoped. */
+
+.dragon-mask-long { margin: 18px 0 24px; padding: 12px 14px; border-left: 3px solid var(--blue); background: var(--paper-deep); }
+.dragon-mask-long code { font-size: 14px; overflow-wrap: anywhere; }
+.dragon-mask-footnote { padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px !important; }
+.dragon-mask-why { margin: 22px 0; }
+.dragon-mask-why p { font-size: 15px !important; }
+.dragon-mask-why code { overflow-wrap: anywhere; }
+
+/* site/styles.css also defines .lab-controls (the dark algorithm-lab bar); undo that here. */
+.dragon-mask-fig .lab-controls { display: flex; padding: 0; border: 0; background: none; }
+.dragon-mask-fig .lab-controls label { color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }
+.dragon-mask-fig .lab-controls input[type="text"] { width: 12ch; }
+.dragon-mask-toggle input { accent-color: var(--red); }
+.dragon-mask-msg { flex-basis: 100%; min-height: 0; color: var(--red); font: 12px var(--mono); }
+.dragon-mask-msg:empty { display: none; }
+
+.dragon-mask-fig .lab-chips { margin-bottom: 14px; }
+
+.dragon-mask-setup { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 14px; border: 1px solid var(--line); background: var(--paper); }
+.dragon-mask-setup > div { min-width: 0; padding: 10px 12px; }
+.dragon-mask-setup > div + div { border-left: 1px solid var(--line); }
+.dragon-mask-setup span { display: block; margin-bottom: 4px; color: var(--muted); font: 500 9px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.dragon-mask-setup b { display: block; font: 500 13px/1.4 var(--mono); overflow-wrap: anywhere; }
+.dragon-mask-setup em { display: block; margin-top: 3px; color: var(--muted); font: 12px/1.45 var(--sans); font-style: normal; overflow-wrap: anywhere; }
+
+.dragon-mask-stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.dragon-mask-stepper output { margin-left: 6px; color: var(--muted); font: 500 12px var(--mono); }
+
+.dragon-mask-tape { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 36px; margin-bottom: 8px; font: 500 18px/1 var(--mono); }
+.dragon-mask-tape small { margin-right: 8px; color: var(--muted); font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.dragon-mask-tape span { display: inline-grid; place-items: center; min-width: 24px; height: 30px; padding: 0 4px; border: 1px solid var(--line); background: var(--paper); color: var(--red); }
+.dragon-mask-tape span.last, .dragon-mask-tape span.bumped { border-color: var(--ink); background: var(--acid); color: var(--ink); }
+.dragon-mask-tape span.bumped s { margin-right: 3px; color: var(--muted); font-size: 12px; }
+.dragon-mask-tape i { color: var(--muted); font: 13px var(--sans); }
+.dragon-mask-tape strong { margin-left: 10px; color: var(--red); font-weight: 500; overflow-wrap: anywhere; }
+
+.dragon-mask-cell, .dragon-mask-race { border: 1px solid var(--line); background: var(--paper); }
+.dragon-mask-race { margin-top: 10px; }
+.dragon-mask-fig svg { font-family: var(--mono); }
+.dragon-mask-bar { fill: var(--paper); }
+.dragon-mask-frame { fill: none; stroke: var(--ink); stroke-width: 1.2; }
+.dragon-mask-tick { stroke: var(--line); stroke-width: 1; }
+.dragon-mask-oldtick { stroke: var(--muted); stroke-width: 1; }
+.dragon-mask-next { fill: color-mix(in srgb, var(--acid) 55%, transparent); }
+.dragon-mask-subdigit { fill: var(--muted); font-size: 10px; }
+.dragon-mask-subdigit.next { fill: var(--ink); font-weight: 500; }
+.dragon-mask-dot { fill: var(--blue); stroke: var(--paper); stroke-width: 2; }
+.dragon-mask-dotlabel { fill: var(--blue); font-size: 12px; }
+.dragon-mask-edge { stroke: var(--red); stroke-width: 2; }
+.dragon-mask-edgecap { fill: var(--muted); font-size: 11px; }
+.dragon-mask-edgelabel { fill: var(--red); font-size: 15px; font-weight: 500; }
+.dragon-mask-edgelabel.chosen { fill: var(--ink); text-decoration: underline; text-decoration-color: var(--red); }
+.dragon-mask-shadowcap { fill: var(--blue); font-size: 11px; }
+.dragon-mask-note { fill: var(--muted); font-size: 11px; }
+.dragon-mask-centre { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.dragon-mask-magline { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
+.dragon-mask-lamp circle { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
+.dragon-mask-lamp text { fill: var(--muted); font-size: 11px; }
+.dragon-mask-lamp.on circle { fill: var(--acid); stroke-width: 2.5; }
+.dragon-mask-lamp.on text { fill: var(--ink); font-weight: 500; }
+
+.dragon-mask-grid { stroke: var(--line); stroke-width: .8; }
+.dragon-mask-grid.one { stroke: var(--ink); stroke-width: 1; }
+.dragon-mask-axis { fill: var(--muted); font-size: 11px; }
+.dragon-mask-axis.digit { fill: var(--red); font-size: 13px; font-weight: 500; }
+.dragon-mask-axis.small { font-size: 9px; }
+.dragon-mask-axis.future { opacity: .4; }
+.dragon-mask-current { fill: color-mix(in srgb, var(--ink) 7%, transparent); }
+.dragon-mask-current.final { fill: color-mix(in srgb, var(--acid) 55%, transparent); }
+.dragon-mask-maskline { fill: none; stroke-width: 2; }
+.dragon-mask-maskline.left { stroke: var(--blue); stroke-dasharray: 6 4; }
+.dragon-mask-maskline.right { stroke: var(--ink); }
+.dragon-mask-pt.left { fill: var(--blue); stroke: var(--paper); stroke-width: 1; }
+.dragon-mask-pt.right { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; }
+.dragon-mask-pt.future { opacity: .3; }
+.dragon-mask-pt.hit { stroke: var(--red); stroke-width: 3; }
+
+.dragon-mask-fig .lab-readout { min-height: 3.2em; }
+.dragon-mask-presetnote { display: block; margin-top: 6px; color: var(--muted); font-family: var(--sans); font-size: 13px; }
+
+.dragon-mask-drawer { margin-top: 14px; border: 1px solid var(--line); background: var(--paper); }
+.dragon-mask-drawer > summary { padding: 10px 14px; color: var(--red); cursor: pointer; font: 500 12px var(--mono); }
+.dragon-mask-drawer > div, .dragon-mask-drawer > ol { margin: 0 14px 14px; }
+.dragon-mask-drawer .pseudo { margin-top: 12px; }
+.dragon-mask-drawer .pseudo li { padding-top: 4px; padding-bottom: 4px; font-size: 12px !important; }
+.dragon-mask-ledger { margin: 0 !important; font: 12px var(--mono) !important; }
+.dragon-mask-ledger td, .dragon-mask-ledger th { padding: 6px 8px !important; white-space: nowrap; }
+.dragon-mask-ledger tr.current td { background: color-mix(in srgb, var(--acid) 35%, transparent); }
+.dragon-mask-ledger td.yes { color: var(--red); font-weight: 500; }
+.dragon-mask-ints { display: grid; gap: 6px; margin: 0; font: 12px/1.5 var(--mono); }
+.dragon-mask-ints > div { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.dragon-mask-ints dt { color: var(--blue); font-weight: 500; }
+.dragon-mask-ints dd { min-width: 0; margin: 0; }
+.dragon-mask-ints code { display: block; overflow-wrap: anywhere; }
+.dragon-mask-ints small { color: var(--muted); }
+
+@media (max-width: 760px) {
+  .dragon-mask-setup { grid-template-columns: 1fr 1fr; }
+  .dragon-mask-setup > div:nth-child(3) { border-left: 0; }
+  .dragon-mask-setup > div:nth-child(n + 3) { border-top: 1px solid var(--line); }
+}
+@media (max-width: 420px) {
+  .dragon-mask-setup { grid-template-columns: 1fr; }
+  .dragon-mask-setup > div + div { border-left: 0; border-top: 1px solid var(--line); }
+}
+
+/* The shared .lab-figure breakout (160px each side) overflows narrow desktops; break out only as far as the viewport allows. */
+.lab-figure.dragon-mask-fig { margin-inline: calc(-1 * clamp(0px, (100vw - 1110px) / 2, 160px)); }
+@media (max-width: 1100px) { .lab-figure.dragon-mask-fig { margin-inline: 0; } }
+/* .chapter p (17px) outranks .lab-readout; restore a readable mono size. */
+.dragon-mask-fig p.lab-readout { font-size: 13.5px; }
+.dragon-mask-tape span.bumped { display: inline-flex; align-items: center; gap: 2px; }
+.dragon-mask-shadowbg { fill: var(--blue); opacity: .08; }
+.dragon-mask-masktick { stroke-width: 2.5; }
+.dragon-mask-masktick.left { stroke: var(--blue); }
+.dragon-mask-masktick.right { stroke: var(--ink); }
+
+/* Compact (phone) viewBox: slightly larger type so it stays legible when scaled down. */
+.dragon-mask-cellsvg.compact .dragon-mask-edgelabel { font-size: 14px; }
+.dragon-mask-cellsvg.compact .dragon-mask-edgecap,
+.dragon-mask-cellsvg.compact .dragon-mask-shadowcap,
+.dragon-mask-cellsvg.compact .dragon-mask-note,
+.dragon-mask-cellsvg.compact .dragon-mask-lamp text,
+.dragon-mask-cellsvg.compact .dragon-mask-dotlabel { font-size: 12px; }
+.dragon-mask-racesvg.compact .dragon-mask-axis { font-size: 12px; }
+.dragon-mask-racesvg.compact .dragon-mask-axis.small { font-size: 10px; }

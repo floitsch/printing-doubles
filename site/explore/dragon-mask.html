@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Dragon4 explained through Jon L White's mask: one decimal digit cell, a dot for the remainder, and two shadows for the rounding slack. Each digit zooms in ten-fold and the shadows grow ten-fold until the dot is caught.">
+  <title>Dragon4 · The mask · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/dragon-mask.css">
+  <script type="module" src="./js/dragon-mask.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Dragon4 / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./dragon-microscope.html">compare with approach B</a></p>
+      <h1>Dragon4: the mask</h1>
+      <p class="chapter-deck">Dragon4 prints a double by long division and keeps track of how much error the reader will tolerate. Picture one decimal digit as a cell. A dot marks where the value lies inside it, and a shadow grows in from each end. Each new digit zooms in ten-fold, so the shadows grow ten-fold too. Printing stops when the dot lands in a shadow.</p>
+      <p class="lab-pitch">This explanation is built on Jon L White's own image from the 2004 retrospective: M is a “mask” that “filters (‘masks’) out fractional values for which enough digits had been generated”. It uses one cell, one dot and two growing shadows. Real doubles add a log-scale race chart, because in them the shadows stay invisible for about fifteen digits.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Dragon4 · the mask</strong><a href="#job">The job</a><a href="#setup">Setup</a><a href="#mask">The mask</a><a href="#race">Real doubles</a><a href="#last">The last digit</a><a href="#why">Why is it like this?</a><a href="#strict">Strict or inclusive?</a><a href="#recap">Recap</a></aside>
+      <article class="chapter dragon-mask-page">
+
+        <section id="job">
+          <p class="eyebrow">Dragon4 · Steele &amp; White, PLDI 1990</p>
+          <h2>Long division, plus a way to stop</h2>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double <i>v</i> has a lower neighbour <i>v</i>⁻ and an upper neighbour <i>v</i>⁺. A reader rounds to the nearest double, so any decimal <em>strictly between the midpoints</em> (<i>v</i>⁻+<i>v</i>)/2 and (<i>v</i>+<i>v</i>⁺)/2 reads back as <i>v</i>. That range is the <strong>rounding interval</strong>. Printing means finding the shortest decimal inside it, and the closest one if several qualify.</p>
+            <p>The two gaps are usually equal. At a power of two the gap below is half the gap above, because the exponent steps down.</p>
+          </div>
+          <p>Every double is a fraction with a power of two as denominator, so its decimal expansion ends. It can be long, though. The double we call 0.1 is exactly</p>
+          <p class="dragon-mask-long"><code>0.1000000000000000055511151231257827021181583404541015625</code></p>
+          <p>Long division produces these digits one at a time. Multiply the remainder by ten, and the integer part is the next digit. The division itself is trivial. What Dragon4 adds is the <em>stopping rule</em>. Next to the remainder it tracks two more numbers, M⁻ and M⁺, which measure how far each neighbouring double is. It multiplies them by ten at the same rate as the remainder. As soon as the digits printed so far (or those digits with the last one bumped up by one) fall inside the rounding interval, it stops. For 0.1 that happens after the first digit.</p>
+          <p>Jon L White, who started the work in 1971, called M the <strong>mask</strong>. It hides the fractions for which enough digits have been generated. As M grows the mask closes, until no remainder can pass through. This page draws that mask. <a href="./dragon-microscope.html">Approach B</a> tells the same story as a zooming number line and a long-division worksheet.</p>
+        </section>
+
+        <section id="setup">
+          <p class="eyebrow">Before the first digit</p>
+          <h2>Setup: four integers and a starting cell</h2>
+          <p>Dragon4 uses no floating-point arithmetic at all. It writes <i>v</i> = <i>f</i>·2<sup><i>q</i></sup> as a ratio of two integers and keeps two more integers for the gaps:</p>
+          <div class="equation">R/S = v &nbsp;·&nbsp; M⁻/S = v − v⁻ &nbsp;·&nbsp; M⁺/S = v⁺ − v</div>
+          <ol class="lab-steps">
+            <li><b>Start.</b> R = <i>f</i>·2<sup>max(<i>q</i>,0)</sup>, S = 2<sup>max(−<i>q</i>,0)</sup>, M⁻ = M⁺ = 2<sup>max(<i>q</i>,0)</sup>. M/S is a <em>full</em> gap. The rounding interval reaches only half a gap either way, and the algorithm handles that ½ by writing <code>2R</code> in its comparisons. Everything stays an integer.</li>
+            <li><b>Unequal gaps.</b> If <i>f</i> is the smallest significand (2<sup>52</sup> for doubles, excluding the smallest normal), the gap below is half the gap above. Halving M⁻ could produce a fraction, so Dragon4 doubles R, S and M⁺ instead.</li>
+            <li><b>Fixup: find the starting cell.</b> Two loops multiply by ten until the value fits under one power of ten. While R &lt; ⌈S/10⌉ (a small <i>v</i>), they multiply R, M⁻ and M⁺ by 10. While 2R + M⁺ &gt; 2S (a large <i>v</i>), they multiply S by 10. Each ×10 adjusts <i>k</i>. Afterwards the first digit has weight 10<sup><i>k</i>−1</sup>, and R/S is <i>v</i>'s position in the cell [0, 10<sup><i>k</i></sup>).</li>
+          </ol>
+          <p>The second loop tests <b>2R + M⁺</b>, which is the <em>upper midpoint</em>, not <i>v</i> itself. That keeps the first digit from ever needing a carry. Take the double nearest 10⁻⁶, which is 9.99999999999999954748…·10⁻⁷, just <em>below</em> 10⁻⁶. If k were found from <i>v</i> alone, the first digit would be 9 with a remainder of 1 − 4.5·10⁻¹⁶. The right edge would be inside the interval, and 9 + 1 = 10 would carry into a digit that has already been printed. Because the upper midpoint lies above 10⁻⁶, Dragon4 picks one cell higher. There the first digit is 0, the right edge 10⁻⁶ is inside the interval, and the output is <code>1e-6</code> with no carry.</p>
+          <p>The loops are a linear search, one bignum multiplication per decade. The smallest subnormal, 5e-324, needs <b>323</b> iterations of the first loop and ends with integers of about 1,100 bits. <code>Number.MAX_VALUE</code> needs <b>309</b> of the second. Replacing the search with an estimate k ≈ ⌈log₁₀ v⌉ and one correction step came later, from Burger &amp; Dybvig (1996). It is not part of Dragon4.</p>
+          <p>For the toy value 1.1875 = 19·2⁻⁴ the setup is small enough to do by hand. R = 19, S = 16 and M⁻ = M⁺ = 1. The second loop runs once, because 2·19 + 1 = 39 &gt; 32, which gives S = 160 and k = 1. The value sits at R/S = 0.11875 of the cell [0, 10). The explorers below show this strip for whatever number you pick.</p>
+        </section>
+
+        <section id="mask">
+          <p class="eyebrow">The picture</p>
+          <h2>The mask: one digit cell, one dot, two shadows</h2>
+          <p>Draw the current digit cell as a bar. Its left end is the <b>prefix</b>, the digits printed so far with U as the last one. Its right end is <b>prefix + 1</b>, the same digits with the last one bumped. For 1.1875, after two digits, the ends are 1.1 and 1.2.</p>
+          <ul>
+            <li>The <b>dot</b> is <i>v</i>, at R/S of the way across.</li>
+            <li>The <b>left shadow</b> is M⁻/2S wide: half the lower gap, measured in cells. The dot lies in it exactly when the prefix lies inside the rounding interval. That is the test <code>low: 2R &lt; M⁻</code>.</li>
+            <li>The <b>right shadow</b> is M⁺/2S wide. The dot lies in it exactly when prefix + 1 is inside the interval. That is the test <code>high: 2R &gt; 2S − M⁺</code>.</li>
+          </ul>
+          <p>One loop iteration has three moves:</p>
+          <ol class="lab-steps">
+            <li><b>Split.</b> Cut the cell into ten sub-cells. The one holding the dot gives the next digit U = ⌊10R/S⌋.</li>
+            <li><b>Zoom.</b> That sub-cell becomes the new cell. The dot moves to R = 10R mod S. The size of the doubt has not changed, but measured in the new, ten times smaller cell it is ten times larger. So M⁻ and M⁺ are multiplied by 10.</li>
+            <li><b>Test.</b> If the dot is in no shadow, emit U and repeat. If it is only in the left shadow, the last digit is U. If it is only in the right shadow, the last digit is U + 1. If it is in both, pick the nearer end: 2R &lt; S means U, 2R &gt; S means U + 1.</li>
+          </ol>
+          <div class="lab-remember">
+            <strong>Toy format</strong>
+            <p>Real doubles have 53 significant bits, which makes their shadows far too thin to see. This first figure uses a <b>5-bit toy float</b> instead: <i>f</i> between 16 and 31, times a power of two. Around 1.1875 = 19·2⁻⁴ the neighbours are 1.125 and 1.25 and the gap is 1/16. Everything from 1.15625 to 1.21875 (strictly inside) reads back as 1.1875. That is why “1.2” is a correct output and “1.1” is not.</p>
+          </div>
+
+          <figure class="lab-figure dragon-mask-fig" id="toy-explorer" aria-label="Dragon4 mask explorer for 5-bit toy floats">
+            <form class="lab-controls dragon-mask-controls" data-role="form">
+              <label>toy value <input type="text" data-role="input" value="1.1875" size="10" spellcheck="false" autocomplete="off"></label>
+              <button class="lab-button" type="submit">Load</button>
+              <span class="dragon-mask-msg" data-role="message" aria-live="polite"></span>
+            </form>
+            <div class="lab-chips" data-role="presets" role="group" aria-label="Toy presets"></div>
+            <div class="dragon-mask-setup" data-role="setup" aria-label="Setup"></div>
+            <div class="dragon-mask-stepper">
+              <button class="lab-button" type="button" data-role="reset">Reset</button>
+              <button class="lab-button" type="button" data-role="back">← Back</button>
+              <button class="lab-button primary" type="button" data-role="step">Step →</button>
+              <button class="lab-button" type="button" data-role="play" aria-pressed="false">Play</button>
+              <button class="lab-button" type="button" data-role="end">End</button>
+              <output data-role="status"></output>
+            </div>
+            <div class="dragon-mask-tape" data-role="tape"></div>
+            <div class="dragon-mask-cell" data-role="cell"><noscript>This figure needs JavaScript.</noscript></div>
+            <p class="lab-readout" data-role="readout" aria-live="polite"></p>
+            <details class="dragon-mask-drawer" data-role="drawer" open>
+              <summary>Integers: R, S, M⁻, M⁺ per digit, and the pseudocode</summary>
+              <div data-role="ints"></div>
+              <ol class="pseudo" data-role="code"></ol>
+            </details>
+            <figcaption>The blue dot is the stored value, and red labels are the decimal candidates at the cell's ends. The hatched shadows are half a gap to the lower (left) and upper (right) neighbour, measured in cell widths. Shaded sub-cell: where the next split will go. Lamps light when the dot is inside a shadow.</figcaption>
+          </figure>
+
+          <p>Step through <a href="?t=1.1875&amp;ts=0#toy-explorer" data-mask-load="1.1875" data-mask-step="0" data-mask-target="toy">1.1875</a>:</p>
+          <ol class="lab-steps">
+            <li>The first digit is U = 1. The dot moves to 0.1875 and the shadows grow to 0.03125 each. The dot is far from both, so emit 1.</li>
+            <li>The second digit is U = 1. The dot moves to 0.875 and the shadows are 0.3125. The right shadow now reaches from 0.6875 to 1 and contains the dot: <code>high</code>, 280 &gt; 320 − 100. The last digit becomes U + 1 = 2 and the output is <b>1.2</b>. The truncation 1.1 would not read back, since it lies outside the interval.</li>
+          </ol>
+          <p>Then try <a href="?t=1.4375&amp;ts=3#toy-explorer" data-mask-load="1.4375" data-mask-step="3" data-mask-target="toy">1.4375</a>. At digit 2 the dot sits at 0.375, just outside both shadows of 0.3125. At digit 3 the shadows are 3.125 cells wide and cover everything, so both lamps light. The dot at 0.75 is right of centre, so the output is 1.44. <a href="?t=1&amp;ts=1#toy-explorer" data-mask-load="1" data-mask-step="1" data-mask-target="toy">1.0</a> is a power of two: its left shadow is half as wide as its right one.</p>
+        </section>
+
+        <section id="race">
+          <p class="eyebrow">binary64</p>
+          <h2>Real doubles: shadows you cannot see</h2>
+          <p>A double's neighbours are about 2⁻⁵³ ≈ 10⁻¹⁶ of its value away. At the start the shadows are between about 5·10⁻¹⁸ and 10⁻¹⁶ of a cell, a tiny fraction of a pixel. Each digit multiplies them by exactly ten. Meanwhile the dot lands more or less at random. The two magnified insets under the cell show the edges at the shadows' own scale.</p>
+          <p>The <b>race chart</b> shows the whole run on one screen. Its vertical axis is logarithmic. The mask lines climb one decade per digit, in a straight line. The dots show how far <i>v</i> is from the left and right edge of each cell. Dragon4 stops at the first dot that falls <em>under</em> its line. After 17 digits the two shadows together are wider than the cell, so one lamp must light. That is why no double ever needs more than 17 digits.</p>
+
+          <figure class="lab-figure dragon-mask-fig" id="race-explorer" aria-label="Dragon4 mask explorer and race chart for doubles">
+            <form class="lab-controls dragon-mask-controls" data-role="form">
+              <label>double <input type="text" data-role="input" value="0.3" size="14" spellcheck="false" autocomplete="off"></label>
+              <button class="lab-button" type="submit">Load</button>
+              <label class="dragon-mask-toggle"><input type="checkbox" data-role="inclusive"> inclusive when f is even (Burger &amp; Dybvig; matches JS)</label>
+              <span class="dragon-mask-msg" data-role="message" aria-live="polite"></span>
+            </form>
+            <div class="lab-chips" data-role="presets" role="group" aria-label="Double presets"></div>
+            <div class="dragon-mask-setup" data-role="setup" aria-label="Setup"></div>
+            <div class="dragon-mask-stepper">
+              <button class="lab-button" type="button" data-role="reset">Reset</button>
+              <button class="lab-button" type="button" data-role="back">← Back</button>
+              <button class="lab-button primary" type="button" data-role="step">Step →</button>
+              <button class="lab-button" type="button" data-role="play" aria-pressed="false">Play</button>
+              <button class="lab-button" type="button" data-role="end">End</button>
+              <output data-role="status"></output>
+            </div>
+            <div class="dragon-mask-tape" data-role="tape"></div>
+            <div class="dragon-mask-panels">
+              <div class="dragon-mask-cell" data-role="cell"><noscript>This figure needs JavaScript.</noscript></div>
+              <div class="dragon-mask-race" data-role="race"></div>
+            </div>
+            <p class="lab-readout" data-role="readout" aria-live="polite"></p>
+            <details class="dragon-mask-drawer" data-role="drawer">
+              <summary>Integers: R, S, M⁻, M⁺ as BigInts, and the pseudocode</summary>
+              <div data-role="ints"></div>
+              <ol class="pseudo" data-role="code"></ol>
+            </details>
+            <figcaption>Top panel: the current digit cell, with magnified edges while the shadows are too thin to see. Bottom panel: log₁₀ of the dot's distance to the left edge (circles) and the right edge (diamonds), against the shadows (lines). The shaded column is the current digit. Accepts decimals, <code>2^-44</code>, <code>1/3</code> and <code>0.1+0.2</code>.</figcaption>
+          </figure>
+
+          <p>Things to look for:</p>
+          <ul>
+            <li><a href="?x=0.1&amp;step=1#race-explorer" data-mask-load="0.1" data-mask-step="1">0.1</a>: after the first digit the dot is 5.55·10⁻¹⁷ from the left edge, just inside a left shadow of 6.94·10⁻¹⁷. <code>low</code> fires and the output is 0.1.</li>
+            <li><a href="?x=0.3&amp;step=1#race-explorer" data-mask-load="0.3" data-mask-step="1">0.3</a>: the stored double is 0.29999999999999998889…, so its first digit is U = 2. But the dot sits 1.1·10⁻¹⁶ from the right edge, well inside the right shadow of 2.8·10⁻¹⁶. <code>high</code> fires and the output is 0.3. The output is not the truncated digits of <i>v</i>.</li>
+            <li><a href="?x=1%2F3&amp;step=end#race-explorer" data-mask-load="1/3" data-mask-step="end">1/3</a>: the dot stays near 0.333, far from both edges. The circles and diamonds form a flat band while the mask lines climb toward it, and they meet at digit 16.</li>
+            <li><a href="?x=0.1%2B0.2&amp;step=end#race-explorer" data-mask-load="0.1+0.2" data-mask-step="end">0.1+0.2</a>: from digit 11 on, the distance to the left edge grows ten-fold per digit, just ahead of the mask line. At digit 17 the shadows cover the cell and the nearer end wins: 0.30000000000000004.</li>
+            <li><a href="?x=5e-324&amp;step=1#race-explorer" data-mask-load="5e-324" data-mask-step="1">5e-324</a>: this subnormal's gap is as large as the value itself. After 323 Fixup iterations the very first cell is covered by shadows 2.47 cells wide, and the nearest end gives 5e-324.</li>
+          </ul>
+        </section>
+
+        <section id="last">
+          <p class="eyebrow">Termination</p>
+          <h2>The last digit is U or U + 1, and never 10</h2>
+          <p>Only the cell's two ends are candidates. Any other decimal with the same number of digits lies beyond one of the ends, so it is farther from <i>v</i>. If neither end is inside the interval, nothing of this length is. So stopping at the first digit where a lamp lights gives the <b>shortest</b> output. When both lamps light, both ends read back correctly, and comparing 2R with S picks the <b>closest</b>. On an exact tie the paper allows either digit. This page takes the even one, as JavaScript does.</p>
+          <p>The bumped digit never carries. Suppose the last digit were U = 9 and <code>high</code> fired. The right edge of this cell is then prefix + 1 = the right edge of the <em>previous</em> cell. It is the same decimal, and it is tested against the same absolute half-gap. At the previous digit the dot must already have been in the right shadow, and Dragon4 would have stopped there. For the first digit, the “previous cell” is the Fixup range [0, 10<sup><i>k</i></sup>). Its right end lies at or above the upper midpoint by construction, which is why Fixup tests the upper end. So a “9 + 1” never needs to ripple into digits that are already printed. The paper proves this, and Dragon4 can emit each digit the moment it is computed.</p>
+        </section>
+
+        <section id="why">
+          <p class="eyebrow">Design decisions, with counterexamples</p>
+          <h2>Why is it like this?</h2>
+          <div class="aside dragon-mask-why">
+            <p><b>Why two masks, M⁻ and M⁺?</b> For <a href="?x=2%5E64&amp;step=end#race-explorer" data-mask-load="2^64" data-mask-step="end">2⁶⁴</a> the gap below is 2048 and the gap above is 4096. Suppose both shadows used the upper gap. The run stops one digit early and prints <code>18446744073709550000</code>. That is 1616 below 2⁶⁴, while the lower half-gap is only 1024, so it reads back as 2⁶⁴ − 2048, the predecessor. Of the 2046 normal powers of two in binary64, 255 fail this way. With the correct masks Dragon4 prints 18446744073709552000.</p>
+          </div>
+          <div class="aside dragon-mask-why">
+            <p><b>Why two separate tests instead of “stop, then round to the nearer end”?</b> With unequal gaps the dot can be nearer the left end while only the <em>right</em> end is inside the interval. At the last digit of <a href="?x=2%5E-44&amp;step=end#race-explorer" data-mask-load="2^-44" data-mask-step="end">2⁻⁴⁴</a> the dot sits at 0.487. The left shadow is 0.316 and the right shadow is 0.631, so only <code>high</code> fires, and Dragon4 correctly rounds <em>up</em> to …802. A single “either shadow” test followed by 2R vs S would round down to <code>5.684341886080801e-14</code>, which reads back as the next lower double. The paper puts it as: “one may have 2 × R &lt; S but nevertheless must round up”. With this shortcut, 46 powers of two print wrong.</p>
+          </div>
+          <div class="aside dragon-mask-why">
+            <p><b>Why exact integers, when floating-point scaling would be so much faster?</b> This is history. The MacLisp printer of the late 1970s (Dragon2) first scaled large and small values by a power of ten <em>in floating point</em>, and that division rounds. In double arithmetic 1.23e202 / 1e202 is <code>1.2300000000000002</code>. Printing that perfectly and appending “e202” gives <code>1.2300000000000002e202</code>, which reads back as 1.2300000000000003e+202, a different double. Steele replaced the prescaling with the exact scale factor S. The cost is bignums, up to about 1,100 bits for doubles.</p>
+          </div>
+        </section>
+
+        <section id="strict">
+          <p class="eyebrow">Boundary semantics</p>
+          <h2>Strict or inclusive?</h2>
+          <p>The paper's tests are strict (<code>2R &lt; M⁻</code>, <code>2R &gt; 2S − M⁺</code>), so Dragon4 never prints a decimal that lies <em>exactly</em> on a midpoint. That is always safe. But a reader that breaks ties toward the even significand maps such a midpoint back to <i>v</i> when <i>f</i> is even. Burger &amp; Dybvig (1996) therefore made the ends inclusive when <i>f</i> is even (≤, ≥, and ≥ in the second Fixup loop). JavaScript's <code>Number.prototype.toString</code> behaves the same way.</p>
+          <p>The classic example is <a href="?x=1e23&amp;step=end#race-explorer" data-mask-load="1e23" data-mask-step="end" data-mask-incl="0">1e23</a>. The nearest double is 99999999999999991611392, and its upper midpoint is exactly 10²³. Strict Dragon4 must not print it and gives <code>9.999999999999999e+22</code>. The <a href="?x=1e23&amp;step=end&amp;incl=1#race-explorer" data-mask-load="1e23" data-mask-step="end" data-mask-incl="1">inclusive variant</a> prints <code>1e+23</code>. Both read back correctly. Only the inclusive one is the shortest. With the toggle off, this page implements strict Dragon4. It differs from JavaScript for about 3 in 10,000 random bit patterns (we measured 94 of 300,000). In every difference the strict output is longer, usually by one digit, because the shorter decimal sits exactly on a boundary. With the toggle on, it matched JavaScript on every sample.</p>
+          <p class="dragon-mask-footnote"><b>Footnote.</b> The published Fixup loop reads <code>while 2R + M⁺ ≥ 2S</code>. Combined with the strict digit tests, this goes wrong for 1e23. There the upper midpoint equals 10²³ exactly, so ≥ pushes the cell one decade too high and the first digit comes out as <b>0</b>: “09999999999999999” × 10⁷. This page uses &gt; whenever the upper end is excluded (as Burger &amp; Dybvig do), and ≥ only in the inclusive mode.</p>
+        </section>
+
+        <section id="recap">
+          <p class="eyebrow">Recap</p>
+          <h2>Dragon4 in one breath</h2>
+          <p>Write <i>v</i> and its two half-gaps as exact integer ratios. Find the power of ten above the upper midpoint by multiplying by ten, one step at a time. Then do long division one digit at a time. With each digit, multiply the remainder and both masks by ten, and stop as soon as the remainder is within a mask of either end of its cell. The only choice left is U or U + 1, and it never carries. All the arithmetic is exact, and the only price is bignum speed. The later algorithms in this project get the same digits with fixed-size integers and precomputed powers of ten.</p>
+          <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/dragon.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+        </section>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
