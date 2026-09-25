@@ -1,0 +1,191 @@
+/* Errol · approach A (microscope). All rules scoped to main.errol-microscope. */
+
+.errol-microscope {
+  --em-band: color-mix(in srgb, var(--acid) 55%, transparent);
+  --em-int: color-mix(in srgb, var(--blue) 9%, transparent);
+  --em-dd: #7a3cff;
+  --em-e1: #0f8a6a;
+  --em-safe: #2f7d4f;
+  --em-near: #b86b00;
+}
+
+/* Controls (own class: the site's .lab-controls is styled for dark panels). */
+.errol-microscope .em-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 14px; padding: 0; border: 0; background: none; font: 500 12px var(--mono); }
+.errol-microscope .em-controls label { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font: 500 12px var(--mono); letter-spacing: 0; text-transform: none; }
+.errol-microscope .em-input { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.errol-microscope .em-input input[type="text"] { width: min(300px, 62vw); min-width: 0; padding: 7px 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: 500 13px var(--mono); }
+.errol-microscope .em-controls input[type="range"] { width: min(260px, 50vw); accent-color: var(--red); }
+.errol-microscope .em-error { flex-basis: 100%; margin: 0; color: var(--red); font: 500 12px var(--mono); }
+.errol-microscope .em-error:empty { display: none; }
+.errol-microscope .em-prec { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.errol-microscope .em-prec legend { float: left; margin-right: 12px; padding: 0; color: var(--muted); font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.errol-microscope .em-prec input, .errol-microscope .em-opts input { accent-color: var(--ink); }
+.errol-microscope .em-zoomrow output { min-width: 58px; font: 500 13px var(--mono); }
+
+.errol-microscope .em-presets { display: grid; gap: 8px; margin: 0 0 16px; }
+.errol-microscope .em-preset-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.errol-microscope .em-preset-group .em-tag { min-width: 76px; text-align: center; }
+.errol-microscope .lab-chips button { max-width: 100%; overflow-wrap: anywhere; }
+
+.errol-microscope .em-tag { display: inline-block; padding: 3px 7px; border: 1px solid currentColor; font: 500 10px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.errol-microscope .em-tag-safe { color: var(--em-safe); }
+.errol-microscope .em-tag-near { color: var(--em-near); }
+.errol-microscope .em-tag-hit { color: var(--red); }
+.errol-microscope .em-tag-exact { color: var(--blue); }
+
+/* The number line */
+.errol-microscope .em-scope { width: 100%; min-height: 290px; border: 1px solid var(--line); background: var(--paper); }
+.errol-microscope .em-scope svg { display: block; width: 100%; height: auto; overflow: hidden; font-family: var(--mono); }
+.errol-microscope .em-int { fill: var(--em-int); }
+.errol-microscope .em-band { fill: var(--em-band); }
+.errol-microscope .em-axis { stroke: var(--ink); stroke-width: 1; }
+.errol-microscope .em-tick { stroke: color-mix(in srgb, var(--muted) 45%, transparent); stroke-width: 1; }
+.errol-microscope .em-tick-short { stroke: var(--muted); stroke-width: 1.4; }
+.errol-microscope .em-ticklabel { fill: var(--muted); font-size: 10px; }
+.errol-microscope .em-bound line { stroke: var(--blue); stroke-width: 2; }
+.errol-microscope .em-open line { stroke-dasharray: 5 3; }
+.errol-microscope .em-blabel { fill: var(--blue); font-size: 11px; }
+.errol-microscope .em-dd { stroke: var(--em-dd); stroke-width: 1.6; stroke-dasharray: 2 2; }
+.errol-microscope .em-dd-label { fill: var(--em-dd); font-size: 10px; }
+.errol-microscope .em-e1 { stroke: var(--em-e1); stroke-width: 1.6; stroke-dasharray: 1 3; }
+.errol-microscope .em-e1-label { fill: var(--em-e1); font-size: 10px; }
+.errol-microscope .em-double { fill: var(--blue); stroke: var(--paper); stroke-width: 1.5; }
+.errol-microscope .em-dlabel { fill: var(--blue); font-size: 12px; }
+.errol-microscope .em-cand { fill: var(--red); stroke: var(--paper); stroke-width: 1; }
+.errol-microscope .em-clabel { fill: var(--red); font-size: 11px; font-weight: 500; }
+.errol-microscope .em-offscreen { fill: var(--muted); font-size: 10.5px; }
+.errol-microscope .em-off-cand { fill: var(--red); }
+.errol-microscope .em-off-dd { fill: var(--em-dd); }
+.errol-microscope .em-off-e1 { fill: var(--em-e1); }
+.errol-microscope .em-scale { fill: var(--muted); font-size: 10.5px; }
+.errol-microscope .em-scale-mid { fill: var(--ink); }
+.errol-microscope .em-centre { stroke: var(--ink); stroke-width: 1.5; }
+
+.errol-microscope .em-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; color: var(--muted); font: 500 11px var(--mono); }
+.errol-microscope .em-legend i { display: inline-block; width: 16px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+.errol-microscope .em-k-int { background: color-mix(in srgb, var(--blue) 18%, transparent); }
+.errol-microscope .em-k-band { background: var(--em-band); }
+.errol-microscope .em-k-dd { border-left: 2px dashed var(--em-dd); width: 2px !important; }
+.errol-microscope .em-k-cand { width: 9px !important; height: 9px !important; background: var(--red); transform: rotate(45deg); }
+
+.errol-microscope .em-verdict p { margin: 0 0 8px; font: 13px/1.6 var(--mono); }
+.errol-microscope .em-verdict p:last-child { margin: 0; }
+.errol-microscope .em-verdict .em-tag { margin-right: 6px; }
+.errol-microscope .em-red { color: var(--red); font-weight: 500; }
+.errol-microscope .em-ok { color: var(--em-safe); font-weight: 700; }
+.errol-microscope .em-bad { color: var(--red); font-weight: 700; }
+.errol-microscope .em-key-dd, .errol-microscope .em-key-e1 { display: inline-block; width: 0; height: 12px; margin-right: 8px; vertical-align: -1px; border-left: 2px dashed var(--em-dd); }
+.errol-microscope .em-key-e1 { border-left: 2px dotted var(--em-e1); }
+
+.errol-microscope .em-values { margin-top: 12px; }
+.errol-microscope .em-values summary { cursor: pointer; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.errol-microscope .em-values-note { margin: 8px 0; color: var(--muted); font-size: 12px !important; }
+.errol-microscope .em-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 2px 12px; padding: 5px 0; border-bottom: 1px solid var(--line); font: 12px/1.5 var(--mono); }
+.errol-microscope .em-row-label { color: var(--muted); }
+.errol-microscope .em-row-val { overflow-wrap: anywhere; word-break: break-all; }
+.errol-microscope .em-same { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+.errol-microscope .em-diff { color: var(--ink); font-weight: 500; }
+.errol-microscope .em-row-cand .em-row-label, .errol-microscope .em-row-cand .em-diff { color: var(--red); }
+.errol-microscope .em-row-dd .em-row-label { color: var(--em-dd); }
+.errol-microscope .em-row-e1 .em-row-label { color: var(--em-e1); }
+.errol-microscope .em-row-v .em-row-label { color: var(--blue); }
+
+.errol-microscope .em-tries li { margin-bottom: 8px; }
+.errol-microscope .em-long { overflow-wrap: anywhere; word-break: break-all; }
+
+/* Regimes */
+.errol-microscope .em-regimes { display: grid; gap: 16px; margin: 30px 0; }
+.errol-microscope .em-regimes article { padding: 18px 22px; border: 1px solid var(--line); background: var(--paper); }
+.errol-microscope .em-regimes h3 { margin: 10px 0 10px; font-size: 24px; }
+.errol-microscope .em-regimes p { font-size: 16px; }
+.errol-microscope .em-regimes p:last-child { margin-bottom: 0; }
+
+.errol-microscope .em-compare { margin: 24px 0; border-top: 2px solid var(--ink); font-size: 14px; }
+.errol-microscope .em-compare > div { display: grid; grid-template-columns: 90px 130px minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.errol-microscope .em-compare-head { color: var(--muted); font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.errol-microscope .em-compare [role="rowheader"] { font: 600 15px var(--sans); }
+
+/* Loom */
+.errol-microscope .em-stepbar { gap: 8px; }
+.errol-microscope .em-stepcount { margin-left: 6px; color: var(--muted); }
+.errol-microscope .em-route-banner { margin: 0 0 12px; padding: 8px 12px; border-left: 3px solid var(--em-near); background: var(--paper); font-size: 13px; }
+.errol-microscope .em-route-banner[hidden] { display: none; }
+.errol-microscope .em-loom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+.errol-microscope .em-loom-code { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+.errol-microscope .em-card { padding: 16px 18px; border: 1px solid var(--line); background: var(--paper); }
+.errol-microscope .em-card h3 { margin: 2px 0 10px; font-size: 24px; }
+.errol-microscope .em-card p { margin: 0 0 10px; font-size: 14px; }
+.errol-microscope .em-card-kicker { margin: 0 !important; color: var(--muted); font: 500 10px var(--mono) !important; text-transform: uppercase; letter-spacing: .08em; }
+.errol-microscope .em-note { color: var(--muted); font-size: 12.5px !important; }
+.errol-microscope .em-warn { color: var(--red); }
+.errol-microscope .em-result { padding: 8px 10px; background: var(--paper-deep); font-family: var(--mono); font-size: 13px !important; }
+.errol-microscope .em-flash { animation: em-flash .45s ease-out; }
+@keyframes em-flash { from { background: color-mix(in srgb, var(--acid) 45%, var(--paper)); } to { background: var(--paper); } }
+
+.errol-microscope .em-regs { display: grid; gap: 12px; margin-top: 12px; }
+.errol-microscope .em-reg { padding-top: 10px; border-top: 1px solid var(--line); }
+.errol-microscope .em-reg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font: 13px/1.4 var(--mono); }
+.errol-microscope .em-reg-name { min-width: 44px; font-weight: 500; }
+.errol-microscope .em-reg-pair { overflow-wrap: anywhere; }
+.errol-microscope .em-val { color: var(--blue); }
+.errol-microscope .em-off { color: color-mix(in srgb, var(--blue) 60%, var(--muted)); }
+.errol-microscope .em-plus { color: var(--muted); }
+.errol-microscope .em-strip { display: block; width: 100%; height: 14px; margin: 6px 0 4px; }
+.errol-microscope .em-b-val1 { fill: var(--blue); }
+.errol-microscope .em-b-val0 { fill: color-mix(in srgb, var(--blue) 14%, transparent); }
+.errol-microscope .em-b-off1 { fill: var(--blue-pale); }
+.errol-microscope .em-b-off0 { fill: color-mix(in srgb, var(--blue-pale) 25%, transparent); }
+.errol-microscope .em-reg-sum { color: var(--muted); font: 11.5px/1.4 var(--mono); overflow-wrap: anywhere; }
+.errol-microscope .em-sw { display: inline-block; width: 14px; height: 10px; vertical-align: -1px; }
+.errol-microscope .em-sw-val { background: var(--blue); }
+.errol-microscope .em-sw-off { background: var(--blue-pale); }
+
+.errol-microscope .em-odometer { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 12px; font: 500 16px var(--mono); }
+.errol-microscope .em-od-label { margin-right: 8px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.errol-microscope .em-od-cell { display: inline-grid; place-items: center; min-width: 22px; height: 30px; padding: 0 3px; border: 1px solid var(--ink); background: var(--paper); color: var(--red); }
+.errol-microscope .em-od-pending { grid-template-rows: 1fr 1fr; height: 38px; border-style: dashed; color: var(--ink); font-size: 12px; line-height: 1; }
+.errol-microscope .em-od-pending i { font-style: normal; }
+.errol-microscope .em-od-split { border-color: var(--red); }
+.errol-microscope .em-od-empty { color: var(--muted); font-size: 12px; }
+.errol-microscope .em-od-exp { margin-left: 8px; color: var(--muted); font-size: 12px; }
+
+.errol-microscope .em-code { margin: 0; padding: 14px 0; overflow-x: auto; font-size: 11.5px; line-height: 1.5; }
+.errol-microscope .em-line { display: block; padding: 0 14px; white-space: pre; }
+.errol-microscope .em-deleted { color: #ff9b8e; text-decoration: line-through; opacity: .75; }
+.errol-microscope .em-toggles { display: grid; gap: 10px; max-width: 250px; }
+.errol-microscope .em-toggles .lab-chips { flex-direction: column; align-items: stretch; }
+.errol-microscope .em-toggles .lab-button[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: var(--paper); }
+
+/* Router */
+.errol-microscope .em-router { display: grid; gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: em-route; }
+.errol-microscope .em-router li { counter-increment: em-route; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); background: var(--paper); font-size: 14px; }
+.errol-microscope .em-router li::before { content: counter(em-route); display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--ink); border-radius: 50%; font: 500 11px var(--mono); }
+.errol-microscope .em-router li b { font: 500 11px var(--mono); text-transform: uppercase; }
+.errol-microscope .em-router .em-taken { border-color: var(--ink); background: color-mix(in srgb, var(--acid) 40%, var(--paper)); }
+.errol-microscope .em-router .em-skipped { opacity: .5; }
+
+/* Ledger */
+.errol-microscope .em-ledger { border-top: 2px solid var(--ink); }
+.errol-microscope .em-ledger > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.errol-microscope .em-ledger strong { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; padding-top: 5px; }
+.errol-microscope .em-ledger p, .errol-microscope .em-ledger li { margin: 0 0 8px; font-size: 15px; }
+.errol-microscope .em-ledger ul { margin: 6px 0 0; padding-left: 20px; }
+.errol-microscope .em-sources li { font-size: 15px; margin-bottom: 8px; }
+
+@media (max-width: 900px) {
+  .errol-microscope .em-loom-code { grid-template-columns: minmax(0, 1fr); }
+  .errol-microscope .em-toggles { max-width: none; }
+}
+@media (max-width: 680px) {
+  .errol-microscope .em-compare > div { grid-template-columns: 1fr; gap: 4px; }
+  .errol-microscope .em-compare-head { display: none !important; }
+  .errol-microscope .em-compare [role="cell"]:nth-child(2) { color: var(--muted); font: 500 12px var(--mono); }
+  .errol-microscope .em-row { grid-template-columns: 1fr; }
+  .errol-microscope .em-ledger > div { grid-template-columns: 1fr; gap: 6px; }
+  .errol-microscope .em-router li { grid-template-columns: 24px minmax(0, 1fr); }
+  .errol-microscope .em-router li b { grid-column: 2; }
+  .errol-microscope .em-preset-group .em-tag { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .errol-microscope .em-flash { animation: none; }
+}

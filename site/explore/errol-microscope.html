@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Errol under a microscope: zoom into the edge of a double's rounding interval to see what 106 bits of double-double precision buy, and the two kinds of inputs no precision can fix.">
+  <title>Errol · The microscope · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/errol-microscope.css">
+  <script type="module" src="./js/errol-microscope.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="errol-microscope">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Errol / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./errol-hunt.html">compare with approach B</a></p>
+      <h1>When are 106 bits not enough?</h1>
+      <p class="chapter-deck">Errol computes a double’s rounding interval with roughly 106 bits instead of Grisu’s 64. Put the edge of that interval under a microscope to see what the extra bits buy, and which two kinds of input no amount of precision can fix.</p>
+      <p class="lab-pitch">One zoomable number line explains all three parts of Errol3. Extra precision handles the common case. Exact integers handle a short decimal sitting exactly on an edge. A precomputed table handles the rare near misses. A stepper then shows how the double-double numbers are actually used, line by line.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Errol · Approach A</strong><a href="#edge">What can go wrong</a><a href="#microscope">The microscope</a><a href="#regimes">Three regimes, three fixes</a><a href="#why-integers">Why exact hits are integers</a><a href="#loom">Two threads through the loom</a><a href="#routing">Where Errol3 sends a number</a><a href="#caveats">What is claimed, what holds</a><a href="#sources">Sources</a></aside>
+      <article class="chapter">
+
+        <section id="edge">
+          <p class="eyebrow">Errol · POPL 2016 · the question</p>
+          <h2>Shortest means: fewest digits between two midpoints</h2>
+          <p class="lead">Every double owns a small interval of real numbers that round to it. The shortest output is the decimal with the fewest significant digits inside that interval.</p>
+          <div class="lab-remember">
+            <strong>What to remember</strong>
+            <p>A positive double is v = f · 2<sup>e</sup> with an integer f &lt; 2<sup>53</sup>. Its neighbours v⁻ and v⁺ are one <em>ulp</em> away (below a power of two the lower gap is half as big).</p>
+            <p>The interval ends are the midpoints <b>m⁻ = (v⁻ + v)/2</b> and <b>m⁺ = (v + v⁺)/2</b>. A decimal exactly on a midpoint is a tie, and ties go to the double with an even f. So if f is even the interval is <em>closed</em> (its ends belong to v); if f is odd it is <em>open</em>.</p>
+            <p>A midpoint needs one more bit than a double. Once it is scaled by a power of ten to read off decimal digits, it needs many more.</p>
+          </div>
+          <p>Computing m⁻ and m⁺ exactly after scaling takes big integers, which is what Dragon4 does. Grisu and Errol compute them <em>approximately</em> with fast hardware arithmetic instead. An approximation only matters when some short decimal sits closer to an edge than the approximation error. Then the computed edge can land on the wrong side of it, and the printer either misses the short answer or prints one that does not read back.</p>
+          <p>Grisu3 uses 64-bit integers. It notices at run time when a case is too close to call and hands about 0.5% of inputs to a slow exact fallback. Errol (Marc Andrysco, Ranjit Jhala and Sorin Lerner, POPL 2016) asks what happens if the approximation is so good that the question almost never comes up. The microscope below shows the answer: almost never is not never, and there are exactly two ways it fails.</p>
+        </section>
+
+        <section id="microscope">
+          <p class="eyebrow">Interactive · exact BigInt positions</p>
+          <h2>The microscope</h2>
+          <p>Pick a number. The top view shows v, its neighbours, the two midpoints and the shaded rounding interval. The grey ruler marks decimals, and a <b>taller tick means fewer significant digits</b>. The red diamond is the short decimal that sits closest to an edge. Zoom in, and the view re-centres on that edge.</p>
+          <figure class="lab-figure em-figure" aria-labelledby="em-scope-caption">
+            <div class="em-controls">
+              <form class="em-input" id="em-form">
+                <label for="em-x">double</label>
+                <input type="text" id="em-x" inputmode="decimal" autocomplete="off" spellcheck="false" value="4.0648030339495312e68" aria-describedby="em-x-error">
+                <button type="submit" class="lab-button primary">Show</button>
+              </form>
+              <p id="em-x-error" class="em-error" role="alert"></p>
+            </div>
+            <div class="em-presets" id="em-presets" aria-label="Preset numbers"></div>
+            <div class="em-controls em-zoomrow">
+              <label for="em-zoom">zoom <input type="range" id="em-zoom" min="0" max="32" step="1" value="0"> <output id="em-zoom-out" for="em-zoom">×1</output></label>
+              <button type="button" class="lab-button" id="em-zoom-in" aria-label="Zoom in by 10">×10</button>
+              <button type="button" class="lab-button" id="em-zoom-out-btn" aria-label="Zoom out by 10">÷10</button>
+              <button type="button" class="lab-button primary" id="em-jump">Jump to the gap</button>
+            </div>
+            <fieldset class="em-controls em-prec" id="em-prec">
+              <legend>arithmetic used to compute the edges</legend>
+              <label><input type="radio" name="em-p" value="53"> 53 bits (a double)</label>
+              <label><input type="radio" name="em-p" value="64"> 64 bits (Grisu-like)</label>
+              <label><input type="radio" name="em-p" value="106" checked> 106 bits (Errol)</label>
+              <label><input type="radio" name="em-p" value="exact"> exact</label>
+            </fieldset>
+            <div class="em-controls em-opts">
+              <label><input type="checkbox" id="em-e1"> show Errol1’s narrowed edge</label>
+              <span class="lab-chips" role="group" aria-label="Edge to centre on when zoomed">
+                <button type="button" id="em-focus-lower" aria-pressed="false">centre on m⁻</button>
+                <button type="button" id="em-focus-upper" aria-pressed="false">centre on m⁺</button>
+              </span>
+            </div>
+            <div class="em-scope" id="em-scope"></div>
+            <div class="em-legend" aria-hidden="true">
+              <span><i class="em-k-int"></i>rounding interval</span>
+              <span><i class="em-k-band"></i>where a computed edge could be</span>
+              <span><i class="em-k-dd"></i>where Errol’s double-double arithmetic actually put it</span>
+              <span><i class="em-k-cand"></i>short decimal</span>
+            </div>
+            <div class="lab-readout em-verdict" id="em-verdict" aria-live="polite"></div>
+            <details class="em-values" open>
+              <summary>Exact values (BigInt)</summary>
+              <div id="em-values"></div>
+            </details>
+            <figcaption id="em-scope-caption">Positions and labels come from exact rational arithmetic, so the picture stays truthful at ×10<sup>32</sup>. The band is the proven worst case for the selected precision: ±2<sup>−53</sup> or ±2<sup>−64</sup> relative (one rounding), and ±79·2<sup>−106</sup> relative for Errol (the paper’s error bound). The dashed line is not a bound. It is the boundary that Errol’s real double-double code computed for this input, at the digit where it matters.</figcaption>
+          </figure>
+          <p>Things to try:</p>
+          <ul class="em-tries">
+            <li><b>3.14</b> with “53 bits”: the band is almost an ulp wide, so even 3.14 is a near miss. A double cannot even hold a midpoint. Switch to 64 bits and it is safe with room to spare.</li>
+            <li><b>4.0648030339495312e68</b>, then <em>Jump to the gap</em>: the 16-digit decimal 4.064803033949531e68 lies just <em>outside</em> the open interval, 6.4·10<sup>−17</sup> ulp below m⁻. Errol’s computed m⁻ is 6.9·10<sup>−17</sup> ulp below the true one, which is on the wrong side of the decimal. The fast path prints 4.064803033949531e68, and that string reads back as the previous double.</li>
+            <li><b>2.215901545757777e-196</b>: the mirror image. The 16-digit answer lies <em>inside</em>, only 7.0·10<sup>−19</sup> ulp from the edge. The computed edge lands 4.6·10<sup>−17</sup> ulp inside it and cuts the answer off, so the fast path prints the correct but longer 2.2159015457577772e-196.</li>
+            <li><b>2.345678901234567e16</b>: zoom as far as you like. The diamond never leaves the edge.</li>
+          </ul>
+        </section>
+
+        <section id="regimes">
+          <p class="eyebrow">Reading the picture</p>
+          <h2>Three regimes, three fixes</h2>
+          <div class="em-regimes">
+            <article>
+              <p class="em-tag em-tag-safe">safe</p>
+              <h3>The decimal is far from the edge</h3>
+              <p>This is almost every input. With 106 bits the band is about 10<sup>−14</sup> ulp wide, while the nearest short decimal is typically a sizeable fraction of an ulp away. The approximate edges are good enough and nothing needs checking. This is what the extra precision buys over Grisu: a band some ten orders of magnitude thinner.</p>
+              <p><b>Fix:</b> none needed. This is Errol’s fast path.</p>
+            </article>
+            <article>
+              <p class="em-tag em-tag-near">near miss</p>
+              <h3>The decimal is inside the band, not on the edge</h3>
+              <p>Here the computed edge can land on either side. More bits would eventually separate them, but you could never be sure you had enough bits for <em>every</em> input. Near misses are very rare, and the paper shows they follow a pattern: the scaled midpoint must be almost exactly divisible by a large power of 5 (or 2). A number-theoretic search finds every such input in advance. Each one is tested, and the failures go into a table.</p>
+              <p><b>Fix:</b> Errol3 looks the input up in a 432-entry table before doing anything else. How the table is found is the subject of <a href="./errol-hunt.html">approach B</a>.</p>
+            </article>
+            <article>
+              <p class="em-tag em-tag-hit">exact hit</p>
+              <h3>The decimal <em>is</em> the edge</h3>
+              <p>No precision helps: the gap is zero at every zoom. The fast path cannot even tell whether the edge belongs to v, because it never looks at whether f is even. Try 2.345678901234567e16 and its odd neighbour 23456789012345668. The fast path prints 2.345678901234567e16 for both. That is right for the first and wrong for the second, because the tie at their shared midpoint 23456789012345670 goes to the even one.</p>
+              <p><b>Fix:</b> exact integer arithmetic. The paper proves that such midpoints are integers between 2<sup>54</sup> and 2<sup>131</sup>, so Errol2 and Errol3 send every input in (2<sup>53</sup>, 2<sup>128</sup>) to a 128-bit integer path. The table also covers the few binades above 2<sup>128</sup>.</p>
+            </article>
+          </div>
+          <h3>Three ways to deal with the band</h3>
+          <div class="em-compare" role="table" aria-label="How Grisu3 and the Errol versions handle the error band">
+            <div role="row" class="em-compare-head"><span role="columnheader">method</span><span role="columnheader">precision</span><span role="columnheader">what it does about the band</span><span role="columnheader">result</span></div>
+            <div role="row"><span role="rowheader">Grisu3</span><span role="cell">64 bits</span><span role="cell">Checks at run time whether a candidate is inside the band. If it is, gives up.</span><span role="cell">Always right when it answers; about 0.5% of inputs go to a bignum fallback.</span></div>
+            <div role="row"><span role="rowheader">Errol1</span><span role="cell">106 bits</span><span role="cell">Pulls both edges inward by the error bound (divides the gap by 2 + ε, ε = 8.77·10<sup>−15</sup> = 79·2<sup>−53</sup>). The computed interval then always lies inside the true one.</span><span role="cell">Always round-trips; not shortest for about 0.027% of inputs. A short decimal exactly on an edge is always lost. A widened second interval flags possible misses.</span></div>
+            <div role="row"><span role="rowheader">Errol2</span><span role="cell">106 bits + 128-bit integers</span><span role="cell">Errol1, plus exact integer midpoints for inputs in (2<sup>53</sup>, 2<sup>128</sup>).</span><span role="cell">No exact hits lost; rare narrowing misses remain.</span></div>
+            <div role="row"><span role="rowheader">Errol3</span><span role="cell">106 bits + integers + table</span><span role="cell">No narrowing and no run-time check. Near misses were found offline and stored in a table.</span><span role="cell">Claimed correct and shortest for every input (see the <a href="#caveats">caveats</a>).</span></div>
+          </div>
+          <p>Tick “show Errol1’s narrowed edge” in the microscope to see Errol1’s narrowed edge. It always sits about 2·10<sup>−15</sup> ulp inside the true edge. That excludes the near-miss decimals safely, but it also excludes the exact hits and the decimals just inside the edge.</p>
+        </section>
+
+        <section id="why-integers">
+          <p class="eyebrow">Theorem 6 of the paper, in two paragraphs</p>
+          <h2>Why exact hits are integers in [2<sup>54</sup>, 2<sup>131</sup>]</h2>
+          <p>An exact hit is a midpoint that is itself a decimal with at most 16 significant digits. Errol never prints more than 17 digits, so a midpoint with 17 or more digits can never be shorter than everything inside the interval. Write the midpoint as m = z · 2<sup>j</sup>. It is the average of two neighbouring doubles, so for a normal double z = 2f + 1 is an <em>odd</em> integer between 2<sup>53</sup> and 2<sup>54</sup>.</p>
+          <ol class="lab-steps">
+            <li><b>A midpoint with a fractional part is long.</b> If j &lt; 0, then m = z · 5<sup>−j</sup> / 10<sup>−j</sup>. Both z and 5<sup>−j</sup> are odd, so z · 5<sup>−j</sup> has no trailing zeros and every one of its digits counts. It is at least 5 · 2<sup>53</sup> ≈ 4.5·10<sup>16</sup>, so it has at least 17 digits. Example: the upper midpoint of 0.1 is <span class="lab-mono em-long" id="em-mid01">0.100000000000000012490009027033011079765856266021728515625</span>.</li>
+            <li><b>An odd integer midpoint is no shorter than v.</b> If j = 0, m = z is odd and has no trailing zeros. Its interval contains the integer v, which has just as many digits. So exact hits need j ≥ 1, that is m ≥ 2<sup>54</sup>.</li>
+            <li><b>A huge midpoint is long too.</b> Trailing zeros need factors of 10, that is, pairs of 2 and 5. Twos are plentiful when j &gt; 0, but all the fives must come from z, and z &lt; 2<sup>54</sup> has at most 23 of them (5<sup>23</sup> &lt; 2<sup>54</sup> &lt; 5<sup>24</sup>). So a midpoint can end in at most 23 zeros, and from 10<sup>39</sup> on at least 17 significant digits remain. The paper states the slightly larger bound 2<sup>131</sup> ≈ 2.7·10<sup>39</sup>.</li>
+          </ol>
+          <p>That window is why 2.345678901234567e16 (between 2<sup>54</sup> and 2<sup>55</sup>, where doubles are multiples of 4 and every midpoint is ≡ 2 mod 4) and 1e23 (the upper midpoint of 99999999999999991611392) are the classic examples. In (2<sup>53</sup>, 2<sup>128</sup>) every double is an integer, so its midpoints fit into 128-bit integers and can be converted to decimal exactly.</p>
+        </section>
+
+        <section id="loom">
+          <p class="eyebrow">How the boundaries are computed and used</p>
+          <h2>Two threads through the loom</h2>
+          <p>Errol’s fast path is Steele &amp; White’s idea done in floating point. Scale both edges into [1, 10), then peel digits off both until they disagree. Each edge is a <b>double-double</b>: a pair (val, off) of doubles whose exact sum is the number. val holds the leading 53 bits and off the next 53, so together they give about 106 bits.</p>
+          <div class="lab-remember">
+            <strong>Error-free tricks this relies on</strong>
+            <p><b>normalize:</b> val′ = val + off, off′ = off + (val − val′). The pair keeps its sum, and off is again smaller than half an ulp of val.</p>
+            <p><b>×10:</b> h = fl(10·val) rounds. But 8·val and 2·val are exact, and both subtractions in (h − 8·val) − 2·val are exact too (their operands are within a factor of 2 of each other). So the rounding loss is recovered exactly and moved into off: off′ = 10·off − loss.</p>
+            <p><b>v × 10<sup>k</sup>:</b> a Dekker-style product. Split each factor into a 26-bit high part and the rest; the partial products are then exact, and the product of two doubles becomes exact as a double-double.</p>
+          </div>
+          <figure class="lab-figure em-figure" aria-labelledby="em-loom-caption">
+            <div class="em-controls">
+              <form class="em-input" id="em-loom-form">
+                <label for="em-lx">double</label>
+                <input type="text" id="em-lx" inputmode="decimal" autocomplete="off" spellcheck="false" value="0.1" aria-describedby="em-lx-error">
+                <button type="submit" class="lab-button primary">Load</button>
+              </form>
+              <p id="em-lx-error" class="em-error" role="alert"></p>
+            </div>
+            <div class="lab-chips em-loom-presets" id="em-loom-presets" aria-label="Preset numbers for the stepper"></div>
+            <div class="em-controls em-stepbar">
+              <button type="button" class="lab-button" id="em-back">◂ Back</button>
+              <button type="button" class="lab-button primary" id="em-step">Step ▸</button>
+              <button type="button" class="lab-button" id="em-run">Run to end</button>
+              <button type="button" class="lab-button" id="em-reset">Reset</button>
+              <span class="em-stepcount" id="em-stepcount" aria-live="polite"></span>
+            </div>
+            <div class="em-route-banner" id="em-loom-route"></div>
+            <div class="em-loom">
+              <div class="em-loom-main">
+                <div class="em-card" id="em-card" aria-live="polite"></div>
+                <div class="em-odometer" id="em-odometer"></div>
+              </div>
+              <div class="em-loom-code">
+                <pre class="lab-code em-code" id="em-code" aria-label="The errol3u fast path in C, abbreviated"></pre>
+                <div class="em-toggles">
+                  <button type="button" class="lab-button" id="em-negfix" aria-pressed="false">Delete the negative-offset lines</button>
+                  <div class="lab-chips" role="group" aria-label="Last-digit rule">
+                    <button type="button" id="em-last-round" aria-pressed="true">last digit: round middle (2016+)</button>
+                    <button type="button" id="em-last-hdig" aria-pressed="false">last digit: hdig (paper era)</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption id="em-loom-caption">A faithful port of errol3u’s double-double path (lib/errol.c at commit 5364de4), checked digit for digit against the C code. Comparisons such as <code>mid &gt; 10</code> abbreviate the real tests, which also look at off when val is exactly 10 or 1. Bit strips: each cell is one binary place, <span class="em-sw em-sw-val"></span> val’s 53 bits, <span class="em-sw em-sw-off"></span> off’s 53 bits (its sign shows in the numbers above). Empty cells between them are unused precision.</figcaption>
+          </figure>
+          <h3>The line that looks unnecessary</h3>
+          <p>A digit is read as trunc(val), minus one if val is exactly an integer and off is negative. The true value is then just below that integer. With 0.1, the low edge after scaling is (1, −1.39·10<sup>−17</sup>), that is 0.99999999999999998612…, so its first digit is 0, not 1. The high edge starts with 1, the digits differ, and the loop stops at once with “0.1”. Press <em>Delete the negative-offset lines</em> and run again. Both edges now claim a 1, the loop keeps going, and out comes 0.10000000000000001: it still reads back, but it is no longer the shortest. The same happens to 0.2 and 0.9.</p>
+          <h3>The last digit</h3>
+          <p>When the digits differ, any digit between ldig + 1 and hdig would give a correct string of that length. The current code (since the 2016 “best selection” commit) takes round((high + low)/2), the digit nearest the middle of the interval, with ties to even. The paper-era code simply emitted hdig. Both are shortest, but only the first tries to be <em>closest</em>. For 5e-324 the edges scale to about 7.41 and 2.47: hdig prints 7e-324, rounding the middle gives 5e-324. It is still only an approximation of “closest”, because it rounds the middle of the interval rather than v (see the <a href="#caveats">caveats</a>).</p>
+        </section>
+
+        <section id="routing">
+          <p class="eyebrow">errol3_dtoa, before the loom</p>
+          <h2>Where Errol3 sends a number</h2>
+          <p>The double-double path is only the fallback. The real entry point first checks the exception table and then two exact ranges. So a number like 123.456 never touches the double-double code.</p>
+          <figure class="lab-figure em-figure" aria-labelledby="em-route-caption">
+            <div class="em-controls">
+              <form class="em-input" id="em-route-form">
+                <label for="em-rx">double</label>
+                <input type="text" id="em-rx" inputmode="decimal" autocomplete="off" spellcheck="false" value="123.456" aria-describedby="em-rx-error">
+                <button type="submit" class="lab-button primary">Route</button>
+              </form>
+              <p id="em-rx-error" class="em-error" role="alert"></p>
+            </div>
+            <div class="lab-chips" id="em-route-presets" aria-label="Preset numbers for the router"></div>
+            <ol class="em-router" id="em-router"></ol>
+            <div class="lab-readout" id="em-route-out" aria-live="polite"></div>
+            <figcaption id="em-route-caption">The table test compares all 64 bits of the input with the 432 stored bit patterns of enum3.h. The ranges are the constants in errol3u_dtoa: 9.007199254740992e15 = 2<sup>53</sup> and 3.40282366920938e38 ≈ 2<sup>128</sup>. The printed answer is the exact shortest decimal, computed here with BigInt; for table hits it equals the stored string.</figcaption>
+          </figure>
+          <p><b>errol_fixed</b> ([16, 2<sup>53</sup>]) prints the integer part exactly and then produces fraction digits with plain doubles. That is exact: the fractional parts of v and of its midpoints have at most 49 bits after the binary point, and multiplying such a fraction by 10 needs at most 4 more bits in front, which still fits in 53. <b>errol_int</b> ((2<sup>53</sup>, 2<sup>128</sup>)) builds the two midpoints as exact 128-bit integers and compares their decimal digits. That is the exact-hit fix from above.</p>
+        </section>
+
+        <section id="caveats">
+          <p class="eyebrow">Honest ledger</p>
+          <h2>What is claimed, what holds</h2>
+          <div class="em-ledger">
+            <div><strong>Claim</strong><p>The paper claims Errol3 is <em>correct</em> (the output reads back) and <em>optimal</em> (shortest) for every double. It never claimed <em>closest</em>. The 2016 “best selection” commit added the round-the-middle last digit and explicitly calls it best effort.</p></div>
+            <div><strong>Not closest</strong><p>Errol3 prints 2<sup>−1019</sup> = 1.7800590868057611e-307 as 1.7800590868057612e-307. Both have 17 digits and both read back, but …611 is closer. At a power of two the lower gap is half the upper gap, so the middle of the interval is not v. The port on this page gives a shortest but non-closest result for 499 of the powers of two that take the double-double path.</p></div>
+            <div><strong>Not machine-checked</strong><p>The guarantee rests on a hand-derived error bound (79·2<sup>−106</sup>), hand proofs of the search, and a test of every enumerated candidate. None of this has been machine-checked. The table is also tied to the exact sequence of floating-point operations (for example, no fused multiply-add), so a port must reproduce the arithmetic bit for bit or rebuild the table.</p></div>
+            <div><strong>Implementation bugs</strong><p>These are bugs in the reference C code (commit 5364de4), not flaws of the method. They sit in the exact paths, which the offline search never exercised.</p>
+              <ul>
+                <li><code>errol_int</code> fails when the answer has one digit: 1e23 comes out as an empty string, as do 1e24, 1e28 and others (GitHub issue #12).</li>
+                <li><code>errol_int</code> swaps the upper and lower gaps. That matters only at powers of two, where the gaps differ. 2<sup>64</sup> is printed as 1.844674407370955e19, which reads back as 2<sup>64</sup> − 2048. Some other powers of two between 2<sup>64</sup> and 2<sup>122</sup> are wrong or too long.</li>
+                <li>The paper-era code (early 2016, with an older table) printed 9.856469199218561e-57 as 9.85646919921856e-57, which reads back as the previous double. The current table covers it.</li>
+                <li>Errol4, an unpublished faster variant in the repository, has open issues on ties (#10) and on exponents next to powers of ten (#11).</li>
+              </ul>
+            </div>
+            <div><strong>Speed</strong><p>The paper’s original benchmark said Errol3 was about 2× <em>faster</em> than Grisu3. The Grisu3 build had accidentally been compiled without optimizations. The corrected numbers are about 2× <em>slower</em> (README) or 2.4× slower (updated paper), and about 5× faster than Dragon4. Later algorithms (Ryū, Schubfach, Dragonbox) are complete <em>and</em> faster, and Zig, for example, replaced its Errol3 with Ryū.</p></div>
+          </div>
+        </section>
+
+        <section id="sources">
+          <p class="eyebrow">Sources</p>
+          <h2>Sources</h2>
+          <ul class="em-sources">
+            <li>M. Andrysco, R. Jhala, S. Lerner: <a href="https://cseweb.ucsd.edu/~mandrysc/pub/dtoa.pdf">Printing Floating-Point Numbers: A Faster, Always Correct Method</a>, POPL 2016 (corrected PDF). <a href="https://doi.org/10.1145/2837614.2837654">doi:10.1145/2837614.2837654</a></li>
+            <li>Reference code: <a href="https://github.com/marcandrysco/Errol">github.com/marcandrysco/Errol</a> (lib/errol.c, lookup.h, enum3.h), commit 5364de4; <a href="https://github.com/marcandrysco/Errol/issues/12">issue #12</a>, <a href="https://github.com/marcandrysco/Errol/issues/10">#10</a>, <a href="https://github.com/marcandrysco/Errol/issues/11">#11</a>.</li>
+            <li>F. Loitsch: Printing Floating-Point Numbers Quickly and Accurately with Integers, PLDI 2010 (Grisu3).</li>
+            <li><a href="https://github.com/ziglang/zig/pull/19229">Zig pull request #19229</a> (Errol3 replaced by Ryū).</li>
+          </ul>
+          <p>All numbers on this page are computed in your browser: exact values with BigInt, and Errol’s arithmetic with a JavaScript port of the C code. The static numbers in the text are checked by <code>test/explore-errol-microscope.test.js</code>.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/errol.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
