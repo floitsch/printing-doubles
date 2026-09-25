@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Dragon4 as a decimal microscope: zoom in one digit at a time until a tick lands inside the rounding interval, then see that the zoom is plain integer long division with an error budget.">
+  <title>Dragon4 · The decimal microscope · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/dragon-microscope.css">
+  <script type="module" src="./js/dragon-microscope.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main class="dragon-microscope">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Dragon4 / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./dragon-mask.html">compare with approach A</a></p>
+      <h1>The decimal microscope</h1>
+      <p class="chapter-deck">Dragon4 zooms into the number line one decimal digit at a time and stops at the first zoom level where a tick lands inside the rounding interval. It does the zooming with nothing but integer long division.</p>
+      <p class="lab-pitch">Show printing as a zoom: at each level only two ticks matter, and you stop when one of them is inside the interval. Then flip one switch to see that Dragon4’s “×10, keep the remainder” is that same zoom done on integers. Finally, the reader runs it by hand as schoolbook long division with one extra column: the error budget.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Dragon4 · Approach B</strong><a href="#target">What we are looking for</a><a href="#microscope">Zoom in</a><a href="#two-ticks">Only two ticks matter</a><a href="#grow">Don’t zoom, grow</a><a href="#worksheet">Do it by hand</a><a href="#carry">No carries</a><a href="#cost">Finding the first digit</a><a href="#fine-print">Fine print</a></aside>
+      <article class="chapter">
+
+        <section id="target">
+          <p class="eyebrow">Dragon4 · Steele &amp; White 1990</p>
+          <h2>Find the coarsest ruler with a tick in the gap</h2>
+          <p class="lead">Printing a double “shortest” means finding a decimal with as few digits as possible that still reads back as the same double.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A binary float is v = f · 2<sup>q</sup>, with a p-bit integer significand f. A double has p = 53.</p>
+            <p>Its neighbours v⁻ and v⁺ are one step of f away. Any decimal <em>strictly</em> between the midpoints (v⁻+v)/2 and (v+v⁺)/2 reads back as v. This is the <strong>rounding interval</strong>.</p>
+            <p>When f is the smallest significand of its binade (v is a power of two), the gap below v is half the gap above, so the interval is lopsided.</p>
+          </div>
+          <p>Decimals with one significant digit sit on a ruler with ticks every 10<sup>k</sup>. Each extra digit is a ruler ten times finer. So the question becomes:</p>
+          <p class="dm-big-question">What is the <strong>coarsest</strong> decimal ruler that has a tick <strong>inside</strong> the rounding interval?</p>
+          <p>Dragon4 answers it the way a person with a microscope would: start coarse, and zoom in ×10 until a tick falls inside. The pictures use toy floats with few bits (p = 8 below) because a double’s interval is too narrow to see. The algorithm is the same for every p.</p>
+        </section>
+
+        <section id="microscope">
+          <p class="eyebrow">The microscope</p>
+          <h2>Zoom in, one digit per click</h2>
+          <p>Here is π rounded to 8 bits: v = 201/64 = 3.140625. Its neighbours are 3.125 and 3.15625, so every decimal strictly between 3.1328125 and 3.1484375 reads back as v. Press <strong>Step</strong> and watch the ruler get finer.</p>
+          <figure class="lab-figure dm-figure" id="dm-micro-figure">
+            <div class="lab-controls dm-controls-top">
+              <div class="lab-chips" id="dm-presets" role="group" aria-label="Examples"></div>
+              <label>number <input type="text" id="dm-x" value="pi" size="12" spellcheck="false" aria-describedby="dm-x-note"></label>
+              <label>bits p <input type="range" id="dm-p" min="4" max="53" value="8"> <output id="dm-p-out" for="dm-p">8</output></label>
+            </div>
+            <div class="lab-controls">
+              <div class="dm-toggle" role="group" aria-label="View">
+                <button type="button" class="lab-button" id="dm-view-micro" aria-pressed="true">Microscope</button>
+                <button type="button" class="lab-button" id="dm-view-dragon" aria-pressed="false">Dragon4 view</button>
+              </div>
+              <span class="dm-spacer"></span>
+              <button type="button" class="lab-button" id="dm-reset">Reset</button>
+              <button type="button" class="lab-button" id="dm-prev">◀ Back</button>
+              <button type="button" class="lab-button primary" id="dm-step">Step ▶</button>
+              <button type="button" class="lab-button" id="dm-play">Play</button>
+            </div>
+            <p class="dm-x-note" id="dm-x-note"></p>
+            <div class="dm-tape" aria-hidden="true"><span class="dm-tape-label">printed so far</span> <span id="dm-tape"></span></div>
+            <div id="dm-svg" class="dm-svg-box" role="img" aria-labelledby="dm-status"></div>
+            <p class="dm-status" id="dm-status" aria-live="polite"></p>
+            <div class="dm-registers" id="dm-registers" aria-live="polite"></div>
+            <figcaption>Blue dot: the stored value v. Blue band: its rounding interval (the decimals that read back as v). Each frame shows one decimal cell cut into ten; the two circled ticks are the only candidates. Filled circle: inside the interval. <span id="dm-view-caption"></span></figcaption>
+          </figure>
+          <p>Try the presets. <strong>1.375</strong> (4 bits) rounds its last digit up: 1.3 is outside the interval, 1.4 is inside. At <strong>0.34375</strong> both 0.34 and 0.35 are inside, and the nearer one wins. <strong>0.125</strong> is a power of two, so its interval reaches twice as far up as down. The slider changes the number of bits: π prints as 3.2, 3.14, 3.142, 3.1416 … 3.141592653589793 at p = 4, 8, 12, 16 … 53. At p = 53 you need the readout under the picture: the interval is far thinner than a pixel until the last few zooms.</p>
+        </section>
+
+        <section id="two-ticks">
+          <p class="eyebrow">The stop rule</p>
+          <h2>At each level, only two ticks matter</h2>
+          <p>At every zoom level, v sits inside one cell. Call its left tick the <strong>truncation</strong> (the digits so far plus digit U) and its right tick <strong>U + 1</strong>. Every other tick of this level is farther from v on the same side. The interval contains v and has no holes, so if any tick of this level is inside, one of these two is.</p>
+          <ul class="lab-steps">
+            <li><strong>Neither inside:</strong> no decimal of this length reads back as v. Write down U and zoom into its cell.</li>
+            <li><strong>Only the truncation is inside</strong> (<code>low</code>): print it.</li>
+            <li><strong>Only U + 1 is inside</strong> (<code>high</code>): print the digits with the last one bumped to U + 1.</li>
+            <li><strong>Both inside:</strong> print whichever is nearer to v.</li>
+          </ul>
+          <p>Because we stop at the first level that has a tick inside, the output has as few digits as possible. And because we pick the nearer of the two ticks around v, it is the closest decimal of that length.</p>
+          <div class="aside"><p>The output is not “the exact decimal expansion, cut off”. The double 0.3 is really 0.299999999999999988897…, yet its very first zoom already finds 0.3 inside the interval: the <em>U + 1</em> tick. Only two ticks are ever tested, so the digits 2999… are never produced.</p></div>
+        </section>
+
+        <section id="grow">
+          <p class="eyebrow">The trick</p>
+          <h2>Don’t zoom the ruler, grow the interval</h2>
+          <p>A computer can’t zoom. Switch the figure above to <strong>Dragon4 view</strong> and step through again. The frames are identical, but now the ruler stays put: it is always one cell, 0 to S. Each step the dot jumps to where v sits inside the chosen tenth, and the interval grows ten times wider. Nothing on the screen ever needs a fraction.</p>
+          <p>Dragon4 keeps four integers:</p>
+          <ul>
+            <li><strong>R / S</strong>: where v sits inside the current cell (a number between 0 and 1). The digit is U = ⌊10R / S⌋ and the new position is the remainder 10R mod S. That is schoolbook long division.</li>
+            <li><strong>M⁻ / S</strong> and <strong>M⁺ / S</strong>: the gaps to the neighbours v⁻ and v⁺, measured in cells. They are multiplied by 10 every step, just like R. This is the error budget.</li>
+          </ul>
+          <p>At the start, v = (R / S) · 10<sup>k</sup> and the gaps are (M<sup>±</sup> / S) · 10<sup>k</sup>. After each digit, these statements hold again for what is left of v. The budgets are <em>full</em> gaps, while the interval reaches only half a gap on each side. That is where the factors of 2 in the two tests come from:</p>
+          <div class="equation dm-eq"><span>low: 2R &lt; M⁻</span> <span>high: 2R &gt; 2S − M⁺</span></div>
+          <p><code>low</code> says the remainder R/S (the distance from the truncation tick up to v) is less than half the lower gap, so the truncation is inside. <code>high</code> says 1 − R/S (the distance from v up to the U + 1 tick) is less than half the upper gap, so U + 1 is inside. When both hold, comparing 2R with S tells which tick is nearer.</p>
+          <p>The register panel under the picture shows these numbers for every frame. For 8-bit π they are hand-sized: R = 201, S = 640, M⁻ = M⁺ = 1, then 2010 ÷ 640 = 3 remainder 90, and so on.</p>
+        </section>
+
+        <section id="worksheet">
+          <p class="eyebrow">The worksheet</p>
+          <h2>Long division with an error budget</h2>
+          <p>Dragon4 is the long division you learned in school, with a budget column that gets ×10 every row and two comparisons per row. Try it yourself: type the numbers into the table (they are checked as you type), or step through with <strong>Next</strong> and reveal. Each tab adds one idea.</p>
+          <figure class="lab-figure dm-figure" id="dm-sheet-figure">
+            <div class="dm-tabs lab-chips" role="tablist" aria-label="Worksheet examples" id="dm-sheet-tabs"></div>
+            <div class="dm-lesson" id="dm-sheet-lesson"></div>
+            <div class="lab-controls dm-sheet-controls">
+              <button type="button" class="lab-button" id="dm-ws-prev">◀ Prev</button>
+              <button type="button" class="lab-button primary" id="dm-ws-next">Next ▶</button>
+              <button type="button" class="lab-button" id="dm-ws-reveal-row">Reveal row</button>
+              <button type="button" class="lab-button" id="dm-ws-reveal">Reveal all</button>
+              <button type="button" class="lab-button" id="dm-ws-clear">Clear</button>
+              <div class="dm-toggle" role="group" aria-label="Number display">
+                <button type="button" class="lab-button" id="dm-ws-int" aria-pressed="true">Integers</button>
+                <button type="button" class="lab-button" id="dm-ws-frac" aria-pressed="false">≈ Fractions</button>
+              </div>
+            </div>
+            <p class="dm-hint" id="dm-hint" aria-live="polite"></p>
+            <div class="dm-sheet-grid">
+              <div class="dm-sheet-main">
+                <ol class="dm-setup" id="dm-sheet-setup"></ol>
+                <div class="dm-table-wrap" id="dm-sheet-table"></div>
+                <div class="dm-final" id="dm-sheet-final"></div>
+              </div>
+              <div class="dm-code-wrap">
+                <p class="dm-code-title">Dragon4 (free format)</p>
+                <pre class="lab-code dm-code" id="dm-code" aria-label="Dragon4 pseudocode with the current step highlighted"></pre>
+              </div>
+            </div>
+            <div class="dm-variant" id="dm-sheet-variant"></div>
+            <figcaption>Each row is one digit. 10R ÷ S gives the digit U and the new remainder R. M⁻ and M⁺ are the error budget, ×10 per row. The row where a test first says “yes” is the last one. The pseudocode highlights the lines for the current step, with this example’s numbers filled in.</figcaption>
+          </figure>
+        </section>
+
+        <section id="carry">
+          <p class="eyebrow">A property you get for free</p>
+          <h2>The last digit never carries</h2>
+          <p>Rounding the last digit up might seem to risk a 9 turning into 10 and a carry rippling left. It can’t happen. A “high” exit at digit 9 means that the tick for digits-so-far + 10 is inside the interval. That tick is the U + 1 tick of the <em>previous</em> row, so <code>high</code> would already have fired one row earlier.</p>
+          <p>The first digit has no previous row. The setup covers it: the second scaling loop keeps going until the <em>upper end</em> of the interval is at most 10<sup>k</sup>, so the tick “10” of the first row is never inside. The <strong>1e-6</strong> tab in the worksheet shows what goes wrong if you scale on v instead: the first digit comes out as 9, rounds up, and would have to become 10.</p>
+        </section>
+
+        <section id="cost">
+          <p class="eyebrow">The expensive part</p>
+          <h2>Finding the first digit, one ×10 at a time</h2>
+          <p>Before the first digit, Dragon4 must choose the starting ruler 10<sup>k</sup>. It does this by trial: multiply R and the budgets by 10 while v is too small (loop 1), then S by 10 while the upper end of the interval is still above 10<sup>k</sup> (loop 2). Each trial is a multiplication of a big integer. For tiny and huge doubles this takes hundreds of them:</p>
+          <figure class="lab-figure dm-figure">
+            <div class="lab-controls"><label>double <input type="text" id="dm-cost-x" value="5e-324" size="18" spellcheck="false"></label><button type="button" class="lab-button" id="dm-cost-go">Add row</button></div>
+            <div class="dm-table-wrap" id="dm-cost-table"></div>
+            <figcaption>Computed in your browser with the page’s own Dragon4. “×10 steps” counts the iterations of the two scaling loops before the first digit. “Largest integer” is the bit length of the biggest of R, S, M⁻, M⁺ seen during the whole run.</figcaption>
+          </figure>
+          <p>The smallest subnormal, 5e-324, needs 323 iterations with integers about 1 075 bits long. The largest double needs 309. Burger and Dybvig (1996) replaced the search with an estimate, k ≈ ⌈log<sub>10</sub> v⌉ computed in floating point and corrected by at most one step. In their measurements the iterative search took about 70 times as long as the estimate. The digit loop itself stayed the same.</p>
+        </section>
+
+        <section id="fine-print">
+          <p class="eyebrow">Fine print</p>
+          <h2>Strictly inside, and one footnote</h2>
+          <p>The paper’s tests are strict (<code>&lt;</code> and <code>&gt;</code>): a decimal that lies <em>exactly</em> on the boundary of the interval is never used. That is always safe, and the output is the shortest decimal strictly inside the interval (nearest to v among those). But it is not always what <code>Number.prototype.toString</code> prints. JavaScript also accepts a boundary decimal when f is even, because round-half-even reading still maps it to v. On exact ties between U and U + 1 the paper allows either; this page keeps U, JavaScript picks the even digit. For doubles drawn from uniformly random bit patterns, about 1 in 2 000 (0.05 %) print differently. Every one of them still reads back correctly.</p>
+          <div class="dm-fine" id="dm-fine"></div>
+          <div class="lab-controls"><button type="button" class="lab-button" id="dm-sample">Compare 20 000 random doubles</button><span id="dm-sample-out" aria-live="polite"></span></div>
+          <p class="dm-footnote" id="footnote-ge"><strong>Footnote: <code>&gt;</code> instead of <code>≥</code>.</strong> The paper’s second scaling loop is <code>while 2R + M⁺ ≥ 2S</code>. With strict boundaries this has one bad double: for 1e23, v + (half a gap) is exactly 10<sup>23</sup>, the loop overshoots by one decade, and the first digit printed is a 0 (“09999999999999999” × 10<sup>7</sup>). This page uses <code>&gt;</code>, as Burger and Dybvig do for an excluded upper boundary. The 4-bit value 96 has the same problem: its upper boundary is exactly 100 (see the 96 tab).</p>
+          <p class="dm-sources">Sources: G. L. Steele Jr. and J. L. White, “How to Print Floating-Point Numbers Accurately”, PLDI 1990 (Tables 3, 4 and 6), and their 2004 retrospective. R. G. Burger and R. K. Dybvig, “Printing Floating-Point Numbers Quickly and Accurately”, PLDI 1996.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/dragon.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
