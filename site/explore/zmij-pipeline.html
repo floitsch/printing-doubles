@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Żmij step by step for one double: raw bits, one 192-bit product, three independent flag computations, SWAR digit extraction and the bytes in the output buffer.">
+  <title>Żmij · From bits to characters · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/zmij-pipeline.css">
+  <script type="module" src="./js/zmij-pipeline.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Żmij / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./zmij-dial.html">compare with approach A</a></p>
+      <h1>From bits to characters</h1>
+      <p class="chapter-deck">The whole Żmij pipeline, one double at a time: one multiply, three questions that don't wait for each other, and sixteen digits made in three parallel steps.</p>
+      <p class="lab-pitch">A machine-first walk for programmers. Pick one double and step through every register Żmij touches, from the raw bits to the bytes in the output buffer. At the end, a ledger says which parts are proved and which are only tested.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Żmij, pipeline view</strong><a href="#pick">One double, start to finish</a><a href="#point">1 · Move the decimal point</a><a href="#bits">2 · Follow the bits</a><a href="#digits">3 · Sixteen digits at once</a><a href="#ledger">4 · Proved vs tested</a><a href="#sources">Sources</a></aside>
+      <article class="chapter">
+        <section id="pick">
+          <p class="eyebrow">The machine view</p>
+          <h2>One double, start to finish</h2>
+          <p>Żmij is Victor Zverovich's double-to-string library. This page explains the code as it is at <a href="https://github.com/vitaut/zmij/tree/d1682cb47e67474319ed146d3ca2c0e1a70f9429">tag v1.2 (commit d1682cb)</a>. The core has been rewritten several times, so older descriptions, including the 2025 blog post, describe a different design. The conversion has two halves. <code>to_decimal</code> turns the bits into a decimal significand and exponent. <code>write</code> turns those into characters. Both halves are straight-line integer code with no loops over digits.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A double is <code>v = m · 2<sup>e</sup></code>, where <code>m</code> is a 53-bit integer (the leading 1 is implicit for normal numbers). Its neighbours are one ulp = <code>2<sup>e</sup></code> away, except that the gap below a power of two is only half an ulp.</p>
+            <p>Any decimal strictly less than half a gap away from <code>v</code> reads back as <code>v</code>. A decimal exactly half a gap away reads back as <code>v</code> only if <code>m</code> is even (ties go to even). The shortest output is the decimal with the fewest digits inside this rounding interval. If several have that many digits, the one closest to <code>v</code> wins.</p>
+          </div>
+          <p>Choose a number. Every figure below runs the pipeline on that number in your browser, using BigInt arithmetic that matches the C++ bit for bit.</p>
+          <figure class="lab-figure zp-picker" aria-labelledby="zp-picker-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="zp-presets" role="group" aria-label="Preset doubles"></div>
+            </div>
+            <div class="lab-controls">
+              <form id="zp-form" class="zp-form">
+                <label for="zp-input">Double</label>
+                <input id="zp-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-describedby="zp-input-help">
+                <button class="lab-button primary" type="submit">Run</button>
+              </form>
+              <button class="lab-button" type="button" id="zp-prev" aria-label="Previous double">◀ prev double</button>
+              <button class="lab-button" type="button" id="zp-next" aria-label="Next double">next double ▶</button>
+              <label class="zp-hex-toggle"><input type="checkbox" id="zp-hex"> show hex</label>
+            </div>
+            <p id="zp-input-help" class="zp-help">Literals, <code>+ − × /</code> in double arithmetic (<code>0.1+0.2</code>, <code>2/3</code>) and <code>2^n</code> are accepted.</p>
+            <p class="zp-error" id="zp-error" role="alert" hidden></p>
+            <ol class="zp-overview" id="zp-overview" aria-label="The pipeline for the chosen double"></ol>
+            <figcaption id="zp-picker-caption">The whole pipeline at a glance. Each station is one stage of the code; click a station to jump to that step below.</figcaption>
+          </figure>
+        </section>
+
+        <div class="zp-stages" id="zp-stages">
+          <section id="point">
+            <p class="eyebrow">Stage 1 · the design choice</p>
+            <h2>Move the decimal point one place</h2>
+            <p>Schubfach-family algorithms all start the same way. Pick a decimal exponent <code>k</code> from the binary exponent so that one ulp is roughly <code>10<sup>k</sup></code>. Multiply <code>v</code> by a stored power of ten, then read decimal candidates off the product. They differ in how many products they need and where they put the decimal point.</p>
+            <p>Żmij reads its single product one decimal place further left than yy does. The candidate with one digit fewer, which yy has to dig out with a division by ten, is then simply the integer part. The digit that was pushed out comes back from the fraction, computed in parallel.</p>
+            <figure class="lab-figure zp-figure" aria-label="Stage 1 steps">
+              <ol class="zp-cards" data-stage="1"></ol>
+            </figure>
+            <h3>Where the idea came from</h3>
+            <p>Schubfach (Raffaello Giulietti) multiplies three times: once for <code>v</code> and once for each end of the rounding interval. yy (Yaoyuan Guo, in yyjson) multiplies once and gets the half-ulp by shifting the table entry. xjb (Xiang JunBo) moved the scale to <code>10<sup>−k−1</sup></code>. That turned the decisions into one carry, one comparison and one rounded digit.</p>
+            <p>Żmij's decision core is xjb's: the same 9 bits of headroom, the same <code>+1</code> for even significands, the same rounding constant <code>2<sup>63</sup> + 6</code> and the same fix for <code>F = 2<sup>62</sup></code>. It runs on yy-style power-of-ten entries, which are rounded down, where xjb's are rounded up. On top of that, Żmij adds a Lean proof and lane-parallel formatting.</p>
+            <p>The 2025 post “Faster double-to-string conversion” describes an earlier Żmij: a Schubfach port with Cassio Neri's single-candidate trick. That design is gone. A comment inside <code>to_decimal</code> in <code>zmij.cc</code> credits the <code>10<sup>−k−1</sup></code> scaling to Xiang JunBo.</p>
+          </section>
+
+          <section id="bits">
+            <p class="eyebrow">Stage 2 · <code>to_decimal</code></p>
+            <h2>Follow the bits</h2>
+            <p>Now the actual machine words. Each step below is one or two lines of <code>to_decimal</code>, run on your number. Values are in decimal by default; tick “show hex” to see the words as the CPU holds them. Fractions are given in units of the short grid: 1 unit = <code>10<sup>k+1</sup></code>, and the 64-bit fraction word <code>F</code> stands for <code>F / 2<sup>64</sup></code> of a unit.</p>
+            <figure class="lab-figure zp-figure" aria-label="Stage 2 steps">
+              <ol class="zp-cards" data-stage="2"></ol>
+            </figure>
+            <h3>Why the “≈” signs are safe</h3>
+            <p>The table entry is rounded down, and the product is truncated twice: the low 64-bit word and the 9-bit tail are dropped. So the machine's <code>F</code> and <code>h</code> can come out a couple of units of <code>2<sup>−64</sup></code> below the exact values printed next to them. Near a decision boundary, that could flip a flag. The <code>+6</code> in the digit constant shifts the rounding point enough to cover the truncation. The Lean proof checks every binary exponent and shows that no regular double lands in the remaining gap. The rounding-interval picture behind these three tests has its own page: <a href="./zmij-dial.html">approach A, the dial</a>.</p>
+          </section>
+
+          <section id="digits">
+            <p class="eyebrow">Stage 3 · <code>to_digits</code> and <code>write</code></p>
+            <h2>Sixteen digits at once</h2>
+            <p>The decision stage hands over three things: an integer <code>I</code> of 15 or 16 digits, possibly one extra digit, and an exponent. Turning them into characters is half of Żmij's speed. There is no digit loop. The digits come out of a fixed three-level tree, where each level splits every lane in two with one multiply. After that, the output is assembled with a handful of stores whose positions come from small tables.</p>
+            <figure class="lab-figure zp-figure" aria-label="Stage 3 steps">
+              <ol class="zp-cards" data-stage="3"></ol>
+            </figure>
+            <p>This is the portable SWAR path, from Xiang JunBo. The SIMD builds compute the same tree with vector instructions. On SSE2/SSE4.1 (Tobias Schlüter), both 8-digit halves sit in one 128-bit register and are converted together. On NEON (Dougall Johnson), the split by <code>10<sup>8</sup></code> is a multiply by <code>0xabcc77118461cefd</code> and a shift by 90, and the lane steps use <code>vqdmulh</code>. Only the instructions change; each level does the same splitting.</p>
+            <p class="zp-footnote"><strong>Byte order.</strong> The register, printed most significant byte first as above, reads in digit order. A little-endian store writes the least significant byte first, so the portable path applies <code>bswap64</code> before storing. Big-endian machines skip it, and the SIMD paths fold the reversal into a shuffle.</p>
+          </section>
+
+          <section id="ledger">
+            <p class="eyebrow">Stage 4 · guarantees</p>
+            <h2>Proved vs tested</h2>
+            <p>Żmij's README says “formally verified in Lean”. That claim is accurate, but it covers a specific scope, set out below.</p>
+            <figure class="lab-figure zp-figure" aria-label="Stage 4 step">
+              <ol class="zp-cards" data-stage="4"></ol>
+            </figure>
+            <div class="zp-table-wrap">
+              <table class="zp-ledger">
+                <thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">What exactly</th></tr></thead>
+                <tbody>
+                  <tr data-row="regular"><th scope="row">Regular binary64 <code>to_decimal</code> (normals that are not powers of two, and all subnormals)</th><td><span class="zp-pill zp-proved">proved</span></td><td>Lean 4 + Mathlib, theorem <code>Zmij.correct</code> in <code>test/Zmij.lean</code> (on top of <code>test/Core.lean</code>). After trailing zeros are removed, the output is the shortest decimal that reads back, and it is correctly rounded. The per-exponent inequalities are closed by <code>decide +kernel</code> over every binary exponent.<br><em>Caveat:</em> the theorem is about a Lean model of <code>to_decimal</code> written by hand. The model includes the truncated table, the truncated product, the <code>+6</code> and the <code>2<sup>62</sup></code> fix. No machine check shows that the C++ matches the model, and the C++ table generator is not checked either.</td></tr>
+                  <tr data-row="irregular"><th scope="row">Irregular path (the 2,046 exact powers of two)</th><td><span class="zp-pill zp-tested">tested</span></td><td>Not in the Lean proof. The (now superseded) <code>test/verify.py</code> checks every power of two directly, and unit tests cover them. The smallest normal, 2<sup>−1022</sup>, takes the irregular branch in C++ even though its gap below is not halved. The source comment says this gives the same result.</td></tr>
+                  <tr data-row="format"><th scope="row">Formatting: SWAR/SSE/NEON digits, trailing zeros, layout and exponent tables</th><td><span class="zp-pill zp-tested">tested</span></td><td>Unit tests only. This page's model of the portable path produced the same strings as the compiled C++ library (v1.2) on about 220,000 doubles: random bit patterns, all powers of two, subnormals and short decimals.</td></tr>
+                  <tr data-row="float"><th scope="row"><code>float</code> (binary32)</th><td><span class="zp-pill zp-tested">tested, exhaustively</span></td><td><code>test/float-check.cc</code> compares all 2<sup>32</sup> floats against Dragonbox.</td></tr>
+                  <tr data-row="other"><th scope="row">Fixed-precision path, <code>long double</code></th><td><span class="zp-pill zp-proved">proved</span></td><td>Separate files: <code>test/ZmijPrecision.lean</code>, <code>test/YY80.lean</code> and <code>test/YY128.lean</code>. They are not part of the shortest path shown on this page.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="zp-player" id="zp-player" role="region" aria-label="Pipeline stepper">
+            <button class="lab-button" type="button" id="zp-step-prev" aria-label="Previous step">◀</button>
+            <p class="zp-player-label" id="zp-player-label" aria-live="polite"></p>
+            <button class="lab-button primary" type="button" id="zp-step-next" aria-label="Next step">▶</button>
+            <a class="zp-player-value" id="zp-player-value" href="#pick" title="Change the double"></a>
+          </div>
+        </div>
+
+        <section id="sources">
+          <p class="eyebrow">Sources</p>
+          <h2>Read the code</h2>
+          <ul class="zp-sources">
+            <li><a href="https://github.com/vitaut/zmij/blob/d1682cb47e67474319ed146d3ca2c0e1a70f9429/zmij.cc">zmij.cc at d1682cb</a>. See <code>to_decimal</code> (around line 1236), <code>to_bcd8</code> (around line 881), <code>to_digits</code> (around line 965) and <code>write</code> (around line 1689).</li>
+            <li><a href="https://github.com/vitaut/zmij/blob/d1682cb47e67474319ed146d3ca2c0e1a70f9429/zmij.h">zmij.h</a>: <code>compute_dec_exp</code>, <code>compute_exp_shift</code>, and the constexpr yy port used for compile-time conversion.</li>
+            <li><a href="https://github.com/vitaut/zmij/blob/d1682cb47e67474319ed146d3ca2c0e1a70f9429/test/Zmij.lean">test/Zmij.lean</a> and <a href="https://github.com/vitaut/zmij/blob/d1682cb47e67474319ed146d3ca2c0e1a70f9429/test/Core.lean">test/Core.lean</a>, the proof.</li>
+            <li><a href="https://vitaut.net/posts/2026/yy-dtoa/">“The fastest double-to-string algorithm you've never heard of”</a> (2026), on yy's single multiply. <a href="https://vitaut.net/posts/2025/faster-dtoa/">“Faster double-to-string conversion”</a> (2025) describes the older Schubfach-based design.</li>
+            <li>Speed, from the README: more than 7× faster than Ryū on an Apple M5 Max, and about 3.8× faster than Ryū (about 34× faster than <code>sprintf</code>) on an AMD EPYC 7C13. This page shows only operation counts.</li>
+          </ul>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/zmij.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
