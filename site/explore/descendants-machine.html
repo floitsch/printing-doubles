@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Burger and Dybvig's free-format printer as a stepping machine next to its code, with rule switches, then a route map through Gay's dtoa() mode 0 that lights up the path your number takes.">
+  <title>Gay &amp; Burger–Dybvig · The machine and its map · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/descendants-machine.css">
+  <script type="module" src="./js/descendants-machine.js"></script>
+</head>
+<body>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main>
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Gay &amp; Burger–Dybvig / Approach B</p>
+      <p class="lab-badge">Approach B · <a href="./descendants-rulers.html">compare with approach A</a></p>
+      <h1>The machine and its map</h1>
+      <p class="chapter-deck">Burger and Dybvig's printer is four integers and about thirty lines of code. Gay's dtoa runs the same machine, wrapped in shortcuts. First step through the machine and flip its rules. Then follow your number through dtoa().</p>
+      <p class="lab-pitch">Code reading first. A stepping machine sits next to a short JS transliteration, with switches that change or break its rules. Then comes a subway map of dtoa() mode 0 that lights up the route a number takes, labelled with dtoa.c's own names, so the reader can open the real source and find their way.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>The machine and its map</strong><a href="#start">Dragon4 in one paragraph</a><a href="#machine">The four-integer machine</a><a href="#by-hand">Two runs by hand</a><a href="#switches">Rule switches</a><a href="#promise">What it promises</a><a href="#rosetta">Same machine, dtoa names</a><a href="#route">Route map through dtoa()</a><a href="#routes">Seven routes worth taking</a><a href="#modern">The dtoa.c you download today</a></aside>
+      <article class="chapter">
+
+        <section id="start">
+          <p class="eyebrow">1 · Where we start</p>
+          <h2>Dragon4 in one paragraph</h2>
+          <p class="lead">Dragon4 (Steele &amp; White, 1990) prints a double with four exact integers. The fraction <var>r</var>/<var>s</var> is the part of <var>v</var> still to be printed. <var>m</var>⁺/<var>s</var> and <var>m</var>⁻/<var>s</var> are the half-gaps to the neighbouring doubles: anything closer than that reads back as <var>v</var>.</p>
+          <p>Each step multiplies <var>r</var> and <var>m</var>± by 10 and takes the next digit <var>d</var> = ⌊<var>r</var>/<var>s</var>⌋, keeping the remainder in <var>r</var>. The loop stops as soon as the remainder is within <var>m</var>⁻ of 0 (then <var>d</var> already reads back as <var>v</var>) or within <var>m</var>⁺ of <var>s</var> (then <var>d</var>+1 does). The digit loop was never the problem. The problem was getting <em>to</em> the first digit. Dragon4 found the decimal exponent by multiplying by 10 once per decade: about 300 bignum multiplications for 1e308 or 5e-324, on integers more than 1000 bits wide.</p>
+          <p>Gay (1990) and Burger &amp; Dybvig (1996) both kept the loop and replaced the walk with an estimate plus one exact check. <a href="./descendants-rulers.html">Approach A</a> explains why that estimate is never off by more than one. This page reads the code: first Burger &amp; Dybvig's complete algorithm, then the route map of Gay's dtoa().</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is <var>v</var> = <var>f</var> · 2<sup><var>e</var></sup> with an integer <var>f</var> &lt; 2<sup>53</sup>. For normal doubles 2<sup>52</sup> ≤ <var>f</var>; subnormals have <var>e</var> = −1074.</p>
+            <p>Its neighbours are one unit of <var>f</var> away, so any decimal within half a gap reads back as <var>v</var>. The exception is an exact power of two (<var>f</var> = 2<sup>52</sup>): the double below is only half as far away as the double above.</p>
+            <p>A decimal exactly halfway between two doubles reads back as the one with the even <var>f</var>. So when <var>f</var> is even, the two boundaries themselves are allowed.</p>
+          </div>
+          <div class="dm-convention" role="note">
+            <span><strong>B&amp;D:</strong> <var>v</var> ≈ 0.<var>d</var>₁<var>d</var>₂… × 10<sup><var>k</var></sup></span>
+            <span><strong>dtoa:</strong> <var>v</var> ≈ <var>d</var>₀.<var>d</var>₁… × 10<sup><var>k</var></sup>, returns decpt = <var>k</var> + 1</span>
+            <span>Same digits; the two <var>k</var>s differ by one. Outputs below are shown as JavaScript would print them.</span>
+          </div>
+        </section>
+
+        <section id="machine">
+          <p class="eyebrow">2 · Burger &amp; Dybvig, PLDI 1996</p>
+          <h2>The four-integer machine</h2>
+          <p>Burger and Dybvig wrote the whole free-format printer in about thirty lines of Scheme (their Table 1 and Figure 3). The panel below is a JavaScript transliteration with the paper's names: <var>r</var>, <var>s</var>, <var>m</var>⁺ (<code>mp</code>) and <var>m</var>⁻ (<code>mm</code>). It has five parts:</p>
+          <ol class="lab-steps">
+            <li><strong>Initial integers (Table 1).</strong> Four cases set <var>r</var>/<var>s</var> = <var>v</var> exactly. A factor 2 is built in so that the half-gaps are whole numbers. In the power-of-two rows the gap below is half the gap above, so <var>m</var>⁺ = 2<var>m</var>⁻.</li>
+            <li><strong>Estimate.</strong> One line: <var>k</var> ≈ ⌈(<var>e</var> + len(<var>f</var>) − 1) · log<sub>10</sub>2 − 10<sup>−10</sup>⌉ reads the exponent from the bit length alone. The result is either the true <var>k</var> or one less, never more.</li>
+            <li><strong>Scale</strong> by 10<sup>est</sup> in a single multiplication. The paper uses a table of 10<sup>0</sup>…10<sup>325</sup>.</li>
+            <li><strong>Free fixup.</strong> If the top of the rounding interval, (<var>r</var> + <var>m</var>⁺)/<var>s</var>, already reaches 1, the estimate was one low. Then <var>k</var> goes up by 1 and the ×10 that digit generation would do first is skipped. So a low estimate costs nothing.</li>
+            <li><strong>Generate.</strong> <var>d</var> = ⌊<var>r</var>/<var>s</var>⌋ with remainder <var>r</var>. Test <code>tc1</code> (keep <var>d</var>) and <code>tc2</code> (take <var>d</var>+1). If neither holds, multiply by 10 and continue.</li>
+          </ol>
+
+          <figure class="lab-figure dm-machine-fig" id="machine-figure" aria-labelledby="machine-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="bd-presets" role="group" aria-label="Example numbers"></div>
+              <form id="bd-form" class="dm-form">
+                <label for="bd-input">double</label>
+                <input id="bd-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" size="18" value="0.1">
+                <button class="lab-button" type="submit">Load</button>
+              </form>
+            </div>
+            <fieldset class="dm-switches" id="bd-switches">
+              <legend>Rule switches</legend>
+              <label><input type="checkbox" id="sw-ties" checked> <span>Reader rounds ties to even</span></label>
+              <label><input type="checkbox" id="sw-bug"> <span><span class="dm-bugtag">bug</span> Symmetric gaps at powers of two</span></label>
+              <label><input type="checkbox" id="sw-kv"> <span>Choose <var>k</var> from <var>v</var> (dtoa), not from high</span></label>
+              <span class="dm-radio" role="radiogroup" aria-label="Final-digit tie rule">Tie:
+                <label><input type="radio" name="sw-tie" value="up" checked> up (B&amp;D)</label>
+                <label><input type="radio" name="sw-tie" value="even"> to even (dtoa, JS)</label>
+              </span>
+            </fieldset>
+            <div class="lab-controls dm-stepbar">
+              <button class="lab-button" type="button" id="bd-reset">Reset</button>
+              <button class="lab-button" type="button" id="bd-back" aria-label="Previous step">← Back</button>
+              <button class="lab-button primary" type="button" id="bd-next" aria-label="Next step">Next →</button>
+              <button class="lab-button" type="button" id="bd-end">To end</button>
+              <span id="bd-count" class="dm-count" aria-live="off"></span>
+            </div>
+            <div class="dm-machine">
+              <div class="dm-code-wrap">
+                <pre class="lab-code dm-code" id="bd-code" aria-label="JavaScript transliteration of Burger and Dybvig's free-format algorithm"></pre>
+                <p class="dm-code-note"><code>pow2</code>, <code>pow10</code>, <code>len</code> (bit length) and <code>even</code> are one-line helpers; <code>HIDDEN</code> = 2<sup>52</sup>. Changed lines are marked in red.</p>
+              </div>
+              <div class="dm-stage">
+                <div class="dm-explain" id="bd-explain" aria-live="polite"></div>
+                <div id="bd-cell" class="dm-cell"></div>
+                <dl class="dm-state" id="bd-state"></dl>
+              </div>
+            </div>
+            <div class="lab-readout" id="bd-result"></div>
+            <figcaption id="machine-caption">The digit cell is the interval [0, <var>s</var>]; the blue dot is the remainder <var>r</var>. The stop zones [0, <var>m</var>⁻) and (<var>s</var> − <var>m</var>⁺, <var>s</var>] are about 10<sup>−16</sup> of the cell, so two zoom lenses magnify the ends; a solid zone edge means the boundary itself is allowed. Every integer is computed exactly with BigInt in your browser.</figcaption>
+          </figure>
+        </section>
+
+        <section id="by-hand">
+          <p class="eyebrow">3 · Check it with a calculator</p>
+          <h2>Two runs by hand</h2>
+          <p>For 0.1 and 0.3, <var>s</var> is a power of two and the final comparisons involve single-digit numbers, so both runs can be checked by hand.</p>
+          <h3>0.1: the estimate is low, and the fix is free</h3>
+          <ol class="lab-steps">
+            <li>0.1 is stored as <var>f</var> = 7205759403792794, <var>e</var> = −56. Table 1, row 3: <var>r</var> = 2<var>f</var> = 14411518807585588, <var>s</var> = 2<sup>57</sup> = 144115188075855872, <var>m</var>⁺ = <var>m</var>⁻ = 1.</li>
+            <li>The top bit sits at position <var>e</var> + 53 − 1 = −4, and ⌈−4 · 0.30103…⌉ = ⌈−1.204⌉ = −1. So est = −1: multiply <var>r</var> and <var>m</var>± by 10. Now <var>r</var> = 144115188075855880 and <var>m</var>± = 10.</li>
+            <li>Fixup: <var>r</var> + <var>m</var>⁺ ≥ <var>s</var> (even already <var>r</var> &gt; <var>s</var>), so the estimate was one low. <var>k</var> = 0, and the ×10 is skipped.</li>
+            <li><var>d</var> = ⌊<var>r</var>/<var>s</var>⌋ = 1, remainder <var>r</var> = 8. <code>tc1</code>: 8 ≤ <var>m</var>⁻ = 10 (<var>f</var> is even, so ≤). <code>tc2</code>: 8 + 10 ≥ <var>s</var>? No. Emit 1. Result: 0.1 × 10<sup>0</sup> = <strong>0.1</strong>. <button class="dm-inline" type="button" data-load="x=0.1&amp;step=4">show in machine</button></li>
+          </ol>
+          <h3>0.3: the remainder lands near <var>s</var></h3>
+          <ol class="lab-steps">
+            <li>0.3 is stored as <var>f</var> = 5404319552844595, <var>e</var> = −54 (odd <var>f</var>: the boundaries are excluded). <var>r</var> = 2<var>f</var> = 10808639105689190, <var>s</var> = 2<sup>55</sup> = 36028797018963968, <var>m</var>± = 1.</li>
+            <li>The top bit is at −2, and ⌈−0.602⌉ = 0, so nothing is scaled. The fixup finds <var>r</var> + <var>m</var>⁺ &lt; <var>s</var>, so est = 0 is right. Multiply by 10: <var>r</var> = 108086391056891900, <var>m</var>± = 10.</li>
+            <li><var>d</var> = 2 with remainder <var>r</var> = <var>s</var> − 4. <code>tc1</code> fails badly. <code>tc2</code>: <var>r</var> + <var>m</var>⁺ = <var>s</var> + 6 &gt; <var>s</var>. Emit <var>d</var> + 1 = 3. Result: <strong>0.3</strong>, although the stored value is 0.29999999999999998889…. <button class="dm-inline" type="button" data-load="x=0.3&amp;step=4">show in machine</button></li>
+          </ol>
+        </section>
+
+        <section id="switches">
+          <p class="eyebrow">4 · Flip a rule, watch the output</p>
+          <h2>Four rule switches</h2>
+          <p>Each switch changes one line of the code panel. Each run is exact, so every output below is what the changed algorithm really prints.</p>
+          <div class="dm-switchcards">
+            <article class="dm-card">
+              <h3>1 · The reader rounds ties to even</h3>
+              <p>The double nearest 10<sup>23</sup> is 99999999999999991611392. Its upper half-gap is 2<sup>23</sup> = 8388608, so the top of its rounding interval is <em>exactly</em> 10<sup>23</sup>. Its <var>f</var> is even, so an IEEE reader turns "1e23" into this very double. With the switch on (the paper's setting), the machine may use the boundary and prints <strong>1e23</strong>. With a strict interval it prints <strong>9.999999999999999e22</strong>. Both read back correctly; the first is shorter. The strict rule is Steele &amp; White's, and it is what dtoa's mode 1 does.</p>
+              <button class="lab-button" type="button" data-load="x=1e23&amp;ties=0&amp;step=end">Load 1e23, strict reader</button>
+            </article>
+            <article class="dm-card dm-card-bug">
+              <h3>2 · Bug: symmetric gaps at powers of two</h3>
+              <p>2<sup>64</sup> = 18446744073709551616. The double above is 4096 away, the one below only 2048. The correct machine prints <strong>18446744073709552000</strong>. The bug skips the power-of-two rows of Table 1 and uses a lower half-gap of 2048 instead of 1024. That lets <strong>18446744073709550000</strong> through, 1616 below <var>v</var>, which reads back as 18446744073709549568 = 2<sup>64</sup> − 2048: the wrong double. 2<sup>−44</sup>, 2<sup>−25</sup> and 2<sup>65</sup>…2<sup>68</sup> break the same way.</p>
+              <button class="lab-button" type="button" data-load="x=2^64&amp;bug=1&amp;step=end">Load 2^64 with the bug</button>
+            </article>
+            <article class="dm-card">
+              <h3>3 · Choose <var>k</var> from <var>v</var>, not from high</h3>
+              <p>B&amp;D pick <var>k</var> so that even the top of the rounding interval is below 10<sup><var>k</var></sup>. For 1e23 that top is 10<sup>23</sup> itself (and allowed), so <var>k</var> = 24. The first quotient is then 0, and <code>tc2</code> turns it into 1: no carry, ever. dtoa picks <var>k</var> from <var>v</var>. With this switch the machine does the same: <var>k</var> = 23, the first digit is 9, <code>tc2</code> asks for 9 + 1, and a carry has to ripple left. That is dtoa's <code>round_9_up</code>. It happens for 298 of the 632 powers of ten from 1e-323 to 1e308: exactly those whose double lies below 10<sup><var>n</var></sup>.</p>
+              <button class="lab-button" type="button" data-load="x=1e23&amp;kv=1&amp;step=end">Load 1e23, k from v</button>
+            </article>
+            <article class="dm-card">
+              <h3>4 · The final-digit tie rule</h3>
+              <p>2237844659592604.25 is a double, and its neighbours are 0.25 away. Both 2237844659592604.2 and …604.3 read back as it, and both are exactly 0.05 away. B&amp;D's Figure 1 breaks such ties upwards and prints <strong>…604.3</strong>. dtoa and JavaScript pick the even digit and print <strong>…604.2</strong>. Both are correct shortest outputs. This is a choice, not a bug, although ECMAScript's <code>Number.prototype.toString</code> requires the even one.</p>
+              <button class="lab-button" type="button" data-load="x=2237844659592604.25&amp;step=end">Load the tie</button>
+            </article>
+          </div>
+        </section>
+
+        <section id="promise">
+          <p class="eyebrow">5 · Stated carefully</p>
+          <h2>What the machine promises</h2>
+          <p>With the switches in their default positions, B&amp;D's output is</p>
+          <ul>
+            <li><strong>inside</strong> the rounding interval, so it reads back as <var>v</var>;</li>
+            <li><strong>shortest</strong>: no string with fewer digits reads back as <var>v</var>;</li>
+            <li>when both <var>d</var> and <var>d</var>+1 would do, the <strong>nearer</strong> of the two, with ties going up.</li>
+          </ul>
+          <div class="aside"><p>The original paper also claimed correct rounding (its Theorem 4). The corrected version of the paper, with corrections from Raffaello Giulietti (2006), states that Theorem 4 is false because its definition was too strong. Only the three properties above are claimed here. They are all the tests on this page rely on: over 20,000 random doubles, the machine agrees with <code>Number#toString</code> except on exact ties like switch 4.</p></div>
+        </section>
+
+        <section id="rosetta">
+          <p class="eyebrow">6 · Rosetta table</p>
+          <h2>Same machine, dtoa's names</h2>
+          <p>Gay's digit loop is the same machine. Keep this table open when you read dtoa.c:</p>
+          <div class="dm-table-wrap">
+            <table class="dm-rosetta">
+              <thead><tr><th scope="col">Burger &amp; Dybvig</th><th scope="col">dtoa.c</th><th scope="col">Note</th></tr></thead>
+              <tbody>
+                <tr><td><var>r</var> / <var>s</var></td><td><code>b</code> / <code>S</code></td><td>The same fraction; dtoa has cancelled common powers of two and shifted both (<code>dshift</code>).</td></tr>
+                <tr><td><var>m</var>⁺, <var>m</var>⁻</td><td><code>mhi</code>, <code>mlo</code></td><td>Equal, except at a power of two (<code>spec_case</code>): <code>mhi</code> = 2·<code>mlo</code>.</td></tr>
+                <tr><td><code>tc1</code>: <var>r</var> &lt; <var>m</var>⁻ (≤ if even)</td><td><code>j = cmp(b, mlo)</code> &lt; 0 (or = 0 if even)</td><td>Low exit: keep <var>d</var>.</td></tr>
+                <tr><td><code>tc2</code>: <var>r</var> + <var>m</var>⁺ &gt; <var>s</var> (≥ if even)</td><td><code>j1 = cmp(b, S − mhi)</code> &gt; 0 (or = 0 if even)</td><td>High exit: <var>d</var> + 1.</td></tr>
+                <tr><td>both: 2<var>r</var> vs <var>s</var>, tie up</td><td><code>j &lt; 0 &amp;&amp; j1 &gt; 0</code>: 2<code>b</code> vs <code>S</code>, tie to even</td><td>The only rule that differs.</td></tr>
+                <tr><td>0.<var>d</var>₁<var>d</var>₂… × 10<sup><var>k</var></sup>, <var>k</var> from high</td><td><var>d</var>₀.<var>d</var>₁… × 10<sup><var>k</var></sup>, <var>k</var> = ⌊log<sub>10</sub> <var>v</var>⌋, decpt = <var>k</var> + 1</td><td>Offset by one; dtoa can carry (<code>round_9_up</code>).</td></tr>
+                <tr><td>Estimate from the exponent: ≤ <var>k</var></td><td><code>ds</code>, a tangent line: ≥ <var>k</var></td><td>They err in opposite directions; see <a href="./descendants-rulers.html">approach A</a>.</td></tr>
+                <tr><td>Fixup: <var>r</var> + <var>m</var>⁺ ≥ <var>s</var> → <var>k</var>+1</td><td><code>tens[k]</code> check, or <code>k_check</code>: <code>b &lt; S</code> → <var>k</var>−1</td><td>One exact comparison either way.</td></tr>
+                <tr><td>×10 at the top of each step</td><td>×10 at the bottom (<code>multadd(b, 10, 0)</code>)</td><td>Same arithmetic, different place.</td></tr>
+                <tr><td>Table of 10<sup>0</sup>…10<sup>325</sup></td><td><code>pow5mult</code> + shifts</td><td>10<sup><var>k</var></sup> = 5<sup><var>k</var></sup>·2<sup><var>k</var></sup>; the 2s are only a shift count.</td></tr>
+                <tr><td><var>d</var> = ⌊<var>r</var>/<var>s</var>⌋</td><td><code>quorem(b, S)</code></td><td>A guess from the top 32-bit words plus at most one correction.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="route">
+          <p class="eyebrow">7 · Gay 1990, netlib dtoa.c, mode 0</p>
+          <h2>Route map through dtoa()</h2>
+          <p>dtoa.c is more than 6,000 lines long, but mode 0, the shortest round-trip string, follows one main line with a few branches. The map shows the classic bignum path (Gay's paper, and today's file compiled with <code>-DNO_BF96</code>). Pick a number and its route lights up. Each lit station shows a live value, and the list next to the map has the details. Station names are dtoa.c's own labels and variables, so you can search for them in the source.</p>
+          <figure class="lab-figure dm-route-fig" aria-labelledby="route-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="rt-presets" role="group" aria-label="Example routes"></div>
+              <form id="rt-form" class="dm-form">
+                <label for="rt-input">double</label>
+                <input id="rt-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" size="18" value="1e23">
+                <button class="lab-button" type="submit">Route</button>
+              </form>
+              <button class="lab-button" type="button" id="rt-random">Random double</button>
+            </div>
+            <div class="dm-route">
+              <div class="dm-map-scroll" id="rt-map"></div>
+              <div class="dm-inspector">
+                <p class="dm-route-out" id="rt-out" aria-live="polite"></p>
+                <ol class="dm-stations" id="rt-list"></ol>
+              </div>
+            </div>
+            <figcaption id="route-caption">Thick line: the route taken; faint line: branches not taken. Select a station on the map or in the list to see its values. The bars at <code>dshift</code> compare the final bit lengths of <code>b</code>, <code>S</code> and <code>mhi</code> (solid) with the sizes they would have had without cancelling the common factors of 2 (outline). The dotted line on the left is the modern default build (see below).</figcaption>
+          </figure>
+        </section>
+
+        <section id="routes">
+          <p class="eyebrow">8 · Guided tour</p>
+          <h2>Seven routes worth taking</h2>
+          <ul class="dm-tour">
+            <li><button class="dm-inline" type="button" data-route="0.3">0.3</button> The plain route. <code>ds</code> gives <var>k̂</var> = −1, which is right. One factor of 2 is cancelled. The first <code>quorem</code> digit is 2, <code>j1</code> &gt; 0 sends it out through exit C, and it prints "3".</li>
+            <li><button class="dm-inline" type="button" data-route="1e23">1e23</button> Every special branch in one number. <code>ds</code> = 23.00327 gives <var>k̂</var> = 23, which is too big for the <code>tens[]</code> check, so <code>k_check</code> is set. After scaling, <code>b &lt; S</code> lowers <var>k</var> to 22. The first digit is 9 with <code>j1 == 0</code> and an even mantissa, so exit A leads to <code>round_9_up</code>, which carries to "1" with decpt 24.</li>
+            <li><button class="dm-inline" type="button" data-route="5e-324">5e-324</button> The biggest integers. 324 factors of 2 are cancelled, and <code>S</code> still has 764 bits (1076 without cancelling). The first digit is 4, both exits hold, and 2<code>b</code> &gt; <code>S</code> rounds it up to "5".</li>
+            <li><button class="dm-inline" type="button" data-route="987.654">987.654</button> The tangent overshoots (<var>k̂</var> = 3) and a plain double comparison with <code>tens[3]</code> = 1000 repairs it without any bignum.</li>
+            <li><button class="dm-inline" type="button" data-route="123456">123456</button> A small integer (<code>be ≥ 0</code>, <var>k</var> ≤ 14). Exact double arithmetic prints it; no bignum is ever built.</li>
+            <li><button class="dm-inline" type="button" data-route="1e-300">1e-300</button> <code>quorem</code>'s guess from the top words is 0, and its single correction step makes it 1.</li>
+            <li><button class="dm-inline" type="button" data-route="DBL_MAX">DBL_MAX</button> The longest ride: 17 turns of the digit loop, with <code>S</code> at 732 bits instead of 1025.</li>
+          </ul>
+          <p>Two notes for readers of the source. Mode 0's shortest-digit logic lives in the <code>leftright</code> branch. The floating-point <code>try_quick</code> shortcut that Gay's paper describes is only for modes 2–5 with few digits; mode 0 never takes it.</p>
+        </section>
+
+        <section id="modern">
+          <p class="eyebrow">9 · Before you open dtoa.c</p>
+          <h2>The dtoa.c you download today</h2>
+          <p>Since the change dated 2016-04-29, netlib's dtoa.c defines <code>USE_BF96</code> by default whenever 64-bit integers are available. Mode 0 then first computes <var>k</var> exactly from a table and tries to produce the digits with 64-bit integers and a 96-bit approximation of 10<sup>−<var>k</var></sup> that carries its own error bound. Only when that approximation cannot decide does it jump to <code>Fast_failed1</code>, which rebuilds <code>b2</code>, <code>s2</code>, <code>b5</code>, <code>s5</code> and rejoins the bignum path at the bookkeeping station (the dotted line on the map). In that build the small-integer path and the <code>tens[]</code>/<code>k_check</code> repair are compiled out. Compile with <code>-DNO_BF96</code> to get the classic route shown here. Both builds print the same digits.</p>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/dragon-descendants.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
