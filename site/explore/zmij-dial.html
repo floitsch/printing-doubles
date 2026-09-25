@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Żmij's rounding decision drawn as a clock face: one multiply gives an integer (an odometer) and a 64-bit fraction (an angle); the rounding interval is an arc, and the carry out of one addition is the round-up.">
+  <title>Żmij · The decision on a dial · Explanation lab · Printing doubles</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./explore.css">
+  <link rel="stylesheet" href="./css/zmij-dial.css">
+  <script type="module" src="./js/zmij-dial.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="masthead chapter-masthead"><a class="wordmark" href="../index.html"><span>10</span><i></i><span>2</span><strong>Printing doubles</strong></a><nav><a href="../index.html">Overview</a><a href="../chapters/index.html">Chapters</a><a class="chapter-nav" href="./index.html">Explanation lab</a></nav></header>
+  <main id="content">
+    <section class="chapter-hero">
+      <p class="breadcrumbs"><a href="./index.html">Explanation lab</a> / Żmij / Approach A</p>
+      <p class="lab-badge">Approach A · <a href="./zmij-pipeline.html">compare with approach B</a></p>
+      <h1>Żmij: the decision on a dial</h1>
+      <p class="chapter-deck">Żmij multiplies once and then asks three yes/no questions about a single 64-bit fraction. Wrap that fraction around a clock face and all three questions become one picture: an arc, twelve o’clock, and ten tick marks.</p>
+      <p class="lab-pitch">Approach A explains the decision in pictures. A fraction dial with an odometer shows one number. A decision map then shows every double at once, which is why the result is always right. The machine words stay underneath as captions.</p>
+    </section>
+    <div class="chapter-layout">
+      <aside class="chapter-toc"><strong>Żmij · dial</strong><a href="#zoom">1 · Zoom one notch too far</a><a href="#dial">2 · The dial</a><a href="#tiling">3 · Why it never misses</a><a href="#edges">4 · Knife edges</a><a href="#map">5 · Every double on one square</a><a href="#output">6 · Writing it out</a><a href="#ledger">7 · Proved vs tested</a><a href="#lineage">8 · Where it comes from</a></aside>
+      <article class="chapter">
+
+        <section id="zoom">
+          <p class="eyebrow">1 · The idea</p>
+          <h2>Zoom one notch too far</h2>
+          <p class="lead">Shortest printing asks: of all decimals that read back as this double, which has the fewest digits? If several do, pick the nearest.</p>
+          <div class="lab-remember">
+            <strong>Remember</strong>
+            <p>A positive double is <code>v = m · 2<sup>e</sup></code>, where <code>m</code> is a 53-bit integer. Neighbouring doubles are one <em>ulp</em> = 2<sup>e</sup> apart.</p>
+            <p>Every real number within half an ulp of <code>v</code> reads back as <code>v</code>. That is the <em>rounding interval</em>, <code>v ± 2<sup>e−1</sup></code>. Its ends count only when <code>m</code> is even (ties go to even).</p>
+            <p>At an exact power of two, the neighbour below is only half as far away, so the interval is lopsided.</p>
+          </div>
+          <p>Most algorithms scale <code>v</code> by 10<sup>−k</sup> so that it becomes a 17-digit number, then work out shorter candidates from it. Żmij scales by one more power of ten, <strong>10<sup>−k−1</sup></strong>. After that single multiplication:</p>
+          <ul>
+            <li>the <strong>integer part I</strong> already is the 15- or 16-digit short answer, or its neighbour I + 1 is;</li>
+            <li>the <strong>fraction F</strong> says where <code>v</code> sits between I and I + 1;</li>
+            <li>the half-width <strong>h</strong> of the rounding interval, at this scale, comes from the same power-of-ten constant by a shift. No second multiply is needed.</li>
+          </ul>
+          <div class="equation zmij-eq" role="math" aria-label="c equals m times 2 to the e times 10 to the minus k minus 1, which is I plus F; h equals 2 to the e minus 1 times 10 to the minus k minus 1"><span>c = m·2<sup>e</sup>·10<sup>−k−1</sup> = I + F</span> <span>h = 2<sup>e−1</sup>·10<sup>−k−1</sup></span></div>
+          <p><strong>How k is chosen.</strong> Take <code>k = ⌊e·log<sub>10</sub>2⌋</code>, so that 10<sup>k</sup> ≤ 2<sup>e</sup> &lt; 10<sup>k+1</sup>. At this scale one ulp becomes <code>u = 2<sup>e</sup>/10<sup>k+1</sup></code>, somewhere between 0.1 and 1. Two things follow:</p>
+          <ul>
+            <li>h = u/2 always lies in <strong>[0.05, 0.5)</strong>;</li>
+            <li>c = m·u lies between 2<sup>52</sup>·0.1 ≈ 4.5·10<sup>14</sup> and 2<sup>53</sup> ≈ 9.007·10<sup>15</sup>, so I has 15 or 16 digits.</li>
+          </ul>
+          <p>You can check this by hand with <code>0.3</code>. It is stored as m = 5404319552844595 (odd) and e = −54. That gives k = ⌊−54 × 0.30103⌋ = −17, so we multiply by 10<sup>16</sup>:</p>
+          <ul>
+            <li>c = 2999999999999999.8889776975…</li>
+            <li>h = 2<sup>−55</sup>·10<sup>16</sup> = 0.2775557561…</li>
+          </ul>
+        </section>
+
+        <section id="dial">
+          <p class="eyebrow">2 · The picture</p>
+          <h2>One turn = one step of the short grid</h2>
+          <p>Wrap the number line around a clock face so that one full turn is one unit of 10<sup>k+1</sup>:</p>
+          <ul>
+            <li>the <strong>odometer</strong> in the middle counts whole turns: it shows I;</li>
+            <li>the <strong>dot</strong> is the fraction F, drawn as an angle;</li>
+            <li>the <strong>blue arc</strong> is the rounding interval, F ± h;</li>
+            <li><strong>twelve o’clock</strong> is where the short grid lives: every whole number of turns is a 15–16-digit decimal;</li>
+            <li>the <strong>ten tick marks</strong> are the tenths of a turn, one decimal digit finer.</li>
+          </ul>
+
+          <figure class="lab-figure zmij-fig zmij-dial-figure" aria-labelledby="zmij-dial-caption">
+            <div class="lab-controls">
+              <div class="lab-chips" id="zmij-dial-presets" role="group" aria-label="Example numbers"></div>
+            </div>
+            <div class="lab-controls">
+              <form id="zmij-dial-form" class="zmij-dial-form">
+                <label for="zmij-dial-input">Any double</label>
+                <input id="zmij-dial-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" value="0.3" aria-describedby="zmij-dial-input-help">
+                <button class="lab-button" type="submit">Show</button>
+              </form>
+              <span id="zmij-dial-input-help" class="zmij-dial-help">decimal, <code>1/7</code>, <code>0.1+0.2</code>, <code>2^-1017</code> or <code>0x…</code> bits</span>
+            </div>
+            <div class="lab-controls">
+              <button class="lab-button" type="button" id="zmij-dial-prev" aria-label="Previous double">◀ prev double</button>
+              <button class="lab-button" type="button" id="zmij-dial-next" aria-label="Next double">next double ▶</button>
+              <button class="lab-button" type="button" id="zmij-dial-walk">walk 12 doubles</button>
+              <button class="lab-button" type="button" id="zmij-dial-replay">replay</button>
+              <label class="zmij-dial-toggle"><input type="checkbox" id="zmij-dial-odd"> pretend the significand is odd</label>
+            </div>
+
+            <div class="zmij-dial-stage">
+              <div class="zmij-dial-face">
+                <svg id="zmij-dial-svg" viewBox="-200 -200 400 400" role="img" aria-labelledby="zmij-dial-svg-title"><title id="zmij-dial-svg-title">Fraction dial</title></svg>
+                <div class="zmij-dial-odo-wrap">
+                  <div class="zmij-dial-odo" id="zmij-dial-odo" aria-hidden="true"></div>
+                  <div class="zmij-dial-odo-note" id="zmij-dial-odo-note"></div>
+                </div>
+              </div>
+              <div class="zmij-dial-side">
+                <p class="zmij-dial-cvalue" id="zmij-dial-cvalue"></p>
+                <ol class="zmij-dial-questions" id="zmij-dial-questions">
+                  <li data-q="up"><strong>Does the arc pass 12 going forward?</strong> <span>F + h ≥ 1 turn: the next integer I + 1 reads back.</span><em></em></li>
+                  <li data-q="down"><strong>Does the arc pass 12 going back?</strong> <span>F &lt; h: the integer I itself reads back.</span><em></em></li>
+                  <li data-q="digit"><strong>Otherwise: the nearest tick.</strong> <span>Append the digit round(10·F).</span><em></em></li>
+                </ol>
+                <div class="zmij-dial-out" id="zmij-dial-out" aria-live="polite"></div>
+                <p class="zmij-dial-note" id="zmij-dial-note"></p>
+              </div>
+            </div>
+
+            <h3 class="zmij-dial-subhead">The same picture as one 64-bit word</h3>
+            <div id="zmij-dial-bar"></div>
+            <div class="zmij-dial-regs-wrap"><table class="zmij-dial-regs" id="zmij-dial-regs"></table></div>
+            <details class="zmij-dial-details">
+              <summary>Where F and h come from: one multiply, one shift</summary>
+              <div id="zmij-dial-origin"></div>
+            </details>
+            <p class="lab-sr-only" id="zmij-dial-summary" aria-live="polite"></p>
+            <figcaption id="zmij-dial-caption">The table shows the machine words. F and h are truncated to 64 bits, so read as fractions of a turn they are only ≈ the exact values (dotted digits differ). The error is a few units of 2<sup>−64</sup>, far below a pixel on the dial, and the Lean proof (section 7) shows this never changes a decision. Every output is checked against JavaScript’s own shortest <code>String(x)</code>.</figcaption>
+          </figure>
+
+          <h3>Three questions, asked at once</h3>
+          <ol class="lab-steps">
+            <li><strong>Forward past 12: round up.</strong> If the arc reaches the next whole turn, then I + 1 lies inside the interval. In the machine, F and h are 64-bit words. “Reaches a full turn” means <code>F + h</code> overflows 64 bits, so the <em>carry out</em> of the add is the answer. The code adds that carry straight into I (<code>integral += round_up</code>), and the odometer rolls over. For 0.3 it rolls from 2999999999999999 to 3000000000000000; the zeros drop off, and out comes <code>0.3</code>.</li>
+            <li><strong>Back past 12: keep I.</strong> If <code>F &lt; h</code>, the arc reaches back past the last whole turn, so I itself reads back. That is what happens for <code>0.1</code>: F = 0.0555…, h = 0.0694….</li>
+            <li><strong>Neither: one more digit.</strong> Then no 16-digit decimal fits, and the answer has 17 significant digits: I followed by the digit of the nearest tick. The code computes it as <code>hi64(10·F + 2<sup>63</sup> + 6)</code>, that is, 10·F rounded to the nearest integer. The small <code>+ 6</code> makes up for the truncated F. Note that it <em>rounds</em> rather than truncates: for <code>1/7</code>, F = 0.492, so the nearest tick is 5, not 4.</li>
+          </ol>
+          <p>The three answers don’t depend on each other, so the CPU computes all three in parallel from the same two words and then picks one. There are no loops and no divisions.</p>
+        </section>
+
+        <section id="tiling">
+          <p class="eyebrow">3 · Why it is always right</p>
+          <h2>The arcs tile the circle</h2>
+          <p>Step from a double to the next one. The dot moves by exactly one ulp, u = 2h, so each arc starts exactly where the previous one ended. The figure below draws consecutive doubles as a spiral, so you can see the arcs meet end to end. Two facts about the arc width 2h finish the argument:</p>
+          <ul>
+            <li><strong>2h &lt; 1 turn</strong>, so an arc can reach past 12 in at most one direction. At most one 16-digit decimal fits, and the flags never disagree.</li>
+            <li><strong>2h ≥ 0.1 turn</strong>, the tick spacing, so the tick nearest to the dot is at most 0.05 turn ≤ h away. It is always inside the arc. Seventeen digits always suffice, and the nearest one is always allowed.</li>
+          </ul>
+          <figure class="lab-figure zmij-fig" aria-labelledby="zmij-tile-caption">
+            <div class="lab-controls">
+              <span class="zmij-dial-help">Starts at the dial’s number:</span> <strong id="zmij-tile-start" class="lab-mono"></strong>
+            </div>
+            <div class="zmij-tile-stage">
+              <div class="zmij-tile-face"><svg id="zmij-tile-svg" viewBox="-200 -200 400 400" role="img" aria-labelledby="zmij-tile-title"><title id="zmij-tile-title">Consecutive rounding arcs</title></svg></div>
+              <ol class="zmij-tile-list" id="zmij-tile-list"></ol>
+            </div>
+            <figcaption id="zmij-tile-caption">Consecutive doubles drawn from the inside out; each arc begins where the previous one ended. Red: the arc passes 12, so the output is short. Otherwise the dot’s nearest tick supplies a 17th digit.</figcaption>
+          </figure>
+          <p>For odd <code>m</code>, the ends of the interval are open; for even <code>m</code> they are closed. The machine applies this by adding 1 to h when <code>m</code> is even. That makes both tests inclusive: an arc that ends exactly on 12 then counts as reaching it.</p>
+        </section>
+
+        <section id="edges">
+          <p class="eyebrow">4 · Knife edges</p>
+          <h2>Three cases that land exactly on a line</h2>
+          <h3><button class="zmij-dial-load" type="button" data-x="1e23">1e23</button>: the arc ends on 12</h3>
+          <p>Here every number is exact and can be checked by hand:</p>
+          <ul>
+            <li>10<sup>23</sup> is not a double. The nearest one is 99999999999999991611392, with m even and e = 24.</li>
+            <li>k = 7, so we multiply by 10<sup>−8</sup>: c = 999999999999999.91611392 and h = 0.08388608.</li>
+            <li>F + h = 1 exactly, so the arc ends precisely on 12.</li>
+          </ul>
+          <p>Because m is even, the end of the interval counts, and <code>1e+23</code> reads back. In the machine, F = <code>0xea86711dcf73c620</code> and h = <code>0x15798ee2308c39df</code> + 1. They add up to exactly 2<sup>64</sup>, and only that +1 makes the add carry. Load it and tick “pretend the significand is odd”. The carry disappears and the output becomes <code>9.999999999999999e+22</code>. That string still reads back, but it is not the shortest. The +1 carries the tie rule.</p>
+          <h3><button class="zmij-dial-load" type="button" data-x="70368744177664.125">70368744177664.125</button>: halfway between two ticks</h3>
+          <p>Here F is exactly 2<sup>62</sup>, a quarter turn, so 10F = 2.5. The rounding constant 2<sup>63</sup> would round that up to 3, but ties must go to the even digit, 2. The code has one special case for this, <code>if (fractional == 1ull &lt;&lt; 62) digit = 2</code>. Only F = ¼ and F = ¾ give an exact half. For ¾, 7.5 rounds up to 8, which is already even. Output: <code>70368744177664.12</code>.</p>
+          <h3><button class="zmij-dial-load" type="button" data-x="2^-1017">2<sup>−1017</sup></button>: a lopsided arc</h3>
+          <p>For a power of two the lower neighbour is twice as close, so the arc reaches only h/2 backwards. Żmij sends these 2,046 inputs down a separate, rarely taken path:</p>
+          <ul>
+            <li>k comes from ¾·2<sup>e</sup>;</li>
+            <li>“keep I” uses F &lt; h/2;</li>
+            <li>the digit is clamped into the arc: <code>max(round(10F), ⌈10(F − h/2)⌉)</code>.</li>
+          </ul>
+          <p>For 2<sup>−1017</sup> the nearest tick, 4, lies outside the short side of the arc, so the digit is bumped to 5. Output: <code>7.120236347223045e-307</code>. The correctly rounded …3044 would not read back. 26 of the 2,046 powers of two need this bump.</p>
+        </section>
+
+        <section id="map">
+          <p class="eyebrow">5 · Every double at once</p>
+          <h2>Every double on one square</h2>
+          <p>The decision depends on just two numbers, F and h. So the whole decision can be drawn once, as a map. Across the square is F, a fraction of a turn. Up the square is h, and it only ever takes values in [0.05, 0.5):</p>
+          <ul>
+            <li><strong>Left of the diagonal F = h</strong>, the arc reaches back past 12: keep I.</li>
+            <li><strong>Right of F = 1 − h</strong>, the arc reaches forward past 12: I + 1.</li>
+            <li>The two triangles meet only at h = 0.5, which no double reaches, so they never overlap.</li>
+            <li><strong>The wedge between them</strong> is cut into stripes by the nearest tick, round(10F).</li>
+          </ul>
+          <figure class="lab-figure zmij-fig zmij-map-figure" aria-labelledby="zmij-map-caption">
+            <div class="lab-controls">
+              <form id="zmij-map-form" class="zmij-dial-form">
+                <label for="zmij-map-input">Drop your number</label>
+                <input id="zmij-map-input" type="text" autocomplete="off" spellcheck="false" value="0.3">
+                <button class="lab-button" type="submit">Drop</button>
+              </form>
+            </div>
+            <div class="lab-controls">
+              <label for="zmij-map-exp">Binary exponent e</label>
+              <input id="zmij-map-exp" type="range" min="-1074" max="971" step="1" value="-54">
+              <output id="zmij-map-exp-out" for="zmij-map-exp" class="lab-mono"></output>
+            </div>
+            <div class="zmij-map-stage">
+              <svg id="zmij-map-svg" viewBox="0 0 560 470" role="img" aria-labelledby="zmij-map-title zmij-map-desc"><title id="zmij-map-title">Decision map</title><desc id="zmij-map-desc">Square with F across and h up. Left triangle F less than h: keep I. Right triangle F plus h at least 1: I plus 1. Middle wedge: stripes for digits 1 to 9. Below h = 0.05 no double exists.</desc></svg>
+            </div>
+            <p class="zmij-map-status" id="zmij-map-status" aria-live="polite"></p>
+            <div class="lab-controls zmij-map-rain">
+              <span>Rain 2,000 doubles:</span>
+              <button class="lab-button" type="button" data-rain="bits">random bit patterns</button>
+              <button class="lab-button" type="button" data-rain="random">Math.random()</button>
+              <button class="lab-button" type="button" data-rain="short">short typed decimals</button>
+              <button class="lab-button" type="button" id="zmij-map-clear">clear</button>
+            </div>
+            <div class="zmij-dial-regs-wrap"><table class="zmij-map-counts" id="zmij-map-counts" aria-live="polite"></table></div>
+            <figcaption id="zmij-map-caption">Each double is a dot at (F, h). All doubles with the same exponent share one h, so they sit on one horizontal line; the slider moves that line. Dots use the machine’s F and h. The exact values differ by less than a pixel.</figcaption>
+          </figure>
+          <p><strong>Why the extra digit is never 0 or 10.</strong> Digit 0 would need F &lt; 0.05. But h ≥ 0.05, so any such dot is already inside the left triangle, and I itself is the answer. Digit 10 would need F ≥ 0.95, which the right triangle already covers. So the 17th digit is always 1–9. Appending it never carries back into I, and it never adds a trailing zero that would have to be stripped.</p>
+          <p><strong>Try the rain.</strong> Random bit patterns land in the wedge about 60% of the time: most doubles really need 17 digits. <code>Math.random()</code> values land there even more often. Decimals that a person typed land in the triangles every time: a decimal with 15 or fewer digits is always found by the short test.</p>
+        </section>
+
+        <section id="output">
+          <p class="eyebrow">6 · From decision to text</p>
+          <h2>Writing it out</h2>
+          <p><code>to_decimal</code> hands back I, which may already have been incremented by the carry, together with the digit if there is one. The writer then does three things:</p>
+          <ul>
+            <li>turns the 16 digits into characters;</li>
+            <li>drops trailing zeros;</li>
+            <li>puts the decimal point in place, using the exponent of the leading digit, <code>k + 15 + (I ≥ 10<sup>15</sup>)</code>.</li>
+          </ul>
+          <p>Żmij uses fixed notation when that exponent is between −4 and 15, and <code>d.ddde±XX</code> otherwise. So <code>1e-4</code> prints as <code>0.0001</code> and <code>1e-5</code> as <code>1e-05</code>.</p>
+          <figure class="lab-figure zmij-fig" aria-labelledby="zmij-out-caption">
+            <div id="zmij-out-steps" class="zmij-out-steps"></div>
+            <figcaption id="zmij-out-caption">Output assembly for the dial’s current number.</figcaption>
+          </figure>
+          <p>The writer is as branch-free as the decision. It turns the 16 digits into bytes with a few lane-parallel multiplies rather than a divide-by-ten loop, and it counts trailing zeros with one compare and a bit count. <a href="./zmij-pipeline.html">Approach B</a> follows that pipeline step by step.</p>
+        </section>
+
+        <section id="ledger">
+          <p class="eyebrow">7 · Honesty box</p>
+          <h2>Proved vs tested</h2>
+          <div class="zmij-ledger">
+            <p><span class="zmij-ledger-tag proved">Proved</span><span><strong>The regular binary64 path</strong>: every double except exact powers of two, subnormals included. The Lean 4 theorem <code>Zmij.correct</code> in <code>test/Zmij.lean</code> (built on <code>test/Core.lean</code>) covers the choice of k, the truncated table, the one multiply, h by shift, the three flags, the <code>+6</code> and the tie fix. It shows the result, after trailing zeros are removed, is shortest and correctly rounded. It is kernel-checked for all 2,046 exponents.<br><em>Caveat:</em> the proof is about a <em>hand-written Lean model</em> of the C++ <code>to_decimal</code>. Nothing checks by machine that the C++, or the generator of its table, matches that model.</span></p>
+            <p><span class="zmij-ledger-tag tested">Tested</span><span><strong>The power-of-two path</strong> (the 2,046 lopsided cases; the C++ also sends the smallest normal here). It is not in the Lean proof. <code>verify.py</code>, a Python port, checks all 2,046 directly, and unit tests compare the C++ with Dragonbox for the powers of two below 1.</span></p>
+            <p><span class="zmij-ledger-tag tested">Tested</span><span><strong>binary32</strong>: all 2<sup>32</sup> floats are compared with Dragonbox (<code>float-check.cc</code>).</span></p>
+            <p><span class="zmij-ledger-tag tested">Tested</span><span><strong>Formatting</strong>: digit generation, trailing zeros, and fixed and scientific layout are covered by unit tests only.</span></p>
+            <p><span class="zmij-ledger-tag page">This page</span><span>A BigInt port of <code>to_decimal</code> (pinned to v1.2, commit <code>d1682cb</code>) drives every figure. <code>test/explore-zmij-dial.test.js</code> checks it against JavaScript’s shortest output on 200,000 random bit patterns, 50,000 <code>Math.random()</code> values, 50,000 short decimals, all powers of two and 20,000 subnormals. It also checks it against an exact-rational version of the dial on 40,000 more doubles.</span></p>
+          </div>
+        </section>
+
+        <section id="lineage">
+          <p class="eyebrow">8 · Credits</p>
+          <h2>Where it comes from</h2>
+          <p>Each idea on this page has an earlier source:</p>
+          <ul>
+            <li><strong>Schubfach</strong> (Raffaello Giulietti) showed that one grid step of 10<sup>k+1</sup> can hold at most one short candidate, and that the finer grid always has one.</li>
+            <li><strong>yy</strong> (Yaoyuan Guo, in yyjson) reduced the work to a single multiply, with the half-ulp taken from the same power-of-ten constant and a truncated table.</li>
+            <li><strong>xjb</strong> (Xiang JunBo) scaled by 10<sup>−k−1</sup> instead of 10<sup>−k</sup>, so the integer part is already the short candidate and no division by ten is needed.</li>
+            <li><strong>Żmij</strong> (Victor Zverovich, 2025–26) combines these, with branch-free flags, SIMD digit writing and the Lean proofs.</li>
+          </ul>
+          <div class="aside"><p>Careful with older write-ups. The December 2025 blog post “Faster double-to-string conversion” describes an earlier Żmij, built from Schubfach plus a trick by Cassio Neri. The code has since been rewritten around the core shown here. This page follows the code at tag v1.2.</p></div>
+          <p>Sources:</p>
+          <ul>
+            <li><a href="https://github.com/vitaut/zmij/blob/d1682cb47e67474319ed146d3ca2c0e1a70f9429/zmij.cc">zmij.cc at d1682cb</a> (<code>to_decimal</code>, <code>write</code>)</li>
+            <li><a href="https://github.com/vitaut/zmij/blob/v1.2/test/Zmij.lean">test/Zmij.lean</a></li>
+            <li><a href="https://github.com/vitaut/zmij/blob/v1.2/test/verify.py">test/verify.py</a></li>
+            <li><a href="https://vitaut.net/posts/2025/faster-dtoa/">the 2025 blog post</a> (older design)</li>
+          </ul>
+        </section>
+
+        <nav class="chapter-links"><a href="./index.html"><span>Back</span><strong>Explanation lab</strong></a><a href="../chapters/zmij.html"><span>Compare</span><strong>Current chapter →</strong></a></nav>
+      </article>
+    </div>
+  </main>
+  <footer><p><strong>Printing doubles</strong> · explanation lab</p><p><a href="./index.html">All approaches</a></p></footer>
+</body>
+</html>
